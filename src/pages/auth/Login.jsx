@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser } from '../../store/slices/authSlice';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import './Login.css';
 
 export default function Login() {
@@ -215,7 +215,7 @@ export default function Login() {
           {/* Footer */}
           <p className="login-footer">
             Hesabın yok mu? 
-            <span className="register-link">Kayıt Ol</span>
+            <Link to="/register" className="register-link">Kayıt Ol</Link>
           </p>
         </div>
       </div>
