@@ -7,9 +7,11 @@ const authService = {
     return await api.post('/auth/register/student', data);
   },
 
-  // Akademisyen Başvurusu (İleride lazım olacak)
+  // Akademisyen Başvurusu -> BURAYI DÜZELTİYORUZ
   registerAcademician: async (data) => {
-    return await api.post('/auth/register/academician', data);
+    // Eski hatalı url: /auth/register/academician
+    // Postman'deki doğru url: /auth/request/academician-account
+    return await api.post('/auth/request/academician-account', data);
   }
 };
 

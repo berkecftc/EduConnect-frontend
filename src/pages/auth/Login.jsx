@@ -1,36 +1,55 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // useEffect eklendi
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser } from '../../store/slices/authSlice';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom'; // useLocation eklendi
 import './Login.css';
+import AdminButton from '../../components/ui/AdminButton';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
+  // --- YENİ EKLENEN KISIMLAR (STATE) ---
+  const [isAdminMode, setIsAdminMode] = useState(false); // Admin modunu takip eder
+  
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation(); // URL'den gelen veriyi okur
   const { status, error } = useSelector((state) => state.auth);
+
+  // --- YENİ EKLENEN KISIMLAR (EFFECT) ---
+  // Sayfa açıldığında "Admin Butonuna" basılarak mı gelindi kontrol et
+  useEffect(() => {
+    if (location.state?.isAdminLogin) {
+      setIsAdminMode(true);
+    }
+  }, [location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const resultAction = await dispatch(loginUser({ email, password }));
     
     if (loginUser.fulfilled.match(resultAction)) {
-      navigate('/dashboard'); 
+      // --- YENİ EKLENEN KISIMLAR (REDIRECT) ---
+      // Giriş başarılıysa role/moda göre yönlendir
+      if (isAdminMode) {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     }
   };
 
   return (
     <div className="login-container">
-      {/* Animated Background */}
+      {/* Animated Background - DOKUNULMADI */}
       <div className="animated-background">
         <div className="gradient-orb orb-1"></div>
         <div className="gradient-orb orb-2"></div>
         <div className="gradient-orb orb-3"></div>
       </div>
 
-      {/* Floating Particles */}
+      {/* Floating Particles - DOKUNULMADI */}
       <div className="particles">
         {[...Array(20)].map((_, i) => (
           <div key={i} className="particle" style={{
@@ -42,7 +61,7 @@ export default function Login() {
       </div>
 
       <div className="login-wrapper">
-        {/* Info Section - Right Side */}
+        {/* Info Section - DOKUNULMADI */}
         <div className="info-section">
           <div className="info-content">
             <div className="brand-section">
@@ -54,7 +73,7 @@ export default function Login() {
               </p>
             </div>
 
-            {/* Feature Cards */}
+            {/* Feature Cards - DOKUNULMADI */}
             <div className="feature-cards">
               <div className="feature-card card-1">
                 <div className="feature-icon">
@@ -102,7 +121,7 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Stats */}
+            {/* Stats - DOKUNULMADI */}
             <div className="stats-section">
               <div className="stat-item">
                 <div className="stat-number">500+</div>
@@ -136,10 +155,18 @@ export default function Login() {
                 </svg>
               </div>
             </div>
+            
+            {/* BAŞLIK KISMI: Admin modundaysa değişir */}
             <h2 className="login-title">
-              <span className="title-gradient">EduConnect</span>
+              <span className="title-gradient">
+                {isAdminMode ? 'Yönetici Paneli' : 'EduConnect'}
+              </span>
             </h2>
-            <p className="login-subtitle">Eğitim dünyasına hoş geldiniz</p>
+            <p className="login-subtitle">
+              {isAdminMode 
+                ? 'Yönetici hesabınızla giriş yapın' 
+                : 'Eğitim dünyasına hoş geldiniz'}
+            </p>
           </div>
         
           {/* Error Message */}
@@ -168,7 +195,7 @@ export default function Login() {
                   className="form-input"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="ornek@edu.com"
+                  placeholder={isAdminMode ? "admin@edu.com" : "ornek@edu.com"}
                 />
               </div>
             </div>
@@ -191,10 +218,15 @@ export default function Login() {
               </div>
             </div>
 
+            {/* BUTON: Admin modundaysa rengi kırmızı olur */}
             <button
               type="submit"
               disabled={status === 'loading'}
               className="submit-button"
+              style={{
+                backgroundColor: isAdminMode ? '#dc2626' : '', // Kırmızı renk (Tailwind red-600)
+                borderColor: isAdminMode ? '#dc2626' : ''
+              }}
             >
               {status === 'loading' ? (
                 <>
@@ -203,7 +235,7 @@ export default function Login() {
                 </>
               ) : (
                 <>
-                  <span>Giriş Yap</span>
+                  <span>{isAdminMode ? 'Yönetici Girişi' : 'Giriş Yap'}</span>
                   <svg className="button-icon" viewBox="0 0 24 24" fill="none">
                     <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
@@ -212,12 +244,30 @@ export default function Login() {
             </button>
           </form>
         
-          {/* Footer */}
-          <p className="login-footer">
-            Hesabın yok mu? 
-            <Link to="/register" className="register-link">Kayıt Ol</Link>
-          </p>
+          {/* Footer: Admin ise "Geri Dön", Değilse "Kayıt Ol" */}
+          <div className="login-footer">
+            {isAdminMode ? (
+               <p 
+                 onClick={() => {
+                    setIsAdminMode(false);
+                    navigate('/login', { state: {} });
+                 }}
+                 className="register-link" 
+                 style={{cursor: 'pointer'}}
+               >
+                 ← Öğrenci Girişine Dön
+               </p>
+            ) : (
+               <p>
+                 Hesabın yok mu?{' '}
+                 <Link to="/register" className="register-link">Kayıt Ol</Link>
+               </p>
+            )}
+          </div>
         </div>
+        
+        {/* Admin Butonu: Sadece Admin modunda DEĞİLSEK göster */}
+        {!isAdminMode && <AdminButton />}
       </div>
       </div>
     </div>
