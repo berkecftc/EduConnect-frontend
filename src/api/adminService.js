@@ -50,7 +50,14 @@ const adminService = {
   },
   rejectEvent: async (eventId) => {
     return await api.put(`/events/manage/${eventId}/reject`);
-  }
+  },
+  // --- 5. GENEL KULLANICI YÖNETİMİ ---
+  getAllUsers: async () => {
+    return await api.get('/auth/admin/users');
+  },
+  deleteUser: async (userId) => {
+    return await api.delete(`/auth/admin/users/${userId}`);
+  },
 };
 
 export default adminService;
