@@ -26,11 +26,15 @@ const adminService = {
 
   // --- 3. KULÜP KURMA İSTEKLERİ ---
   getClubCreationRequests: async () => {
-    return await api.get('/admin/clubs/request');
+    return await api.get('/admin/clubs/requests');
   },
   approveClubCreation: async (requestId) => {
     // requestId bazen clubId olabilir, backend yapına göre dikkat et
     return await api.post(`/admin/clubs/requests/${requestId}/approve`);
+  },
+  // YENİ EKLENEN KISIM:
+  rejectClubCreation: async (requestId) => {
+    return await api.post(`/admin/clubs/requests/${requestId}/reject`);
   },
   // Kulüp silme / güncelleme (Gerekirse panelde kullanırız)
   deleteClub: async (clubId) => {

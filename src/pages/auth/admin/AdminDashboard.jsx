@@ -46,6 +46,22 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleReject = async (id) => {
+    if(!window.confirm("Bu isteği REDDETMEK istediğinize emin misiniz?")) return;
+
+    try {
+      if (activeTab === 'academicians') await adminService.rejectAcademician(id);
+      else if (activeTab === 'clubOfficials') await adminService.rejectClubOfficial(id);
+      else if (activeTab === 'clubs') await adminService.rejectClubCreation(id); // <-- YENİ
+      else if (activeTab === 'events') await adminService.rejectEvent(id);
+      
+      alert("İstek reddedildi/silindi.");
+      fetchData(); // Listeyi yenile
+    } catch (error) {
+      alert("İşlem başarısız: " + (error.response?.data?.message || error.message));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="mx-auto max-w-6xl">
@@ -107,15 +123,24 @@ export default function AdminDashboard() {
                         {activeTab === 'events' && item.eventDate}
                       </td>
 
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleApprove(item.id)}
-                          className="rounded bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700"
-                        >
-                          Onayla
-                        </button>
-                        {/* Reddet butonu da eklenebilir */}
-                      </td>
+                    <td className="px-6 py-4 text-right space-x-2"> {/* space-x-2 ile aralarını açtık */}
+    
+                      {/* Onayla Butonu */}
+                      <button
+                       onClick={() => handleApprove(item.userId)}
+                       className="rounded bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 transition-colors"
+                      >
+                       Onayla
+                      </button>
+
+                      {/* YENİ: Reddet Butonu */}
+                      <button
+                       onClick={() => handleReject(item.userId)}
+                       className="rounded bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 transition-colors"
+                      >
+                       Reddet
+                      </button>
+                    </td>
                     </tr>
                   ))}
                 </tbody>
