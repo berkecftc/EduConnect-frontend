@@ -21,6 +21,7 @@ export default function AdminDashboard() {
       if (activeTab === 'academicians') response = await adminService.getAcademicianRequests();
       else if (activeTab === 'clubOfficials') response = await adminService.getClubOfficialRequests();
       else if (activeTab === 'clubs') response = await adminService.getClubCreationRequests();
+      else if (activeTab === 'activeClubs') response = await adminService.getAllActiveClubs();
       else if (activeTab === 'events') response = await adminService.getEventRequests();
       
       // Backend'den dönen verinin yapısına göre burayı ayarla (örn: response.data)
@@ -56,6 +57,7 @@ export default function AdminDashboard() {
       if (activeTab === 'academicians') await adminService.rejectAcademician(id);
       else if (activeTab === 'clubOfficials') await adminService.rejectClubOfficial(id);
       else if (activeTab === 'clubs') await adminService.rejectClubCreation(id); // <-- YENİ
+      else if (activeTab === 'activeClubs') await adminService.deleteClub(id);
       else if (activeTab === 'events') await adminService.rejectEvent(id);
       
       alert("İstek reddedildi/silindi.");
@@ -72,6 +74,77 @@ export default function AdminDashboard() {
       fetchData();
     } catch (error) {
       alert("Silme işlemi başarısız.");
+    }
+  };
+  // LOGO GÜNCELLEME (MinIO Entegrasyonlu)
+  const handleUpdateLogo = async (clubId) => {
+    // 1. Gizli bir dosya inputu oluştur
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*'; // Sadece resim dosyaları
+
+    // 2. Dosya seçildiğinde çalışacak fonksiyon
+    fileInput.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Dosya boyutu kontrolü (Örn: 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Dosya boyutu 5MB'dan büyük olamaz!");
+        return;
+      }
+
+      try {
+        // Yükleniyor efekti verebilirsin istersen...
+        const response = await adminService.updateClubLogo(clubId, file);
+        
+        alert("Logo başarıyla güncellendi!");
+        
+        // 3. Tablodaki görüntüyü anında güncelle (Sayfayı yenilemeden)
+        const newLogoUrl = response.data; // Backend'den dönen MinIO URL'i
+        
+        setData(prevData => prevData.map(item => {
+            if (item.id === clubId) {
+                return { ...item, logoUrl: newLogoUrl };
+            }
+            return item;
+        }));
+
+      } catch (err) {
+        console.error(err);
+        alert("Logo yüklenirken hata oluştu: " + (err.response?.data || err.message));
+      }
+    };
+
+    // 3. Dosya seçme penceresini aç
+    fileInput.click();
+  };
+
+  // YÖNETİM KURULU GÖRÜNTÜLEME
+  const handleViewBoard = async (clubId) => {
+    try {
+      const response = await adminService.getClubBoardMembers(clubId);
+      const members = response.data; // veya response.data.data
+      const memberNames = members.map(m => `- ${m.firstName} ${m.lastName} (${m.role})`).join('\n');
+      alert(`YÖNETİM KURULU:\n\n${memberNames}`);
+    } catch (err) {
+      alert("Bilgiler alınamadı.");
+    }
+  };
+
+  // BAŞKAN DEĞİŞTİRME
+  const handleChangePresident = async (clubId) => {
+    // Gerçek bir projede burada Modal açıp üye listesinden seçtiririz.
+    // Şimdilik basitçe ID istiyoruz:
+    const newId = prompt("Yeni Başkanın Öğrenci ID'sini (UUID) giriniz:");
+    if (!newId) return;
+
+    try {
+      await adminService.changeClubPresident(clubId, newId);
+      alert("Başkan değiştirildi.");
+      fetchData();
+    } catch (err) {
+      alert("Hata: " + (err.response?.data?.message || "Başkan değiştirilemedi. ID'nin kulübe üye olduğundan emin olun."));
     }
   };
 
@@ -126,7 +199,7 @@ export default function AdminDashboard() {
 
         {/* --- SEKMELER (TABS) --- */}
         <div className="mb-6 flex space-x-2 overflow-x-auto border-b border-gray-200 pb-2">
-          {['users', 'academicians', 'clubOfficials', 'clubs', 'events'].map((tab) => (
+          {['users', 'academicians', 'clubOfficials', 'clubs', 'activeClubs', 'events'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -139,6 +212,7 @@ export default function AdminDashboard() {
               {tab === 'academicians' && 'Akademisyen Başvuruları'}
               {tab === 'clubOfficials' && 'Kulüp Başkanı İstekleri'}
               {tab === 'clubs' && 'Kulüp Kurma İstekleri'}
+              {tab === 'activeClubs' && 'Aktif Kulüpler'}
               {tab === 'events' && 'Etkinlik İstekleri'}
             </button>
           ))}
@@ -194,8 +268,10 @@ export default function AdminDashboard() {
           </div>
           {loading ? (
             <div className="text-center py-10 text-gray-500">Yükleniyor...</div>
-          ) : data.length === 0 ? (
-            <div className="text-center py-10 text-gray-400">Bekleyen istek bulunmamaktadır.</div>
+          ) : displayData.length === 0 ? (
+            <div className="text-center py-10 text-gray-400">
+              {activeTab === 'activeClubs' ? 'Aktif kulüp bulunmamaktadır.' : 'Bekleyen istek bulunmamaktadır.'}
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-gray-600">
@@ -229,6 +305,26 @@ export default function AdminDashboard() {
                             {activeTab === 'academicians' && `${item.title || ''} ${item.firstName} ${item.lastName}`}
                             {activeTab === 'clubOfficials' && `${item.firstName} ${item.lastName}`}
                             {activeTab === 'clubs' && item.clubName}
+                            {/* AKTİF KULÜPLER İÇİN GÖRÜNÜM */}
+                            {activeTab === 'activeClubs' && (
+                              <div className="flex items-center">
+                                {item.logoUrl ? (
+                                  <img
+                                    src={item.logoUrl}
+                                    alt="Logo"
+                                    className="mr-3 h-10 w-10 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-xs">
+                                    Yok
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="font-bold">{item.name}</div>
+                                  <div className="text-xs text-gray-500">Üye: {item.memberCount}</div>
+                                </div>
+                              </div>
+                            )}
                             {activeTab === 'events' && item.eventName}
                           </td>
 
@@ -249,6 +345,10 @@ export default function AdminDashboard() {
                             {activeTab === 'academicians' && item.department}
                             {activeTab === 'clubOfficials' && `Email: ${item.email}`}
                             {activeTab === 'clubs' && (item.description ? item.description.substring(0, 50) + '...' : '')}
+                            {/* BAŞKAN BİLGİSİ */}
+                            {activeTab === 'activeClubs' && (
+                              <span className="text-sm text-gray-700">Başkan: {item.presidentName}</span>
+                            )}
                             {activeTab === 'events' && item.eventDate}
                           </td>
 
@@ -263,8 +363,41 @@ export default function AdminDashboard() {
                               </button>
                             )}
 
+                            {/* AKTİF KULÜPLER: İŞLEM BUTONLARI */}
+                            {activeTab === 'activeClubs' && (
+                              <>
+                                <button
+                                  onClick={() => handleViewBoard(item.id)}
+                                  className="rounded bg-blue-500 px-2 py-1 text-xs text-white hover:bg-blue-600"
+                                >
+                                  Yönetim
+                                </button>
+
+                                <button
+                                  onClick={() => handleChangePresident(item.id)}
+                                  className="rounded bg-yellow-500 px-2 py-1 text-xs text-white hover:bg-yellow-600"
+                                >
+                                  Bşk. Değiştir
+                                </button>
+
+                                <button
+                                  onClick={() => handleUpdateLogo(item.id)}
+                                  className="rounded bg-purple-500 px-2 py-1 text-xs text-white hover:bg-purple-600"
+                                >
+                                  Logo
+                                </button>
+
+                                <button
+                                  onClick={() => handleReject(item.id)}
+                                  className="rounded bg-red-500 px-2 py-1 text-xs text-white hover:bg-red-600"
+                                >
+                                  Kapat
+                                </button>
+                              </>
+                            )}
+
                             {/* DİĞER ONAY/RET BUTONLARI (Users sekmesinde GİZLİ OLMALI) */}
-                            {activeTab !== 'users' && (
+                            {activeTab !== 'users' && activeTab !== 'activeClubs' && (
                               <>
                                 <button
                                   onClick={() => handleApprove(activeTab === 'clubs' ? item.id : item.userId)}

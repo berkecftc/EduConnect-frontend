@@ -40,6 +40,27 @@ const adminService = {
   deleteClub: async (clubId) => {
     return await api.delete(`/admin/clubs/${clubId}`);
   },
+  getAllActiveClubs: async () => {
+    return await api.get('/admin/clubs/active');
+  },
+  getClubBoardMembers: async (clubId) => {
+    return await api.get(`/admin/clubs/${clubId}/board`);
+  },
+  changeClubPresident: async (clubId, newPresidentId) => {
+    return await api.put(`/admin/clubs/${clubId}/change-president?newPresidentId=${newPresidentId}`);
+  },
+  // LOGO GÜNCELLEME (Admin Endpointine İstek Atar)
+  updateClubLogo: async (clubId, file) => {
+    const formData = new FormData();
+    formData.append('file', file); // Backend'deki @RequestParam("file") ile aynı isim olmalı
+
+    // DİKKAT: /admin/clubs/{clubId}/logo adresine atıyoruz
+    return await api.post(`/admin/clubs/${clubId}/logo`, formData, {
+        headers: { 
+          'Content-Type': 'multipart/form-data' 
+        }
+    });
+  },
 
   // --- 4. ETKİNLİK İŞLEMLERİ ---
   getEventRequests: async () => {
