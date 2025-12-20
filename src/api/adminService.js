@@ -63,14 +63,19 @@ const adminService = {
   },
 
   // --- 4. ETKİNLİK İŞLEMLERİ ---
+  // Tüm Etkinlikleri Getir (İstatistik için)
+  getAllEvents: async () => {
+    // Event Service'in public endpointi veya admin endpointi
+    return await api.get('/events'); 
+  },
   getEventRequests: async () => {
     return await api.get('/events/manage/pending');
   },
   approveEvent: async (eventId) => {
-    return await api.put(`/events/manage/${eventId}/approve`); // Genelde update PUT olur ama POST da olabilir
+    return await api.post(`/events/manage/${eventId}/approve`); // Genelde update PUT olur ama POST da olabilir
   },
   rejectEvent: async (eventId) => {
-    return await api.put(`/events/manage/${eventId}/reject`);
+    return await api.post(`/events/manage/${eventId}/reject`);
   },
   // --- 5. GENEL KULLANICI YÖNETİMİ ---
   getAllUsers: async () => {
