@@ -7,6 +7,10 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [userRoleFilter, setUserRoleFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  // MODAL İÇİN STATE'LER
+  const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
+  const [boardMembers, setBoardMembers] = useState([]);
+  const [selectedClubName, setSelectedClubName] = useState('');
 
   // Sekme değişince veriyi çek
   useEffect(() => {
@@ -120,18 +124,18 @@ export default function AdminDashboard() {
     fileInput.click();
   };
 
-  // YÖNETİM KURULU GÖRÜNTÜLEME
-  const handleViewBoard = async (clubId) => {
+  // YÖNETİM KURULU GÖRÜNTÜLEME (Modal Versiyonu)
+  const handleViewBoard = async (clubId, clubName) => {
     try {
+      // Önce modalı açmadan yükleniyor diyebilirsin veya direkt açarsın
       const response = await adminService.getClubBoardMembers(clubId);
-      const members = response.data; // veya response.data.data
-      const memberNames = members.map(m => `- ${m.firstName} ${m.lastName} (${m.role})`).join('\n');
-      alert(`YÖNETİM KURULU:\n\n${memberNames}`);
+      setBoardMembers(response.data); // Gelen üye listesini kaydet
+      setSelectedClubName(clubName);  // Başlıkta göstermek için ismini al
+      setIsBoardModalOpen(true);      // Modalı aç
     } catch (err) {
-      alert("Bilgiler alınamadı.");
+      alert("Yönetim kurulu bilgileri alınamadı.");
     }
   };
-
   // BAŞKAN DEĞİŞTİRME
   const handleChangePresident = async (clubId) => {
     // Gerçek bir projede burada Modal açıp üye listesinden seçtiririz.
@@ -367,8 +371,8 @@ export default function AdminDashboard() {
                             {activeTab === 'activeClubs' && (
                               <>
                                 <button
-                                  onClick={() => handleViewBoard(item.id)}
-                                  className="rounded bg-blue-500 px-2 py-1 text-xs text-white hover:bg-blue-600"
+                                  onClick={() => handleViewBoard(item.id, item.name)}
+                                  className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
                                 >
                                   Yönetim
                                 </button>
@@ -425,6 +429,72 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {/* ------------------ YÖNETİM KURULU MODALI ------------------ */}
+      {isBoardModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden animate-fadeIn">
+            {/* Modal Başlık */}
+            <div className="bg-gray-100 px-6 py-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-bold text-gray-800">
+                {selectedClubName} - Yönetim Kurulu
+              </h3>
+              <button
+                onClick={() => setIsBoardModalOpen(false)}
+                className="text-gray-500 hover:text-red-500 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal İçerik (Liste) */}
+            <div className="p-6 max-h-96 overflow-y-auto">
+              {boardMembers.length > 0 ? (
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">İsim</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {boardMembers.map((member, index) => (
+                      <tr key={index}>
+                        <td className="px-3 py-2 text-sm text-gray-900">
+                          {member.firstName} {member.lastName}
+                        </td>
+                        <td className="px-3 py-2 text-sm">
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs font-medium ${
+                              member.role.includes('PRESIDENT')
+                                ? 'bg-purple-100 text-purple-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}
+                          >
+                            {member.role.replace('CLUB_', '').replace('_', ' ')}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="text-center text-gray-500 py-4">Bu kulüpte kayıtlı yetkili bulunamadı.</p>
+              )}
+            </div>
+
+            {/* Modal Alt Kısım */}
+            <div className="bg-gray-50 px-6 py-3 flex justify-end">
+              <button
+                onClick={() => setIsBoardModalOpen(false)}
+                className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700 transition-colors"
+              >
+                Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
