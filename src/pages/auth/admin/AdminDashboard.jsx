@@ -7,6 +7,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [userRoleFilter, setUserRoleFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  // Etkinlik sekmesi için durum filtresi
+  const [eventFilter, setEventFilter] = useState('PENDING');
   // MODAL İÇİN STATE'LER
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
   const [boardMembers, setBoardMembers] = useState([]);
@@ -119,6 +121,22 @@ export default function AdminDashboard() {
     }
   };
 
+  // Etkinlik objesinden güvenli tarih okuma/parsing
+  const getEventDate = (event) => {
+    const raw = event?.date ?? event?.eventDate ?? event?.startDate ?? event?.startTime;
+    if (!raw) return null;
+
+    // epoch (ms/s) desteği
+    if (typeof raw === 'number') {
+      const ms = raw < 1e12 ? raw * 1000 : raw;
+      const d = new Date(ms);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    const d = new Date(raw);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+
   const handleApprove = async (id) => {
     if(!window.confirm("Bu isteği onaylamak istiyor musunuz?")) return;
     
@@ -132,6 +150,25 @@ export default function AdminDashboard() {
       fetchData(); // Listeyi yenile
     } catch (error) {
       alert("Onay işlemi başarısız: " + (error.response?.data?.message || error.message));
+    }
+  };
+
+  // Etkinlik sekmesi için ayrı onay handler'ı (UI'dan direkt çağırmak için)
+  const handleApproveEvent = async (eventId) => {
+    try {
+      await adminService.approveEvent(eventId);
+      alert('Etkinlik onaylandı!');
+
+      // KRİTİK: events sekmesi pending endpoint'inden çekiliyor.
+      // Onay sonrası etkinlik pending listesinden düşeceği için, gelecek/onaylı listede görünmesi adına
+      // tüm etkinlikleri çekip state'i güncelliyoruz.
+      const allRes = await adminService.getAllEvents();
+      setData(allRes.data || []);
+
+      // Alternatif (daha hızlı): local state güncelle
+      // setData(prev => prev.map(item => item.id === eventId ? { ...item, status: 'APPROVED' } : item));
+    } catch (err) {
+      alert('Onaylanırken hata oluştu.');
     }
   };
 
@@ -226,12 +263,60 @@ export default function AdminDashboard() {
 
     try {
       await adminService.changeClubPresident(clubId, newId);
+
       alert("Başkan değiştirildi.");
       fetchData();
     } catch (err) {
-      alert("Hata: " + (err.response?.data?.message || "Başkan değiştirilemedi. ID'nin kulübe üye olduğundan emin olun."));
+      alert(
+        "Hata: " +
+          (err.response?.data?.message ||
+            "Başkan değiştirilemedi. ID'nin kulübe üye olduğundan emin olun.")
+      );
     }
   };
+
+  // 👇 ETKİNLİK FİLTRELEME MANTIĞI (Events sekmesi için)
+  const getFilteredEvents = () => {
+    // Eğer veri henüz yüklenmediyse boş dön
+    if (!data || !Array.isArray(data)) return [];
+
+    const now = new Date();
+
+    return data.filter((event) => {
+      const eventDate = getEventDate(event);
+
+      switch (eventFilter) {
+        case 'PENDING':
+          // Sadece durumu 'PENDING' olanlar
+          return event.status === 'PENDING';
+
+        case 'APPROVED':
+       {
+       const isApproved = event.status === 'APPROVED';
+       const isFuture = eventDate ? eventDate >= now : false;
+          
+          // Konsola yazdıralım neden geçmediğini
+          if (isApproved && !isFuture) {
+         // console.log("Onaylı ama Geçmiş görünüyor:", event.title, eventDate, now);
+          }
+
+          return isApproved && isFuture;
+       }
+
+        case 'PAST':
+          // Durumu 'PENDING' olmayan VE Tarihi geçmiş olanlar (Geçmiş Etkinlikler)
+          return !!eventDate && eventDate < now && event.status !== 'PENDING';
+
+        case 'REJECTED':
+          return event.status === 'REJECTED';
+
+        default:
+          return true;
+      }
+    });
+  };
+
+  
 
   // 👇 YENİ: Tabloya gönderilecek veriyi hesaplayan mantık
   const getFilteredData = () => {
@@ -276,7 +361,9 @@ export default function AdminDashboard() {
     return filtered;
   };
 
-  const displayData = getFilteredData();
+  // Tabloda kullanacağımız veri kaynağı
+  // Events sekmesindeysek önce status/tarih filtresini uygula, sonra (varsa) arama mantığı ile süz.
+  const displayData = activeTab === 'events' ? getFilteredEvents() : getFilteredData();
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="mx-auto max-w-6xl">
@@ -384,213 +471,375 @@ export default function AdminDashboard() {
         {/* --- İÇERİK TABLOSU (ÖZET DIŞINDA) --- */}
         {activeTab !== 'overview' && (
           <>
-            <div className="rounded-lg bg-white shadow overflow-hidden mb-4">
-              {/* Filtre Butonları + Arama */}
-              <div className="p-4 border-b bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
-                {/* SOL TARAF: Rol Butonları (Sadece Users sekmesinde) */}
-                <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
-                  {activeTab === 'users' &&
-                    [
-                      { label: 'Tümü', value: 'ALL' },
-                      { label: 'Öğrenciler', value: 'ROLE_STUDENT' },
-                      { label: 'Akademisyenler', value: 'ROLE_ACADEMICIAN' },
-                      { label: 'Kulüp Bşk.', value: 'ROLE_CLUB_OFFICIAL' },
-                      { label: 'Adminler', value: 'ROLE_ADMIN' },
-                    ].map((filter) => (
-                      <button
-                        key={filter.value}
-                        onClick={() => setUserRoleFilter(filter.value)}
-                        className={`px-3 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${
-                          userRoleFilter === filter.value
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
-                        }`}
-                      >
-                        {filter.label}
-                      </button>
-                    ))}
+
+            {/* ==================== ETKİNLİKLER SEKME İÇERİĞİ ==================== */}
+            {activeTab === 'events' ? (
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                {/* 👇 FİLTRE BUTONLARI */}
+                <div className="p-4 border-b bg-gray-50 flex flex-wrap gap-2">
+                  {[
+                    { label: 'Bekleyen Onaylar', value: 'PENDING', icon: '⏳' },
+                    { label: 'Gelecek Etkinlikler', value: 'APPROVED', icon: '📅' },
+                    { label: 'Geçmiş Etkinlikler', value: 'PAST', icon: '🕒' },
+                    { label: 'Reddedilenler', value: 'REJECTED', icon: '❌' },
+                  ].map((filter) => (
+                    <button
+                      key={filter.value}
+                      onClick={() => setEventFilter(filter.value)}
+                      className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                        eventFilter === filter.value
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className="mr-2">{filter.icon}</span>
+                      {filter.label}
+                    </button>
+                  ))}
                 </div>
 
-                {/* SAĞ TARAF: ARAMA ÇUBUĞU (Her sekmede görünsün) */}
-                <div className="relative w-full sm:w-64">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path
-                        fillRule="evenodd"
-                        d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Ara (Mail, İsim)..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              {loading ? (
-                <div className="text-center py-10 text-gray-500">Yükleniyor...</div>
-              ) : displayData.length === 0 ? (
-                <div className="text-center py-10 text-gray-400">
-                  {activeTab === 'activeClubs' ? 'Aktif kulüp bulunmamaktadır.' : 'Bekleyen istek bulunmamaktadır.'}
-                </div>
-              ) : (
+                {/* TABLO BAŞLANGICI */}
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-gray-600">
-                    <thead className="bg-gray-100 uppercase text-gray-700">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3">ID</th>
-                        <th className="px-6 py-3">Başlık / İsim</th>
-                        <th className="px-6 py-3">Detay (Bölüm/Tarih vb.)</th>
-                        <th className="px-6 py-3 text-right">İşlemler</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Afiş & İsim
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Kulüp
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Tarih & Yer
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Durum
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          İşlemler
+                        </th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="bg-white divide-y divide-gray-200">
                       {displayData.length === 0 ? (
                         <tr>
-                          <td colSpan="4" className="px-6 py-10 text-center text-gray-500">
-                            Kayıt bulunamadı.
+                          <td colSpan="5" className="px-6 py-10 text-center text-gray-500">
+                            Bu kategoride etkinlik bulunamadı.
                           </td>
                         </tr>
                       ) : (
                         displayData.map((item) => (
-                          <React.Fragment key={item.id}>
-                            <tr key={item.id} className="border-b hover:bg-gray-50">
-                              <td className="px-6 py-4 font-medium">
-                                {/* Users sekmesindeysek ID'nin sadece başını gösterelim ki tablo taşmasın */}
-                                {activeTab === 'users' ? item.id.substring(0, 8) + '...' : item.id}
-                              </td>
+                          <tr key={item.id} className="hover:bg-gray-50">
+                            {/* AFİŞ VE İSİM */}
+                            <td className="px-6 py-4">
+                              <div className="flex items-center">
+                                <div className="h-10 w-10 shrink-0">
+                                  <img
+                                    src={item.imageUrl || '/placeholder-event.jpg'}
+                                    alt=""
+                                    className="h-10 w-10 rounded object-cover bg-gray-200"
+                                  />
+                                </div>
+                                <div className="ml-4">
+                                  <div className="text-sm font-medium text-gray-900">{item.title || item.eventName}</div>
+                                  <div className="text-xs text-gray-500 line-clamp-1">{item.description}</div>
+                                </div>
+                              </div>
+                            </td>
 
-                              <td className="px-6 py-4">
-                                {/* İSİM / BAŞLIK SÜTUNU */}
-                                {activeTab === 'users' && item.email} {/* Kullanıcılar için Email */}
-                                {activeTab === 'academicians' && `${item.title || ''} ${item.firstName} ${item.lastName}`}
-                                {activeTab === 'clubOfficials' && `${item.firstName} ${item.lastName}`}
-                                {activeTab === 'clubs' && item.clubName}
-                                {/* AKTİF KULÜPLER İÇİN GÖRÜNÜM */}
-                                {activeTab === 'activeClubs' && (
-                                  <div className="flex items-center">
-                                    {item.logoUrl ? (
-                                      <img
-                                        src={item.logoUrl}
-                                        alt="Logo"
-                                        className="mr-3 h-10 w-10 rounded-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-xs">
-                                        Yok
-                                      </div>
-                                    )}
-                                    <div>
-                                      <div className="font-bold">{item.name}</div>
-                                      <div className="text-xs text-gray-500">Üye: {item.memberCount}</div>
-                                    </div>
-                                  </div>
-                                )}
-                                {activeTab === 'events' && item.eventName}
-                              </td>
+                            {/* KULÜP ADI */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {item.clubName || 'Bilinmiyor'}
+                            </td>
 
-                              <td className="px-6 py-4">
-                                {/* DETAY SÜTUNU */}
-                                {activeTab === 'users' && (
-                                  <span className="flex gap-1 flex-wrap">
-                                    {(item.roles || []).map((role) => (
-                                      <span
-                                        key={role}
-                                        className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded"
-                                      >
-                                        {String(role).replace('ROLE_', '')}
-                                      </span>
-                                    ))}
-                                  </span>
-                                )}
-                                {activeTab === 'academicians' && item.department}
-                                {activeTab === 'clubOfficials' && `Email: ${item.email}`}
-                                {activeTab === 'clubs' &&
-                                  (item.description ? item.description.substring(0, 50) + '...' : '')}
-                                {/* BAŞKAN BİLGİSİ */}
-                                {activeTab === 'activeClubs' && (
-                                  <span className="text-sm text-gray-700">Başkan: {item.presidentName}</span>
-                                )}
-                                {activeTab === 'events' && item.eventDate}
-                              </td>
+                            {/* TARİH VE YER */}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {(() => {
+                                  const rawDate = item?.date || item?.eventDate;
+                                  return rawDate ? new Date(rawDate).toLocaleDateString('tr-TR') : '-';
+                                })()}
+                              </div>
+                              <div className="text-xs text-gray-500">{item.location}</div>
+                            </td>
 
-                              <td className="px-6 py-4 text-right space-x-2">
-                                {/* KULLANICI SİLME BUTONU (Sadece Users sekmesinde) */}
-                                {activeTab === 'users' && (
+                            {/* DURUM ETİKETİ */}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  item.status === 'APPROVED'
+                                    ? (() => {
+                                        const rawDate = item?.date || item?.eventDate;
+                                        const d = rawDate ? new Date(rawDate) : null;
+                                        return d && !Number.isNaN(d) && d < new Date()
+                                          ? 'bg-gray-100 text-gray-800'
+                                          : 'bg-green-100 text-green-800';
+                                      })()
+                                    : item.status === 'PENDING'
+                                      ? 'bg-yellow-100 text-yellow-800'
+                                      : 'bg-red-100 text-red-800'
+                                }`}
+                              >
+                                {item.status === 'APPROVED' && (() => {
+                                  const rawDate = item?.date || item?.eventDate;
+                                  const d = rawDate ? new Date(rawDate) : null;
+                                  return d && !Number.isNaN(d) && d < new Date();
+                                })()
+                                  ? 'GEÇMİŞ'
+                                  : item.status === 'APPROVED'
+                                    ? 'ONAYLI'
+                                    : item.status === 'PENDING'
+                                      ? 'BEKLİYOR'
+                                      : 'REDDEDİLDİ'}
+                              </span>
+                            </td>
+
+                            {/* İŞLEMLER BUTONLARI */}
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              {/* Sadece BEKLEYENLER için Onay/Red butonları görünsün */}
+                              {item.status === 'PENDING' && (
+                                <div className="flex justify-end space-x-2">
                                   <button
-                                    onClick={() => handleDeleteUser(item.id)}
-                                    className="rounded bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                                    onClick={() => handleApproveEvent(item.id)}
+                                    className="text-green-600 hover:text-green-900 bg-green-50 px-3 py-1 rounded"
                                   >
-                                    Kullanıcıyı Sil
+                                    Onayla
                                   </button>
-                                )}
+                                  <button
+                                    onClick={() => handleReject(item.id)}
+                                    className="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1 rounded"
+                                  >
+                                    Reddet
+                                  </button>
+                                </div>
+                              )}
 
-                                {/* AKTİF KULÜPLER: İŞLEM BUTONLARI */}
-                                {activeTab === 'activeClubs' && (
-                                  <>
-                                    <button
-                                      onClick={() => handleViewBoard(item.id, item.name)}
-                                      className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
-                                    >
-                                      Yönetim
-                                    </button>
-
-                                    <button
-                                      onClick={() => handleChangePresident(item.id)}
-                                      className="rounded bg-yellow-500 px-2 py-1 text-xs text-white hover:bg-yellow-600"
-                                    >
-                                      Bşk. Değiştir
-                                    </button>
-
-                                    <button
-                                      onClick={() => handleUpdateLogo(item.id)}
-                                      className="rounded bg-purple-500 px-2 py-1 text-xs text-white hover:bg-purple-600"
-                                    >
-                                      Logo
-                                    </button>
-
-                                    <button
-                                      onClick={() => handleReject(item.id)}
-                                      className="rounded bg-red-500 px-2 py-1 text-xs text-white hover:bg-red-600"
-                                    >
-                                      Kapat
-                                    </button>
-                                  </>
-                                )}
-
-                                {/* DİĞER ONAY/RET BUTONLARI (Users sekmesinde GİZLİ OLMALI) */}
-                                {activeTab !== 'users' && activeTab !== 'activeClubs' && (
-                                  <>
-                                    <button
-                                      onClick={() => handleApprove(activeTab === 'clubs' ? item.id : item.userId)}
-                                      className="rounded bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 transition-colors"
-                                    >
-                                      Onayla
-                                    </button>
-
-                                    <button
-                                      onClick={() => handleReject(activeTab === 'clubs' ? item.id : item.userId)}
-                                      className="rounded bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 transition-colors"
-                                    >
-                                      Reddet
-                                    </button>
-                                  </>
-                                )}
-                              </td>
-                            </tr>
-                          </React.Fragment>
+                              {/* ONAYLI / REDDEDİLEN / GEÇMİŞ etkinlikler için şimdilik silme butonu yok */}
+                              {item.status !== 'PENDING' && (
+                                <span className="text-xs text-gray-400">—</span>
+                              )}
+                            </td>
+                          </tr>
                         ))
                       )}
                     </tbody>
                   </table>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="rounded-lg bg-white shadow overflow-hidden mb-4">
+                {/* Filtre Butonları + Arama */}
+                <div className="p-4 border-b bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                  {/* SOL TARAF: Rol Butonları (Sadece Users sekmesinde) */}
+                  <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
+                    {activeTab === 'users' &&
+                      [
+                        { label: 'Tümü', value: 'ALL' },
+                        { label: 'Öğrenciler', value: 'ROLE_STUDENT' },
+                        { label: 'Akademisyenler', value: 'ROLE_ACADEMICIAN' },
+                        { label: 'Kulüp Bşk.', value: 'ROLE_CLUB_OFFICIAL' },
+                        { label: 'Adminler', value: 'ROLE_ADMIN' },
+                      ].map((filter) => (
+                        <button
+                          key={filter.value}
+                          onClick={() => setUserRoleFilter(filter.value)}
+                          className={`px-3 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${
+                            userRoleFilter === filter.value
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                          }`}
+                        >
+                          {filter.label}
+                        </button>
+                      ))}
+                  </div>
+
+                  {/* SAĞ TARAF: ARAMA ÇUBUĞU (Her sekmede görünsün) */}
+                  <div className="relative w-full sm:w-64">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                          fillRule="evenodd"
+                          d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Ara (Mail, İsim)..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+
+                {loading ? (
+                  <div className="text-center py-10 text-gray-500">Yükleniyor...</div>
+                ) : displayData.length === 0 ? (
+                  <div className="text-center py-10 text-gray-400">
+                    {activeTab === 'activeClubs'
+                      ? 'Aktif kulüp bulunmamaktadır.'
+                      : 'Bekleyen istek bulunmamaktadır.'}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm text-gray-600">
+                      <thead className="bg-gray-100 uppercase text-gray-700">
+                        <tr>
+                          <th className="px-6 py-3">ID</th>
+                          <th className="px-6 py-3">Başlık / İsim</th>
+                          <th className="px-6 py-3">Detay (Bölüm/Tarih vb.)</th>
+                          <th className="px-6 py-3 text-right">İşlemler</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {displayData.length === 0 ? (
+                          <tr>
+                            <td colSpan="4" className="px-6 py-10 text-center text-gray-500">
+                              Kayıt bulunamadı.
+                            </td>
+                          </tr>
+                        ) : (
+                          displayData.map((item) => (
+                            <React.Fragment key={item.id}>
+                              <tr key={item.id} className="border-b hover:bg-gray-50">
+                                <td className="px-6 py-4 font-medium">
+                                  {/* Users sekmesindeysek ID'nin sadece başını gösterelim ki tablo taşmasın */}
+                                  {activeTab === 'users' ? item.id.substring(0, 8) + '...' : item.id}
+                                </td>
+
+                                <td className="px-6 py-4">
+                                  {/* İSİM / BAŞLIK SÜTUNU */}
+                                  {activeTab === 'users' && item.email} {/* Kullanıcılar için Email */}
+                                  {activeTab === 'academicians' &&
+                                    `${item.title || ''} ${item.firstName} ${item.lastName}`}
+                                  {activeTab === 'clubOfficials' && `${item.firstName} ${item.lastName}`}
+                                  {activeTab === 'clubs' && item.clubName}
+                                  {/* AKTİF KULÜPLER İÇİN GÖRÜNÜM */}
+                                  {activeTab === 'activeClubs' && (
+                                    <div className="flex items-center">
+                                      {item.logoUrl ? (
+                                        <img
+                                          src={item.logoUrl}
+                                          alt="Logo"
+                                          className="mr-3 h-10 w-10 rounded-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-xs">
+                                          Yok
+                                        </div>
+                                      )}
+                                      <div>
+                                        <div className="font-bold">{item.name}</div>
+                                        <div className="text-xs text-gray-500">Üye: {item.memberCount}</div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </td>
+
+                                <td className="px-6 py-4">
+                                  {/* DETAY SÜTUNU */}
+                                  {activeTab === 'users' && (
+                                    <span className="flex gap-1 flex-wrap">
+                                      {(item.roles || []).map((role) => (
+                                        <span
+                                          key={role}
+                                          className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded"
+                                        >
+                                          {String(role).replace('ROLE_', '')}
+                                        </span>
+                                      ))}
+                                    </span>
+                                  )}
+                                  {activeTab === 'academicians' && item.department}
+                                  {activeTab === 'clubOfficials' && `Email: ${item.email}`}
+                                  {activeTab === 'clubs' &&
+                                    (item.description ? item.description.substring(0, 50) + '...' : '')}
+                                  {/* BAŞKAN BİLGİSİ */}
+                                  {activeTab === 'activeClubs' && (
+                                    <span className="text-sm text-gray-700">Başkan: {item.presidentName}</span>
+                                  )}
+                                </td>
+
+                                <td className="px-6 py-4 text-right space-x-2">
+                                  {/* KULLANICI SİLME BUTONU (Sadece Users sekmesinde) */}
+                                  {activeTab === 'users' && (
+                                    <button
+                                      onClick={() => handleDeleteUser(item.id)}
+                                      className="rounded bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                                    >
+                                      Kullanıcıyı Sil
+                                    </button>
+                                  )}
+
+                                  {/* AKTİF KULÜPLER: İŞLEM BUTONLARI */}
+                                  {activeTab === 'activeClubs' && (
+                                    <>
+                                      <button
+                                        onClick={() => handleViewBoard(item.id, item.name)}
+                                        className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
+                                      >
+                                        Yönetim
+                                      </button>
+
+                                      <button
+                                        onClick={() => handleChangePresident(item.id)}
+                                        className="rounded bg-yellow-500 px-2 py-1 text-xs text-white hover:bg-yellow-600"
+                                      >
+                                        Bşk. Değiştir
+                                      </button>
+
+                                      <button
+                                        onClick={() => handleUpdateLogo(item.id)}
+                                        className="rounded bg-purple-500 px-2 py-1 text-xs text-white hover:bg-purple-600"
+                                      >
+                                        Logo
+                                      </button>
+
+                                      <button
+                                        onClick={() => handleReject(item.id)}
+                                        className="rounded bg-red-500 px-2 py-1 text-xs text-white hover:bg-red-600"
+                                      >
+                                        Kapat
+                                      </button>
+                                    </>
+                                  )}
+
+                                  {/* DİĞER ONAY/RET BUTONLARI (Users sekmesinde GİZLİ OLMALI) */}
+                                  {activeTab !== 'users' && activeTab !== 'activeClubs' && (
+                                    <>
+                                      <button
+                                        onClick={() =>
+                                          handleApprove(activeTab === 'clubs' ? item.id : item.userId)
+                                        }
+                                        className="rounded bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 transition-colors"
+                                      >
+                                        Onayla
+                                      </button>
+
+                                      <button
+                                        onClick={() =>
+                                          handleReject(activeTab === 'clubs' ? item.id : item.userId)
+                                        }
+                                        className="rounded bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 transition-colors"
+                                      >
+                                        Reddet
+                                      </button>
+                                    </>
+                                  )}
+                                </td>
+                              </tr>
+                            </React.Fragment>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
