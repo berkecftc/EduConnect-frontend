@@ -66,7 +66,7 @@ const adminService = {
   // Tüm Etkinlikleri Getir (İstatistik için)
   getAllEvents: async () => {
     // Event Service'in public endpointi veya admin endpointi
-    return await api.get('/events'); 
+    return await api.get('/events/admin/all');
   },
   getEventRequests: async () => {
     return await api.get('/events/manage/pending');

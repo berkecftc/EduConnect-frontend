@@ -4,6 +4,8 @@ import adminService from '../../../api/adminService';
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [data, setData] = useState([]);
+  console.log("Şu anki Sekme (activeTab):", activeTab);
+  console.log("Elimizdeki Veri Sayısı:", data ? data.length : "Veri Yok");
   const [loading, setLoading] = useState(false);
   const [userRoleFilter, setUserRoleFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
@@ -104,18 +106,36 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       let response;
-      if (activeTab === 'users') response = await adminService.getAllUsers(); // <-- EKLENDİ
-      if (activeTab === 'academicians') response = await adminService.getAcademicianRequests();
-      else if (activeTab === 'clubOfficials') response = await adminService.getClubOfficialRequests();
-      else if (activeTab === 'clubs') response = await adminService.getClubCreationRequests();
-      else if (activeTab === 'activeClubs') response = await adminService.getAllActiveClubs();
-      else if (activeTab === 'events') response = await adminService.getEventRequests();
       
-      // Backend'den dönen verinin yapısına göre burayı ayarla (örn: response.data)
-      setData(response.data || []); 
+      console.log("Veri çekiliyor... Sekme:", activeTab); // Debug için
+
+      if (activeTab === 'users') {
+        response = await adminService.getAllUsers();
+      } 
+      else if (activeTab === 'academicians') {
+        response = await adminService.getAcademicianRequests();
+      } 
+      else if (activeTab === 'clubOfficials') {
+        response = await adminService.getClubOfficialRequests();
+      } 
+      else if (activeTab === 'clubs') {
+        response = await adminService.getClubCreationRequests();
+      } 
+      else if (activeTab === 'activeClubs') {
+        response = await adminService.getAllActiveClubs();
+      } 
+      // 👇 KRİTİK DÜZELTME BURADA
+      else if (activeTab === 'events') {
+        // response = await adminService.getEventRequests(); // <-- BU HATALIYDI (Sadece bekleyenleri getirir)
+        response = await adminService.getAllEvents();     // <-- DOĞRUSU BU (Tüm geçmiş/gelecek etkinlikleri getirir)
+      }
+      
+      console.log("Gelen Ham Veri:", response?.data); // Debug için
+      setData(response?.data || []); 
+
     } catch (error) {
       console.error("Veri çekilemedi:", error);
-      setData([]); // Hata olursa boş liste
+      setData([]); 
     } finally {
       setLoading(false);
     }
@@ -156,19 +176,22 @@ export default function AdminDashboard() {
   // Etkinlik sekmesi için ayrı onay handler'ı (UI'dan direkt çağırmak için)
   const handleApproveEvent = async (eventId) => {
     try {
-      await adminService.approveEvent(eventId);
-      alert('Etkinlik onaylandı!');
-
-      // KRİTİK: events sekmesi pending endpoint'inden çekiliyor.
-      // Onay sonrası etkinlik pending listesinden düşeceği için, gelecek/onaylı listede görünmesi adına
-      // tüm etkinlikleri çekip state'i güncelliyoruz.
-      const allRes = await adminService.getAllEvents();
-      setData(allRes.data || []);
-
-      // Alternatif (daha hızlı): local state güncelle
-      // setData(prev => prev.map(item => item.id === eventId ? { ...item, status: 'APPROVED' } : item));
+      await adminService.approveEvent(eventId); // Backend isteği
+      alert("Etkinlik onaylandı!");
+      
+      // 👇 KRİTİK NOKTA: Listeyi hemen güncellemeliyiz
+      // 1. Yöntem: Sayfadaki veriyi tekrar çekmek (En garantisi)
+      fetchData(); 
+      
+      // VEYA 2. Yöntem: State'i manuel güncellemek (Daha hızlı)
+      /*
+      setData(prevData => prevData.map(item => 
+        item.id === eventId ? { ...item, status: 'APPROVED' } : item
+      ));
+      */
+      
     } catch (err) {
-      alert('Onaylanırken hata oluştu.');
+      alert("Onaylanırken hata oluştu.");
     }
   };
 
@@ -274,48 +297,67 @@ export default function AdminDashboard() {
       );
     }
   };
+  // KAPSAMLI TARİH OKUYUCU
+  const parseDate = (item) => {
+    if (!item) return null;
 
-  // 👇 ETKİNLİK FİLTRELEME MANTIĞI (Events sekmesi için)
+    // Backend'den gelebilecek TÜM ihtimalleri buraya yazdım.
+    // Konsolda hangisini gördüysen o çalışacaktır.
+    const raw = item.eventTime || item.date || item.eventDate || item.startDate || item.startTime || item.time || item.createdDate;
+    if (!raw) return null;
+
+    // 1. Dizi Formatı: [2025, 12, 21, 14, 0]
+    if (Array.isArray(raw)) {
+      return new Date(raw[0], raw[1] - 1, raw[2], raw[3] || 0, raw[4] || 0);
+    }
+
+    // 2. Sayı (Timestamp) Formatı: 17354654654
+    if (typeof raw === 'number') {
+      return new Date(raw);
+    }
+
+    // 3. String Formatı: "2025-12-21T14:00:00"
+    return new Date(raw);
+  };
+
+  // FİLTRELEME FONKSİYONU (ACTIVE Olarak Güncellendi)
   const getFilteredEvents = () => {
-    // Eğer veri henüz yüklenmediyse boş dön
     if (!data || !Array.isArray(data)) return [];
 
     const now = new Date();
 
-    return data.filter((event) => {
-      const eventDate = getEventDate(event);
+    return data.filter(event => {
+      // Tarihi düzelt
+      const eventDate = parseDate(event);
+      const isValidDate = eventDate && !isNaN(eventDate.getTime());
+
+      // Status boşluklarını temizle
+      const status = event.status ? event.status.trim() : '';
 
       switch (eventFilter) {
         case 'PENDING':
-          // Sadece durumu 'PENDING' olanlar
-          return event.status === 'PENDING';
-
-        case 'APPROVED':
-       {
-       const isApproved = event.status === 'APPROVED';
-       const isFuture = eventDate ? eventDate >= now : false;
-          
-          // Konsola yazdıralım neden geçmediğini
-          if (isApproved && !isFuture) {
-         // console.log("Onaylı ama Geçmiş görünüyor:", event.title, eventDate, now);
-          }
-
-          return isApproved && isFuture;
-       }
+          // Bekleyenler hala PENDING ise burası kalabilir. 
+          // Eğer Backend bekleyenleri de farklı kaydediyorsa (örn: WAITING) burayı da güncellemelisin.
+          return status === 'PENDING';
+        
+        case 'APPROVED': 
+          // GELECEK ETKİNLİKLER (Onaylılar artık ACTIVE olarak aranıyor)
+          // Mantık: Durumu ACTIVE OLSUN + (Tarih Geçerli VE Şu andan İLERİDE olsun)
+          return status === 'ACTIVE' && isValidDate && eventDate > now;
 
         case 'PAST':
-          // Durumu 'PENDING' olmayan VE Tarihi geçmiş olanlar (Geçmiş Etkinlikler)
-          return !!eventDate && eventDate < now && event.status !== 'PENDING';
-
+          // GEÇMİŞ ETKİNLİKLER
+          // Mantık: Durumu ACTIVE OLSUN + (Tarih Geçersiz VEYA Şu andan GERİDE olsun)
+          return status === 'ACTIVE' && (!isValidDate || eventDate <= now);
+          
         case 'REJECTED':
-          return event.status === 'REJECTED';
+          return status === 'REJECTED';
 
         default:
           return true;
       }
     });
   };
-
   
 
   // 👇 YENİ: Tabloya gönderilecek veriyi hesaplayan mantık
@@ -552,45 +594,59 @@ export default function AdminDashboard() {
                               {item.clubName || 'Bilinmiyor'}
                             </td>
 
-                            {/* TARİH VE YER */}
+                            {/* TARİH VE YER SÜTUNU */}
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900">
                                 {(() => {
-                                  const rawDate = item?.date || item?.eventDate;
-                                  return rawDate ? new Date(rawDate).toLocaleDateString('tr-TR') : '-';
+                                  const d = parseDate(item);
+                                  
+                                  if (!d) return <span className="text-red-500 text-xs">Tarih Yok</span>;
+                                  if (isNaN(d.getTime())) return <span className="text-red-500 text-xs">Format Hatası</span>;
+
+                                  return d.toLocaleDateString('tr-TR', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  });
                                 })()}
                               </div>
-                              <div className="text-xs text-gray-500">{item.location}</div>
+                              <div className="text-xs text-gray-500">
+                                {item.location || 'Online'}
+                              </div>
                             </td>
 
-                            {/* DURUM ETİKETİ */}
+                            {/* DURUM ETİKETİ (DÜZELTİLDİ) */}
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span
                                 className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                  item.status === 'APPROVED'
+                                  item.status === 'ACTIVE' || item.status === 'APPROVED'
                                     ? (() => {
-                                        const rawDate = item?.date || item?.eventDate;
-                                        const d = rawDate ? new Date(rawDate) : null;
-                                        return d && !Number.isNaN(d) && d < new Date()
-                                          ? 'bg-gray-100 text-gray-800'
-                                          : 'bg-green-100 text-green-800';
+                                        // 👇 DÜZELTME: parseDate'e direkt 'item' nesnesini veriyoruz
+                                        const d = parseDate(item); 
+                                        const now = new Date();
+                                        return d && d < now
+                                          ? 'bg-gray-100 text-gray-800'  // Geçmiş
+                                          : 'bg-green-100 text-green-800'; // Gelecek/Onaylı
                                       })()
                                     : item.status === 'PENDING'
                                       ? 'bg-yellow-100 text-yellow-800'
                                       : 'bg-red-100 text-red-800'
                                 }`}
                               >
-                                {item.status === 'APPROVED' && (() => {
-                                  const rawDate = item?.date || item?.eventDate;
-                                  const d = rawDate ? new Date(rawDate) : null;
-                                  return d && !Number.isNaN(d) && d < new Date();
-                                })()
-                                  ? 'GEÇMİŞ'
-                                  : item.status === 'APPROVED'
-                                    ? 'ONAYLI'
+                                {
+                                  (item.status === 'ACTIVE' || item.status === 'APPROVED')
+                                    ? (() => {
+                                        // 👇 DÜZELTME BURADA DA YAPILDI
+                                        const d = parseDate(item);
+                                        const now = new Date();
+                                        return d && d < now ? 'GEÇMİŞ' : 'ONAYLI';
+                                      })()
                                     : item.status === 'PENDING'
                                       ? 'BEKLİYOR'
-                                      : 'REDDEDİLDİ'}
+                                      : 'REDDEDİLDİ'
+                                }
                               </span>
                             </td>
 
