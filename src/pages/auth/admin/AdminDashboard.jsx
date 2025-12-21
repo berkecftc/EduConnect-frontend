@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import adminService from '../../../api/adminService';
+import './AdminDashboard.css';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -15,6 +16,8 @@ export default function AdminDashboard() {
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
   const [boardMembers, setBoardMembers] = useState([]);
   const [selectedClubName, setSelectedClubName] = useState('');
+  // TEMA İÇİN STATE
+  const [isDarkMode, setIsDarkMode] = useState(false);
   // 👇 YENİ: İstatistik Verileri
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -406,44 +409,62 @@ export default function AdminDashboard() {
   // Tabloda kullanacağımız veri kaynağı
   // Events sekmesindeysek önce status/tarih filtresini uygula, sonra (varsa) arama mantığı ile süz.
   const displayData = activeTab === 'events' ? getFilteredEvents() : getFilteredData();
+  
+  // Tema değiştirme fonksiyonu
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="mx-auto max-w-6xl">
-        <h1 className="mb-8 text-3xl font-bold text-gray-800">Yönetici Paneli</h1>
+    <div className={`admin-dashboard ${isDarkMode ? 'dark-mode' : ''}`}>
+      {/* Theme Toggle Button */}
+      <button onClick={toggleTheme} className="theme-toggle" title={isDarkMode ? 'Açık Mod' : 'Koyu Mod'}>
+        {isDarkMode ? (
+          // Güneş ikonu (Light Mode)
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        ) : (
+          // Ay ikonu (Dark Mode)
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        )}
+      </button>
+
+      <div className="admin-container">
+        <h1 className="admin-title">🎯 Yönetici Paneli</h1>
 
         {/* --- SEKMELER (TABS) --- */}
-        <div className="mb-6 flex space-x-2 overflow-x-auto border-b border-gray-200 pb-2">
+        <div className="tab-container">
           {['overview', 'users', 'academicians', 'clubOfficials', 'clubs', 'activeClubs', 'events'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors
-                ${activeTab === tab 
-                  ? 'bg-white text-blue-600 border border-b-0 border-gray-200 shadow-sm' 
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
+              className={`tab-button ${activeTab === tab ? 'active' : ''}`}
             >
-              {tab === 'overview' && 'Genel Bakış'}
-              {tab === 'users' && 'Tüm Kullanıcılar'} {/* <-- Bunu Ekle */}
-              {tab === 'academicians' && 'Akademisyen Başvuruları'}
-              {tab === 'clubOfficials' && 'Kulüp Başkanı İstekleri'}
-              {tab === 'clubs' && 'Kulüp Kurma İstekleri'}
-              {tab === 'activeClubs' && 'Aktif Kulüpler'}
-              {tab === 'events' && 'Etkinlik İstekleri'}
+              {tab === 'overview' && '📊 Genel Bakış'}
+              {tab === 'users' && '👥 Tüm Kullanıcılar'}
+              {tab === 'academicians' && '👨‍🏫 Akademisyen Başvuruları'}
+              {tab === 'clubOfficials' && '🎓 Kulüp Başkanı İstekleri'}
+              {tab === 'clubs' && '🏛️ Kulüp Kurma İstekleri'}
+              {tab === 'activeClubs' && '✅ Aktif Kulüpler'}
+              {tab === 'events' && '🎉 Etkinlik İstekleri'}
             </button>
           ))}
         </div>
 
         {/* ==================== DASHBOARD HOME (ÖZET) ==================== */}
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-fadeIn">
+          <div className="stats-grid">
             {/* Kart 1: Toplam Öğrenci */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Toplam Öğrenci</p>
-                <p className="text-2xl font-bold text-gray-800">{stats.totalStudents}</p>
+            <div className="stat-card">
+              <div className="stat-info">
+                <h3>Toplam Öğrenci</h3>
+                <p>{stats.totalStudents}</p>
               </div>
-              <div className="p-3 bg-blue-50 rounded-full">
-                <svg className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="stat-icon blue">
+                <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -455,13 +476,13 @@ export default function AdminDashboard() {
             </div>
 
             {/* Kart 2: Aktif Kulüpler */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-purple-500 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Aktif Kulüpler</p>
-                <p className="text-2xl font-bold text-gray-800">{stats.activeClubs}</p>
+            <div className="stat-card">
+              <div className="stat-info">
+                <h3>Aktif Kulüpler</h3>
+                <p>{stats.activeClubs}</p>
               </div>
-              <div className="p-3 bg-purple-50 rounded-full">
-                <svg className="h-8 w-8 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="stat-icon purple">
+                <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -473,13 +494,13 @@ export default function AdminDashboard() {
             </div>
 
             {/* Kart 3: Bu Ayki Etkinlikler */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Etkinlikler (Bu Ay)</p>
-                <p className="text-2xl font-bold text-gray-800">{stats.monthlyEvents}</p>
+            <div className="stat-card">
+              <div className="stat-info">
+                <h3>Etkinlikler (Bu Ay)</h3>
+                <p>{stats.monthlyEvents}</p>
               </div>
-              <div className="p-3 bg-green-50 rounded-full">
-                <svg className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="stat-icon green">
+                <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -491,13 +512,13 @@ export default function AdminDashboard() {
             </div>
 
             {/* Kart 4: Bekleyen Onaylar */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-orange-500 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Bekleyen Onaylar</p>
-                <p className="text-2xl font-bold text-gray-800">{stats.pendingTotal}</p>
+            <div className="stat-card">
+              <div className="stat-info">
+                <h3>Bekleyen Onaylar</h3>
+                <p>{stats.pendingTotal}</p>
               </div>
-              <div className="p-3 bg-orange-50 rounded-full">
-                <svg className="h-8 w-8 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="stat-icon orange">
+                <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -516,92 +537,77 @@ export default function AdminDashboard() {
 
             {/* ==================== ETKİNLİKLER SEKME İÇERİĞİ ==================== */}
             {activeTab === 'events' ? (
-              <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="table-wrapper">
                 {/* 👇 FİLTRE BUTONLARI */}
-                <div className="p-4 border-b bg-gray-50 flex flex-wrap gap-2">
-                  {[
-                    { label: 'Bekleyen Onaylar', value: 'PENDING', icon: '⏳' },
-                    { label: 'Gelecek Etkinlikler', value: 'APPROVED', icon: '📅' },
-                    { label: 'Geçmiş Etkinlikler', value: 'PAST', icon: '🕒' },
-                    { label: 'Reddedilenler', value: 'REJECTED', icon: '❌' },
-                  ].map((filter) => (
-                    <button
-                      key={filter.value}
-                      onClick={() => setEventFilter(filter.value)}
-                      className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                        eventFilter === filter.value
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
-                      }`}
-                    >
-                      <span className="mr-2">{filter.icon}</span>
-                      {filter.label}
-                    </button>
-                  ))}
+                <div className="filter-bar">
+                  <div className="filter-buttons">
+                    {[
+                      { label: '⏳ Bekleyen Onaylar', value: 'PENDING' },
+                      { label: '📅 Gelecek Etkinlikler', value: 'APPROVED' },
+                      { label: '🕒 Geçmiş Etkinlikler', value: 'PAST' },
+                      { label: '❌ Reddedilenler', value: 'REJECTED' },
+                    ].map((filter) => (
+                      <button
+                        key={filter.value}
+                        onClick={() => setEventFilter(filter.value)}
+                        className={`filter-button ${eventFilter === filter.value ? 'active' : ''}`}
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* TABLO BAŞLANGICI */}
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="data-table">
+                    <thead>
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Afiş & İsim
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Kulüp
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Tarih & Yer
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Durum
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          İşlemler
-                        </th>
+                        <th>Afiş & İsim</th>
+                        <th>Kulüp</th>
+                        <th>Tarih & Yer</th>
+                        <th>Durum</th>
+                        <th style={{ textAlign: 'right' }}>İşlemler</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody>
                       {displayData.length === 0 ? (
                         <tr>
-                          <td colSpan="5" className="px-6 py-10 text-center text-gray-500">
+                          <td colSpan="5" className="empty-state">
                             Bu kategoride etkinlik bulunamadı.
                           </td>
                         </tr>
                       ) : (
                         displayData.map((item) => (
-                          <tr key={item.id} className="hover:bg-gray-50">
+                          <tr key={item.id}>
                             {/* AFİŞ VE İSİM */}
-                            <td className="px-6 py-4">
-                              <div className="flex items-center">
-                                <div className="h-10 w-10 shrink-0">
-                                  <img
-                                    src={item.imageUrl || '/placeholder-event.jpg'}
-                                    alt=""
-                                    className="h-10 w-10 rounded object-cover bg-gray-200"
-                                  />
-                                </div>
-                                <div className="ml-4">
-                                  <div className="text-sm font-medium text-gray-900">{item.title || item.eventName}</div>
-                                  <div className="text-xs text-gray-500 line-clamp-1">{item.description}</div>
+                            <td>
+                              <div className="club-info">
+                                <img
+                                  src={item.imageUrl || '/placeholder-event.jpg'}
+                                  alt=""
+                                  className="club-logo"
+                                />
+                                <div className="club-details">
+                                  <h4>{item.title || item.eventName}</h4>
+                                  <p>{item.description ? item.description.substring(0, 50) + '...' : ''}</p>
                                 </div>
                               </div>
                             </td>
 
                             {/* KULÜP ADI */}
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td>
                               {item.clubName || 'Bilinmiyor'}
                             </td>
 
                             {/* TARİH VE YER SÜTUNU */}
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">
+                            <td>
+                              <div className="event-date">
                                 {(() => {
                                   const d = parseDate(item);
                                   
-                                  if (!d) return <span className="text-red-500 text-xs">Tarih Yok</span>;
-                                  if (isNaN(d.getTime())) return <span className="text-red-500 text-xs">Format Hatası</span>;
+                                  if (!d) return <span className="event-error">Tarih Yok</span>;
+                                  if (isNaN(d.getTime())) return <span className="event-error">Format Hatası</span>;
 
                                   return d.toLocaleDateString('tr-TR', {
                                     day: 'numeric',
@@ -612,27 +618,24 @@ export default function AdminDashboard() {
                                   });
                                 })()}
                               </div>
-                              <div className="text-xs text-gray-500">
+                              <div className="event-location">
                                 {item.location || 'Online'}
                               </div>
                             </td>
 
                             {/* DURUM ETİKETİ (DÜZELTİLDİ) */}
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td>
                               <span
-                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                className={`status-badge ${
                                   item.status === 'ACTIVE' || item.status === 'APPROVED'
                                     ? (() => {
-                                        // 👇 DÜZELTME: parseDate'e direkt 'item' nesnesini veriyoruz
                                         const d = parseDate(item); 
                                         const now = new Date();
-                                        return d && d < now
-                                          ? 'bg-gray-100 text-gray-800'  // Geçmiş
-                                          : 'bg-green-100 text-green-800'; // Gelecek/Onaylı
+                                        return d && d < now ? 'badge-past' : 'badge-approved';
                                       })()
                                     : item.status === 'PENDING'
-                                      ? 'bg-yellow-100 text-yellow-800'
-                                      : 'bg-red-100 text-red-800'
+                                      ? 'badge-pending'
+                                      : 'badge-rejected'
                                 }`}
                               >
                                 {
@@ -651,19 +654,19 @@ export default function AdminDashboard() {
                             </td>
 
                             {/* İŞLEMLER BUTONLARI */}
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <td style={{ textAlign: 'right' }}>
                               {/* Sadece BEKLEYENLER için Onay/Red butonları görünsün */}
                               {item.status === 'PENDING' && (
-                                <div className="flex justify-end space-x-2">
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                                   <button
                                     onClick={() => handleApproveEvent(item.id)}
-                                    className="text-green-600 hover:text-green-900 bg-green-50 px-3 py-1 rounded"
+                                    className="action-button btn-approve"
                                   >
                                     Onayla
                                   </button>
                                   <button
                                     onClick={() => handleReject(item.id)}
-                                    className="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1 rounded"
+                                    className="action-button btn-reject"
                                   >
                                     Reddet
                                   </button>
@@ -672,7 +675,7 @@ export default function AdminDashboard() {
 
                               {/* ONAYLI / REDDEDİLEN / GEÇMİŞ etkinlikler için şimdilik silme butonu yok */}
                               {item.status !== 'PENDING' && (
-                                <span className="text-xs text-gray-400">—</span>
+                                <span className="table-text-secondary">—</span>
                               )}
                             </td>
                           </tr>
@@ -683,11 +686,11 @@ export default function AdminDashboard() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-lg bg-white shadow overflow-hidden mb-4">
+              <div className="table-wrapper">
                 {/* Filtre Butonları + Arama */}
-                <div className="p-4 border-b bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="filter-bar">
                   {/* SOL TARAF: Rol Butonları (Sadece Users sekmesinde) */}
-                  <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
+                  <div className="filter-buttons">
                     {activeTab === 'users' &&
                       [
                         { label: 'Tümü', value: 'ALL' },
@@ -699,11 +702,7 @@ export default function AdminDashboard() {
                         <button
                           key={filter.value}
                           onClick={() => setUserRoleFilter(filter.value)}
-                          className={`px-3 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${
-                            userRoleFilter === filter.value
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
-                          }`}
+                          className={`filter-button ${userRoleFilter === filter.value ? 'active' : ''}`}
                         >
                           {filter.label}
                         </button>
@@ -711,62 +710,53 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* SAĞ TARAF: ARAMA ÇUBUĞU (Her sekmede görünsün) */}
-                  <div className="relative w-full sm:w-64">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path
-                          fillRule="evenodd"
-                          d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
+                  <div className="search-container">
+                    <svg className="search-icon h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path
+                        fillRule="evenodd"
+                        d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
                     <input
                       type="text"
                       placeholder="Ara (Mail, İsim)..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      className="search-input"
                     />
                   </div>
                 </div>
 
                 {loading ? (
-                  <div className="text-center py-10 text-gray-500">Yükleniyor...</div>
+                  <div className="loading-spinner">Yükleniyor...</div>
                 ) : displayData.length === 0 ? (
-                  <div className="text-center py-10 text-gray-400">
+                  <div className="empty-state">
                     {activeTab === 'activeClubs'
                       ? 'Aktif kulüp bulunmamaktadır.'
                       : 'Bekleyen istek bulunmamaktadır.'}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-gray-600">
-                      <thead className="bg-gray-100 uppercase text-gray-700">
+                    <table className="data-table">
+                      <thead>
                         <tr>
-                          <th className="px-6 py-3">ID</th>
-                          <th className="px-6 py-3">Başlık / İsim</th>
-                          <th className="px-6 py-3">Detay (Bölüm/Tarih vb.)</th>
-                          <th className="px-6 py-3 text-right">İşlemler</th>
+                          <th>ID</th>
+                          <th>Başlık / İsim</th>
+                          <th>Detay (Bölüm/Tarih vb.)</th>
+                          <th style={{ textAlign: 'right' }}>İşlemler</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {displayData.length === 0 ? (
-                          <tr>
-                            <td colSpan="4" className="px-6 py-10 text-center text-gray-500">
-                              Kayıt bulunamadı.
-                            </td>
-                          </tr>
-                        ) : (
-                          displayData.map((item) => (
-                            <React.Fragment key={item.id}>
-                              <tr key={item.id} className="border-b hover:bg-gray-50">
-                                <td className="px-6 py-4 font-medium">
-                                  {/* Users sekmesindeysek ID'nin sadece başını gösterelim ki tablo taşmasın */}
-                                  {activeTab === 'users' ? item.id.substring(0, 8) + '...' : item.id}
-                                </td>
+                        {displayData.map((item) => (
+                          <React.Fragment key={item.id}>
+                            <tr key={item.id}>
+                              <td>
+                                {/* Users sekmesindeysek ID'nin sadece başını gösterelim ki tablo taşmasın */}
+                                {activeTab === 'users' ? item.id.substring(0, 8) + '...' : item.id}
+                              </td>
 
-                                <td className="px-6 py-4">
+                              <td>
                                   {/* İSİM / BAŞLIK SÜTUNU */}
                                   {activeTab === 'users' && item.email} {/* Kullanıcılar için Email */}
                                   {activeTab === 'academicians' &&
@@ -775,35 +765,41 @@ export default function AdminDashboard() {
                                   {activeTab === 'clubs' && item.clubName}
                                   {/* AKTİF KULÜPLER İÇİN GÖRÜNÜM */}
                                   {activeTab === 'activeClubs' && (
-                                    <div className="flex items-center">
+                                    <div className="club-info">
                                       {item.logoUrl ? (
                                         <img
                                           src={item.logoUrl}
                                           alt="Logo"
-                                          className="mr-3 h-10 w-10 rounded-full object-cover"
+                                          className="club-logo"
                                         />
                                       ) : (
-                                        <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-xs">
+                                        <div style={{ 
+                                          display: 'flex', 
+                                          alignItems: 'center', 
+                                          justifyContent: 'center', 
+                                          width: '2.5rem', 
+                                          height: '2.5rem', 
+                                          borderRadius: '50%', 
+                                          background: 'linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%)',
+                                          fontSize: '0.75rem'
+                                        }}>
                                           Yok
                                         </div>
                                       )}
-                                      <div>
-                                        <div className="font-bold">{item.name}</div>
-                                        <div className="text-xs text-gray-500">Üye: {item.memberCount}</div>
+                                      <div className="club-details">
+                                        <h4>{item.name}</h4>
+                                        <p>Üye: {item.memberCount}</p>
                                       </div>
                                     </div>
                                   )}
                                 </td>
 
-                                <td className="px-6 py-4">
+                                <td>
                                   {/* DETAY SÜTUNU */}
                                   {activeTab === 'users' && (
-                                    <span className="flex gap-1 flex-wrap">
+                                    <span style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                                       {(item.roles || []).map((role) => (
-                                        <span
-                                          key={role}
-                                          className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded"
-                                        >
+                                        <span key={role} className="role-badge">
                                           {String(role).replace('ROLE_', '')}
                                         </span>
                                       ))}
@@ -815,16 +811,18 @@ export default function AdminDashboard() {
                                     (item.description ? item.description.substring(0, 50) + '...' : '')}
                                   {/* BAŞKAN BİLGİSİ */}
                                   {activeTab === 'activeClubs' && (
-                                    <span className="text-sm text-gray-700">Başkan: {item.presidentName}</span>
+                                    <span className="table-text-secondary">
+                                      Başkan: {item.presidentName}
+                                    </span>
                                   )}
                                 </td>
 
-                                <td className="px-6 py-4 text-right space-x-2">
+                                <td style={{ textAlign: 'right' }}>
                                   {/* KULLANICI SİLME BUTONU (Sadece Users sekmesinde) */}
                                   {activeTab === 'users' && (
                                     <button
                                       onClick={() => handleDeleteUser(item.id)}
-                                      className="rounded bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                                      className="action-button btn-delete"
                                     >
                                       Kullanıcıyı Sil
                                     </button>
@@ -835,28 +833,31 @@ export default function AdminDashboard() {
                                     <>
                                       <button
                                         onClick={() => handleViewBoard(item.id, item.name)}
-                                        className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
+                                        className="action-button btn-view"
+                                        style={{ marginRight: '0.5rem' }}
                                       >
                                         Yönetim
                                       </button>
 
                                       <button
                                         onClick={() => handleChangePresident(item.id)}
-                                        className="rounded bg-yellow-500 px-2 py-1 text-xs text-white hover:bg-yellow-600"
+                                        className="action-button btn-change"
+                                        style={{ marginRight: '0.5rem' }}
                                       >
                                         Bşk. Değiştir
                                       </button>
 
                                       <button
                                         onClick={() => handleUpdateLogo(item.id)}
-                                        className="rounded bg-purple-500 px-2 py-1 text-xs text-white hover:bg-purple-600"
+                                        className="action-button btn-logo"
+                                        style={{ marginRight: '0.5rem' }}
                                       >
                                         Logo
                                       </button>
 
                                       <button
                                         onClick={() => handleReject(item.id)}
-                                        className="rounded bg-red-500 px-2 py-1 text-xs text-white hover:bg-red-600"
+                                        className="action-button btn-reject"
                                       >
                                         Kapat
                                       </button>
@@ -870,7 +871,8 @@ export default function AdminDashboard() {
                                         onClick={() =>
                                           handleApprove(activeTab === 'clubs' ? item.id : item.userId)
                                         }
-                                        className="rounded bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 transition-colors"
+                                        className="action-button btn-approve"
+                                        style={{ marginRight: '0.5rem' }}
                                       >
                                         Onayla
                                       </button>
@@ -879,7 +881,7 @@ export default function AdminDashboard() {
                                         onClick={() =>
                                           handleReject(activeTab === 'clubs' ? item.id : item.userId)
                                         }
-                                        className="rounded bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 transition-colors"
+                                        className="action-button btn-reject"
                                       >
                                         Reddet
                                       </button>
@@ -888,8 +890,7 @@ export default function AdminDashboard() {
                                 </td>
                               </tr>
                             </React.Fragment>
-                          ))
-                        )}
+                          ))}
                       </tbody>
                     </table>
                   </div>
@@ -902,43 +903,43 @@ export default function AdminDashboard() {
 
       {/* ------------------ YÖNETİM KURULU MODALI ------------------ */}
       {isBoardModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden animate-fadeIn">
+        <div className="modal-overlay">
+          <div className="modal-content">
             {/* Modal Başlık */}
-            <div className="bg-gray-100 px-6 py-4 border-b flex justify-between items-center">
-              <h3 className="text-lg font-bold text-gray-800">
+            <div className="modal-header">
+              <h3>
                 {selectedClubName} - Yönetim Kurulu
               </h3>
               <button
                 onClick={() => setIsBoardModalOpen(false)}
-                className="text-gray-500 hover:text-red-500 transition-colors"
+                className="modal-close"
               >
                 ✕
               </button>
             </div>
 
             {/* Modal İçerik (Liste) */}
-            <div className="p-6 max-h-96 overflow-y-auto">
+            <div className="modal-body">
               {boardMembers.length > 0 ? (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="data-table">
+                  <thead>
                     <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">İsim</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
+                      <th>İsim</th>
+                      <th>Rol</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody>
                     {boardMembers.map((member, index) => (
                       <tr key={index}>
-                        <td className="px-3 py-2 text-sm text-gray-900">
+                        <td>
                           {member.firstName} {member.lastName}
                         </td>
-                        <td className="px-3 py-2 text-sm">
+                        <td>
                           <span
-                            className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            className={`status-badge ${
                               member.role.includes('PRESIDENT')
-                                ? 'bg-purple-100 text-purple-800'
-                                : 'bg-blue-100 text-blue-800'
+                                ? 'badge-approved'
+                                : 'badge-pending'
                             }`}
                           >
                             {member.role.replace('CLUB_', '').replace('_', ' ')}
@@ -949,15 +950,15 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               ) : (
-                <p className="text-center text-gray-500 py-4">Bu kulüpte kayıtlı yetkili bulunamadı.</p>
+                <p className="empty-state">Bu kulüpte kayıtlı yetkili bulunamadı.</p>
               )}
             </div>
 
             {/* Modal Alt Kısım */}
-            <div className="bg-gray-50 px-6 py-3 flex justify-end">
+            <div className="modal-footer">
               <button
                 onClick={() => setIsBoardModalOpen(false)}
-                className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700 transition-colors"
+                className="action-button btn-view"
               >
                 Kapat
               </button>
