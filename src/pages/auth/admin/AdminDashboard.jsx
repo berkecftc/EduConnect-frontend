@@ -493,26 +493,95 @@ export default function AdminDashboard() {
       <div className="admin-container">
         <h1 className="admin-title">🎯 Yönetici Paneli</h1>
 
-        {/* --- SEKMELER (TABS) --- */}
+        {/* --- SEKMELER (TABS) - KATEGORİLENMİŞ --- */}
         <div className="tab-container">
-          {['overview', 'users', 'academicians', 'clubOfficials', 'clubs', 'activeClubs', 'events', 'inactiveClubs', 'inactiveStudents', 'inactiveAcademicians'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`tab-button ${activeTab === tab ? 'active' : ''}`}
-            >
-              {tab === 'overview' && '📊 Genel Bakış'}
-              {tab === 'users' && '👥 Tüm Kullanıcılar'}
-              {tab === 'academicians' && '👨‍🏫 Akademisyen Başvuruları'}
-              {tab === 'clubOfficials' && '🎓 Kulüp Başkanı İstekleri'}
-              {tab === 'clubs' && '🏛️ Kulüp Kurma İstekleri'}
-              {tab === 'activeClubs' && '✅ Aktif Kulüpler'}
-              {tab === 'events' && '🎉 Etkinlik İstekleri'}
-              {tab === 'inactiveClubs' && '🔴 Pasif Kulüpler'}
-              {tab === 'inactiveStudents' && '🔴 Pasif Öğrenciler'}
-              {tab === 'inactiveAcademicians' && '🔴 Pasif Akademisyenler'}
-            </button>
-          ))}
+          {/* GENEL BAKIŞ */}
+          <div className="tab-category">
+            <div className="category-label">📊 Genel</div>
+            <div className="category-tabs">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
+              >
+                Genel Bakış
+              </button>
+              <button
+                onClick={() => setActiveTab('users')}
+                className={`tab-button ${activeTab === 'users' ? 'active' : ''}`}
+              >
+                Tüm Kullanıcılar
+              </button>
+            </div>
+          </div>
+
+          {/* İSTEK & BAŞVURULAR */}
+          <div className="tab-category">
+            <div className="category-label">📝 İstek & Başvurular</div>
+            <div className="category-tabs">
+              <button
+                onClick={() => setActiveTab('academicians')}
+                className={`tab-button ${activeTab === 'academicians' ? 'active' : ''}`}
+              >
+                👨‍🏫 Akademisyen
+              </button>
+              <button
+                onClick={() => setActiveTab('clubOfficials')}
+                className={`tab-button ${activeTab === 'clubOfficials' ? 'active' : ''}`}
+              >
+                🎓 Kulüp Başkanı
+              </button>
+              <button
+                onClick={() => setActiveTab('clubs')}
+                className={`tab-button ${activeTab === 'clubs' ? 'active' : ''}`}
+              >
+                🏛️ Kulüp Kurma
+              </button>
+            </div>
+          </div>
+
+          {/* KULÜP & ETKİNLİKLER */}
+          <div className="tab-category">
+            <div className="category-label">🎯 Kulüp & Etkinlikler</div>
+            <div className="category-tabs">
+              <button
+                onClick={() => setActiveTab('activeClubs')}
+                className={`tab-button ${activeTab === 'activeClubs' ? 'active' : ''}`}
+              >
+                ✅ Aktif Kulüpler
+              </button>
+              <button
+                onClick={() => setActiveTab('events')}
+                className={`tab-button ${activeTab === 'events' ? 'active' : ''}`}
+              >
+                🎉 Etkinlikler
+              </button>
+            </div>
+          </div>
+
+          {/* ARŞİV */}
+          <div className="tab-category">
+            <div className="category-label">📦 Arşiv</div>
+            <div className="category-tabs">
+              <button
+                onClick={() => setActiveTab('inactiveClubs')}
+                className={`tab-button ${activeTab === 'inactiveClubs' ? 'active' : ''}`}
+              >
+                🔴 Pasif Kulüpler
+              </button>
+              <button
+                onClick={() => setActiveTab('inactiveStudents')}
+                className={`tab-button ${activeTab === 'inactiveStudents' ? 'active' : ''}`}
+              >
+                🔴 Pasif Öğrenciler
+              </button>
+              <button
+                onClick={() => setActiveTab('inactiveAcademicians')}
+                className={`tab-button ${activeTab === 'inactiveAcademicians' ? 'active' : ''}`}
+              >
+                🔴 Pasif Akademisyenler
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* ==================== DASHBOARD HOME (ÖZET) ==================== */}
