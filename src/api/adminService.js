@@ -84,6 +84,17 @@ const adminService = {
   deleteUser: async (userId) => {
     return await api.delete(`/auth/admin/users/${userId}`);
   },
+
+  // --- 6. PASİF/SİLİNMİŞ KAYITLAR ---
+  getInactiveClubs: async () => {
+    return await api.get('/admin/clubs/archived');
+  },
+  getInactiveStudents: async () => {
+    return await api.get('/users/students/archived');
+  },
+  getInactiveAcademicians: async () => {
+    return await api.get('/users/academicians/archived');
+  },
 };
 
 export default adminService;

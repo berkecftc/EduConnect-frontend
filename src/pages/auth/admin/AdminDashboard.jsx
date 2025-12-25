@@ -18,6 +18,13 @@ export default function AdminDashboard() {
   const [selectedClubName, setSelectedClubName] = useState('');
   // TEMA İÇİN STATE
   const [isDarkMode, setIsDarkMode] = useState(false);
+  // YENİ: Başkan Değiştirme Modal
+  const [isPresidentModalOpen, setIsPresidentModalOpen] = useState(false);
+  const [selectedClubForPresident, setSelectedClubForPresident] = useState(null);
+  const [newPresidentId, setNewPresidentId] = useState('');
+  // YENİ: Kulüp Kapatma Modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedClubForDelete, setSelectedClubForDelete] = useState(null);
   // 👇 YENİ: İstatistik Verileri
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -132,8 +139,29 @@ export default function AdminDashboard() {
         // response = await adminService.getEventRequests(); // <-- BU HATALIYDI (Sadece bekleyenleri getirir)
         response = await adminService.getAllEvents();     // <-- DOĞRUSU BU (Tüm geçmiş/gelecek etkinlikleri getirir)
       }
+      // 👇 YENİ: PASİF KAYITLAR İÇİN
+      else if (activeTab === 'inactiveClubs') {
+        response = await adminService.getInactiveClubs();
+      }
+      else if (activeTab === 'inactiveStudents') {
+        response = await adminService.getInactiveStudents();
+      }
+      else if (activeTab === 'inactiveAcademicians') {
+        response = await adminService.getInactiveAcademicians();
+      }
       
       console.log("Gelen Ham Veri:", response?.data); // Debug için
+      console.log("Aktif Sekme:", activeTab); // Hangi sekme
+      console.log("Veri Sayısı:", response?.data?.length); // Kaç kayıt
+      if (response?.data && response.data.length > 0) {
+        console.log("İlk Kayıt Örneği:", response.data[0]); // İlk kaydın yapısı
+        console.log("İlk Kayıt ID Bilgileri:", {
+          id: response.data[0].id,
+          originalId: response.data[0].originalId,
+          archiveId: response.data[0].archiveId,
+          userId: response.data[0].userId
+        });
+      }
       setData(response?.data || []); 
 
     } catch (error) {
@@ -199,13 +227,20 @@ export default function AdminDashboard() {
   };
 
   const handleReject = async (id) => {
+    // Aktif kulüpler sekmesindeyse modal aç
+    if (activeTab === 'activeClubs') {
+      const club = data.find(c => c.id === id);
+      setSelectedClubForDelete(club);
+      setIsDeleteModalOpen(true);
+      return;
+    }
+
     if(!window.confirm("Bu isteği REDDETMEK istediğinize emin misiniz?")) return;
 
     try {
       if (activeTab === 'academicians') await adminService.rejectAcademician(id);
       else if (activeTab === 'clubOfficials') await adminService.rejectClubOfficial(id);
-      else if (activeTab === 'clubs') await adminService.rejectClubCreation(id); // <-- YENİ
-      else if (activeTab === 'activeClubs') await adminService.deleteClub(id);
+      else if (activeTab === 'clubs') await adminService.rejectClubCreation(id);
       else if (activeTab === 'events') await adminService.rejectEvent(id);
       
       alert("İstek reddedildi/silindi.");
@@ -282,15 +317,25 @@ export default function AdminDashboard() {
   };
   // BAŞKAN DEĞİŞTİRME
   const handleChangePresident = async (clubId) => {
-    // Gerçek bir projede burada Modal açıp üye listesinden seçtiririz.
-    // Şimdilik basitçe ID istiyoruz:
-    const newId = prompt("Yeni Başkanın Öğrenci ID'sini (UUID) giriniz:");
-    if (!newId) return;
+    // Kulübü bul ve modal aç
+    const club = data.find(c => c.id === clubId);
+    setSelectedClubForPresident(club);
+    setIsPresidentModalOpen(true);
+  };
+
+  // Başkan değiştirme işlemini onayla
+  const confirmChangePresident = async () => {
+    if (!newPresidentId.trim()) {
+      alert("Lütfen geçerli bir Öğrenci ID'si giriniz!");
+      return;
+    }
 
     try {
-      await adminService.changeClubPresident(clubId, newId);
-
-      alert("Başkan değiştirildi.");
+      await adminService.changeClubPresident(selectedClubForPresident.id, newPresidentId);
+      alert("Başkan başarıyla değiştirildi.");
+      setIsPresidentModalOpen(false);
+      setNewPresidentId('');
+      setSelectedClubForPresident(null);
       fetchData();
     } catch (err) {
       alert(
@@ -298,6 +343,19 @@ export default function AdminDashboard() {
           (err.response?.data?.message ||
             "Başkan değiştirilemedi. ID'nin kulübe üye olduğundan emin olun.")
       );
+    }
+  };
+
+  // Kulüp kapatma işlemini onayla
+  const confirmDeleteClub = async () => {
+    try {
+      await adminService.deleteClub(selectedClubForDelete.id);
+      alert("Kulüp başarıyla kapatıldı.");
+      setIsDeleteModalOpen(false);
+      setSelectedClubForDelete(null);
+      fetchData();
+    } catch (error) {
+      alert("İşlem başarısız: " + (error.response?.data?.message || error.message));
     }
   };
   // KAPSAMLI TARİH OKUYUCU
@@ -437,7 +495,7 @@ export default function AdminDashboard() {
 
         {/* --- SEKMELER (TABS) --- */}
         <div className="tab-container">
-          {['overview', 'users', 'academicians', 'clubOfficials', 'clubs', 'activeClubs', 'events'].map((tab) => (
+          {['overview', 'users', 'academicians', 'clubOfficials', 'clubs', 'activeClubs', 'events', 'inactiveClubs', 'inactiveStudents', 'inactiveAcademicians'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -450,6 +508,9 @@ export default function AdminDashboard() {
               {tab === 'clubs' && '🏛️ Kulüp Kurma İstekleri'}
               {tab === 'activeClubs' && '✅ Aktif Kulüpler'}
               {tab === 'events' && '🎉 Etkinlik İstekleri'}
+              {tab === 'inactiveClubs' && '🔴 Pasif Kulüpler'}
+              {tab === 'inactiveStudents' && '🔴 Pasif Öğrenciler'}
+              {tab === 'inactiveAcademicians' && '🔴 Pasif Akademisyenler'}
             </button>
           ))}
         </div>
@@ -734,7 +795,17 @@ export default function AdminDashboard() {
                   <div className="empty-state">
                     {activeTab === 'activeClubs'
                       ? 'Aktif kulüp bulunmamaktadır.'
-                      : 'Bekleyen istek bulunmamaktadır.'}
+                      : activeTab === 'clubOfficials'
+                        ? 'Bekleyen kulüp başkanı isteği bulunmamaktadır.'
+                        : activeTab === 'academicians'
+                          ? 'Bekleyen akademisyen başvurusu bulunmamaktadır.'
+                          : activeTab === 'inactiveClubs'
+                            ? 'Arşivlenmiş kulüp bulunmamaktadır.'
+                            : activeTab === 'inactiveStudents'
+                              ? 'Arşivlenmiş öğrenci bulunmamaktadır.'
+                              : activeTab === 'inactiveAcademicians'
+                                ? 'Arşivlenmiş akademisyen bulunmamaktadır.'
+                                : 'Bekleyen istek bulunmamaktadır.'}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -748,12 +819,14 @@ export default function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {displayData.map((item) => (
-                          <React.Fragment key={item.id}>
-                            <tr key={item.id}>
+                        {displayData.map((item, index) => (
+                          <React.Fragment key={item.archiveId || item.originalId || item.id || index}>
+                            <tr key={item.archiveId || item.originalId || item.id || index}>
                               <td>
-                                {/* Users sekmesindeysek ID'nin sadece başını gösterelim ki tablo taşmasın */}
-                                {activeTab === 'users' ? item.id.substring(0, 8) + '...' : item.id}
+                                {/* ID SÜTUNU - archiveId öncelikli, sonra originalId */}
+                                {(activeTab === 'users' || activeTab === 'inactiveStudents' || activeTab === 'inactiveAcademicians' || activeTab === 'inactiveClubs') ? 
+                                  (item.archiveId || item.originalId || item.id || '').toString().substring(0, 8) + '...' 
+                                  : (item.archiveId || item.originalId || item.id || item.userId || 'N/A')}
                               </td>
 
                               <td>
@@ -792,6 +865,72 @@ export default function AdminDashboard() {
                                       </div>
                                     </div>
                                   )}
+                                  {/* PASİF KULÜPLER İÇİN GÖRÜNÜM */}
+                                  {activeTab === 'inactiveClubs' && (
+                                    <div className="club-info">
+                                      {item.logoUrl ? (
+                                        <img
+                                          src={item.logoUrl}
+                                          alt="Logo"
+                                          className="club-logo"
+                                          style={{ opacity: 0.5 }}
+                                        />
+                                      ) : (
+                                        <div style={{ 
+                                          display: 'flex', 
+                                          alignItems: 'center', 
+                                          justifyContent: 'center', 
+                                          width: '2.5rem', 
+                                          height: '2.5rem', 
+                                          borderRadius: '50%', 
+                                          background: 'linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%)',
+                                          fontSize: '0.75rem',
+                                          opacity: 0.5
+                                        }}>
+                                          Yok
+                                        </div>
+                                      )}
+                                      <div className="club-details">
+                                        <h4 style={{ opacity: 0.6 }}>{item.name || 'İsimsiz Kulüp'}</h4>
+                                        <p style={{ opacity: 0.6 }}>Kapatıldı</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {/* PASİF ÖĞRENCİLER İÇİN GÖRÜNÜM */}
+                                  {activeTab === 'inactiveStudents' && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                      {item.profileImageUrl && (
+                                        <img
+                                          src={item.profileImageUrl}
+                                          alt="Profil"
+                                          className="user-avatar"
+                                          style={{ opacity: 0.5, width: '2rem', height: '2rem', borderRadius: '50%' }}
+                                        />
+                                      )}
+                                      <span style={{ opacity: 0.6 }}>
+                                        {item.firstName && item.lastName 
+                                          ? `${item.firstName} ${item.lastName}`
+                                          : item.studentNumber || 'İsim Yok'}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {/* PASİF AKADEMİSYENLER İÇİN GÖRÜNÜM */}
+                                  {activeTab === 'inactiveAcademicians' && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                      {item.profileImageUrl && (
+                                        <img
+                                          src={item.profileImageUrl}
+                                          alt="Profil"
+                                          className="user-avatar"
+                                          style={{ opacity: 0.5, width: '2rem', height: '2rem', borderRadius: '50%' }}
+                                        />
+                                      )}
+                                      <span style={{ opacity: 0.6 }}>
+                                        {item.title && `${item.title} `}
+                                        {item.firstName} {item.lastName}
+                                      </span>
+                                    </div>
+                                  )}
                                 </td>
 
                                 <td>
@@ -814,6 +953,66 @@ export default function AdminDashboard() {
                                     <span className="table-text-secondary">
                                       Başkan: {item.presidentName}
                                     </span>
+                                  )}
+                                  {/* PASİF KULÜPLER - KAPATILMA TARİHİ */}
+                                  {activeTab === 'inactiveClubs' && (
+                                    <div className="table-text-secondary" style={{ opacity: 0.6 }}>
+                                      {item.about && (
+                                        <div style={{ marginBottom: '0.5rem' }}>
+                                          Açıklama: {item.about.length > 50 ? item.about.substring(0, 50) + '...' : item.about}
+                                        </div>
+                                      )}
+                                      <div>
+                                        Kapatılma: {item.deletedAt ? new Date(item.deletedAt).toLocaleDateString('tr-TR') : 'Bilinmiyor'}
+                                      </div>
+                                      {item.deletionReason && (
+                                        <div style={{ marginTop: '0.25rem', fontSize: '0.85em', fontStyle: 'italic' }}>
+                                          Neden: {item.deletionReason}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  {/* PASİF ÖĞRENCİLER - SİLİNME TARİHİ VE ROLLER */}
+                                  {activeTab === 'inactiveStudents' && (
+                                    <div style={{ opacity: 0.6 }}>
+                                      {item.studentNumber && (
+                                        <div>Öğrenci No: {item.studentNumber}</div>
+                                      )}
+                                      {item.department && (
+                                        <div>Bölüm: {item.department}</div>
+                                      )}
+                                      {item.deletedAt && (
+                                        <div style={{ marginTop: '0.5rem' }}>
+                                          Arşivlendi: {new Date(item.deletedAt).toLocaleDateString('tr-TR')}
+                                        </div>
+                                      )}
+                                      {item.deletionReason && (
+                                        <div style={{ marginTop: '0.25rem', fontSize: '0.85em', fontStyle: 'italic' }}>
+                                          Neden: {item.deletionReason}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  {/* PASİF AKADEMİSYENLER - BÖLÜM */}
+                                  {activeTab === 'inactiveAcademicians' && (
+                                    <div style={{ opacity: 0.6 }}>
+                                      {item.department && (
+                                        <div>Bölüm: {item.department}</div>
+                                      )}
+                                      {item.officeNumber && (
+                                        <div>Ofis: {item.officeNumber}</div>
+                                      )}
+                                      {item.deletedAt && (
+                                        <div style={{ marginTop: '0.5rem' }}>
+                                          Arşivlendi: {new Date(item.deletedAt).toLocaleDateString('tr-TR')}
+                                        </div>
+                                      )}
+                                      {item.deletionReason && (
+                                        <div style={{ marginTop: '0.25rem', fontSize: '0.85em', fontStyle: 'italic' }}>
+                                          Neden: {item.deletionReason}
+                                        </div>
+                                      )}
+                                    </div>
                                   )}
                                 </td>
 
@@ -864,8 +1063,29 @@ export default function AdminDashboard() {
                                     </>
                                   )}
 
-                                  {/* DİĞER ONAY/RET BUTONLARI (Users sekmesinde GİZLİ OLMALI) */}
-                                  {activeTab !== 'users' && activeTab !== 'activeClubs' && (
+                                  {/* PASİF KAYITLAR: İŞLEM BUTONLARI GÖSTERME */}
+                                  {activeTab === 'inactiveClubs' && (
+                                    <span className="table-text-secondary" style={{ opacity: 0.6 }}>
+                                      Arşivlendi
+                                    </span>
+                                  )}
+                                  {activeTab === 'inactiveStudents' && (
+                                    <span className="table-text-secondary" style={{ opacity: 0.6 }}>
+                                      Öğrenci Arşivlendi
+                                    </span>
+                                  )}
+                                  {activeTab === 'inactiveAcademicians' && (
+                                    <span className="table-text-secondary" style={{ opacity: 0.6 }}>
+                                      Akademisyen Arşivlendi
+                                    </span>
+                                  )}
+
+                                  {/* DİĞER ONAY/RET BUTONLARI (Users, activeClubs ve Pasif sekmelerde GİZLİ OLMALI) */}
+                                  {activeTab !== 'users' && 
+                                   activeTab !== 'activeClubs' && 
+                                   activeTab !== 'inactiveClubs' && 
+                                   activeTab !== 'inactiveStudents' && 
+                                   activeTab !== 'inactiveAcademicians' && (
                                     <>
                                       <button
                                         onClick={() =>
@@ -961,6 +1181,151 @@ export default function AdminDashboard() {
                 className="action-button btn-view"
               >
                 Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------ BAŞKAN DEĞİŞTİRME MODALI ------------------ */}
+      {isPresidentModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>👑 Başkan Değiştir</h3>
+              <button
+                onClick={() => {
+                  setIsPresidentModalOpen(false);
+                  setNewPresidentId('');
+                  setSelectedClubForPresident(null);
+                }}
+                className="modal-close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div style={{ marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                  <strong>Kulüp:</strong> {selectedClubForPresident?.name}
+                </p>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                  <strong>Mevcut Başkan:</strong> {selectedClubForPresident?.presidentName}
+                </p>
+              </div>
+
+              <div style={{ marginTop: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                  Yeni Başkanın Öğrenci ID'si (UUID)
+                </label>
+                <input
+                  type="text"
+                  value={newPresidentId}
+                  onChange={(e) => setNewPresidentId(e.target.value)}
+                  placeholder="Örnek: a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.875rem',
+                    outline: 'none',
+                    transition: 'border-color 0.2s',
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--primary-color)'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
+                />
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                  ⚠️ Yeni başkanın kulüp üyesi olduğundan emin olun.
+                </p>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                onClick={() => {
+                  setIsPresidentModalOpen(false);
+                  setNewPresidentId('');
+                  setSelectedClubForPresident(null);
+                }}
+                className="action-button btn-view"
+                style={{ marginRight: '0.5rem' }}
+              >
+                İptal
+              </button>
+              <button
+                onClick={confirmChangePresident}
+                className="action-button btn-approve"
+              >
+                Değiştir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------ KULÜP KAPATMA MODALI ------------------ */}
+      {isDeleteModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>⚠️ Kulübü Kapat</h3>
+              <button
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setSelectedClubForDelete(null);
+                }}
+                className="modal-close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div style={{ 
+                padding: '1rem', 
+                backgroundColor: 'var(--danger-bg, #fee)', 
+                borderRadius: '0.5rem',
+                marginBottom: '1rem'
+              }}>
+                <p style={{ fontSize: '0.875rem', color: 'var(--danger-color, #c00)', marginBottom: '0.5rem' }}>
+                  <strong>⚠️ Dikkat:</strong> Bu işlem geri alınamaz!
+                </p>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                  Kulüp kapatıldığında tüm üyelikler ve veriler silinecektir.
+                </p>
+              </div>
+
+              <div>
+                <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  <strong>Kulüp Adı:</strong> {selectedClubForDelete?.name}
+                </p>
+                <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  <strong>Başkan:</strong> {selectedClubForDelete?.presidentName}
+                </p>
+                <p style={{ fontSize: '0.875rem' }}>
+                  <strong>Üye Sayısı:</strong> {selectedClubForDelete?.memberCount}
+                </p>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setSelectedClubForDelete(null);
+                }}
+                className="action-button btn-view"
+                style={{ marginRight: '0.5rem' }}
+              >
+                İptal
+              </button>
+              <button
+                onClick={confirmDeleteClub}
+                className="action-button btn-reject"
+              >
+                Kulübü Kapat
               </button>
             </div>
           </div>
