@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import adminService from '../../../api/adminService';
 import './AdminDashboard.css';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [data, setData] = useState([]);
   console.log("Şu anki Sekme (activeTab):", activeTab);
@@ -346,6 +348,19 @@ export default function AdminDashboard() {
     }
   };
 
+  // ÇIKIŞ YAP FONKSİYONU
+  const handleLogout = () => {
+    if (window.confirm("Çıkış yapmak istediğinize emin misiniz?")) {
+      // localStorage'ı temizle
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('username');
+      localStorage.removeItem('role');
+      
+      // Login sayfasına yönlendir
+      navigate('/login');
+    }
+  };
   // Kulüp kapatma işlemini onayla
   const confirmDeleteClub = async () => {
     try {
@@ -475,20 +490,31 @@ export default function AdminDashboard() {
 
   return (
     <div className={`admin-dashboard ${isDarkMode ? 'dark-mode' : ''}`}>
-      {/* Theme Toggle Button */}
-      <button onClick={toggleTheme} className="theme-toggle" title={isDarkMode ? 'Açık Mod' : 'Koyu Mod'}>
-        {isDarkMode ? (
-          // Güneş ikonu (Light Mode)
+      {/* Header with Theme Toggle and Logout */}
+      <div className="admin-header">
+        {/* Theme Toggle Button */}
+        <button onClick={toggleTheme} className="theme-toggle" title={isDarkMode ? 'Açık Mod' : 'Koyu Mod'}>
+          {isDarkMode ? (
+            // Güneş ikonu (Light Mode)
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          ) : (
+            // Ay ikonu (Dark Mode)
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          )}
+        </button>
+
+        {/* Logout Button */}
+        <button onClick={handleLogout} className="logout-button" title="Çıkış Yap">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
-        ) : (
-          // Ay ikonu (Dark Mode)
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-          </svg>
-        )}
-      </button>
+          <span>Çıkış Yap</span>
+        </button>
+      </div>
 
       <div className="admin-container">
         <h1 className="admin-title">🎯 Yönetici Paneli</h1>

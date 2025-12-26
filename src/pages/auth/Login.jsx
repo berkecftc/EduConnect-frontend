@@ -1,24 +1,20 @@
-import { useState, useEffect } from 'react'; // useEffect eklendi
+import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser } from '../../store/slices/authSlice';
-import { useNavigate, Link, useLocation } from 'react-router-dom'; // useLocation eklendi
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import './Login.css';
 import AdminButton from '../../components/ui/AdminButton';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
-  // --- YENİ EKLENEN KISIMLAR (STATE) ---
-  const [isAdminMode, setIsAdminMode] = useState(false); // Admin modunu takip eder
+  const [isAdminMode, setIsAdminMode] = useState(false);
   
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const location = useLocation(); // URL'den gelen veriyi okur
+  const location = useLocation();
   const { status, error } = useSelector((state) => state.auth);
 
-  // --- YENİ EKLENEN KISIMLAR (EFFECT) ---
-  // Sayfa açıldığında "Admin Butonuna" basılarak mı gelindi kontrol et
   useEffect(() => {
     if (location.state?.isAdminLogin) {
       setIsAdminMode(true);
@@ -27,29 +23,59 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     const resultAction = await dispatch(loginUser({ email, password }));
     
     if (loginUser.fulfilled.match(resultAction)) {
-      // --- YENİ EKLENEN KISIMLAR (REDIRECT) ---
-      // Giriş başarılıysa role/moda göre yönlendir
-      if (isAdminMode) {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/dashboard');
+      const data = resultAction.payload;
+
+      if (data && data.token) {
+        // Token ve kullanıcı bilgilerini localStorage'a kaydet
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userId', data.userId);
+        localStorage.setItem('username', data.username);
+        
+        // Rolleri al (Set olarak geldiği için array'e çevir)
+        const roles = Array.from(data.roles || []);
+        const role = roles[0]; // İlk rolü al
+        localStorage.setItem('role', role);
+
+        console.log("✅ Giriş Başarılı. Rol:", role, "Admin Mode:", isAdminMode);
+
+        // Yönlendirme: Admin rolü VE admin modundaysa admin paneline, değilse normal dashboard'a
+        if (role === 'ROLE_ADMIN' && isAdminMode) {
+          navigate('/admin/dashboard');
+        } else if (role === 'ROLE_ADMIN' && !isAdminMode) {
+          // Admin kullanıcı normal giriş yaptıysa uyar ve giriş yaptırma
+          alert('Admin hesabı ile normal giriş yapamazsınız. Lütfen yönetici girişi kullanın.');
+          localStorage.clear();
+          setPassword('');
+        } else if (role !== 'ROLE_ADMIN' && isAdminMode) {
+          // Normal kullanıcı admin girişi yaptıysa uyar
+          alert('Bu hesap yönetici hesabı değil. Normal giriş sayfasını kullanın.');
+          localStorage.clear();
+          setPassword('');
+        } else {
+          // Normal kullanıcı normal giriş
+          navigate('/dashboard');
+        }
       }
+    } else {
+      console.error("Giriş hatası:", error);
+      setPassword('');
     }
   };
 
   return (
     <div className="login-container">
-      {/* Animated Background - DOKUNULMADI */}
+      {/* Animated Background */}
       <div className="animated-background">
         <div className="gradient-orb orb-1"></div>
         <div className="gradient-orb orb-2"></div>
         <div className="gradient-orb orb-3"></div>
       </div>
 
-      {/* Floating Particles - DOKUNULMADI */}
+      {/* Floating Particles */}
       <div className="particles">
         {[...Array(20)].map((_, i) => (
           <div key={i} className="particle" style={{
@@ -61,7 +87,7 @@ export default function Login() {
       </div>
 
       <div className="login-wrapper">
-        {/* Info Section - DOKUNULMADI */}
+        {/* Info Section */}
         <div className="info-section">
           <div className="info-content">
             <div className="brand-section">
@@ -73,7 +99,7 @@ export default function Login() {
               </p>
             </div>
 
-            {/* Feature Cards - DOKUNULMADI */}
+            {/* Feature Cards */}
             <div className="feature-cards">
               <div className="feature-card card-1">
                 <div className="feature-icon">
