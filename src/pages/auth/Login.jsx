@@ -56,8 +56,14 @@ export default function Login() {
           localStorage.clear();
           setPassword('');
         } else {
-          // Normal kullanıcı normal giriş
-          navigate('/dashboard');
+          // Normal kullanıcı normal giriş - Role göre yönlendir
+          if (role === 'ROLE_STUDENT') {
+            navigate('/student/dashboard');
+          } else if (role === 'ROLE_INSTRUCTOR' || role === 'ROLE_ACADEMICIAN') {
+            navigate('/instructor/dashboard');
+          } else {
+            navigate('/dashboard');
+          }
         }
       }
     } else {
