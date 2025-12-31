@@ -20,6 +20,8 @@ export default function Register() {
     title: ''          // Sadece Akademisyen (Örn: Prof. Dr.)
   });
 
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -29,6 +31,38 @@ export default function Register() {
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Dosya boyutu kontrolü (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Fotoğraf boyutu en fazla 5MB olmalıdır.');
+        return;
+      }
+
+      // Dosya tipi kontrolü
+      if (!file.type.startsWith('image/')) {
+        setError('Lütfen geçerli bir resim dosyası seçin.');
+        return;
+      }
+
+      setPhotoFile(file);
+      setError(null);
+
+      // Önizleme oluştur
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
   };
 
   const handleSubmit = async (e) => {
@@ -48,15 +82,30 @@ export default function Register() {
             department: formData.department
         });
       } else {
-        // Akademisyen Başvurusu
-        await authService.registerAcademician({
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            password: formData.password,
-            title: formData.title,
-            department: formData.department
-        });
+        // Akademisyen Başvurusu - FormData ile fotoğraf gönderimi
+        const formDataToSend = new FormData();
+        
+        // Backend'in beklediği format: 'request' adında JSON objesi
+        const requestData = {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+          title: formData.title,
+          department: formData.department
+        };
+        
+        // JSON verisini blob olarak ekle
+        formDataToSend.append('request', new Blob([JSON.stringify(requestData)], {
+          type: 'application/json'
+        }));
+        
+        // Fotoğrafı 'idCardImage' adıyla ekle (backend'in beklediği isim)
+        if (photoFile) {
+          formDataToSend.append('idCardImage', photoFile);
+        }
+
+        await authService.registerAcademician(formDataToSend);
       }
 
       setSuccess(true);
@@ -315,6 +364,47 @@ export default function Register() {
                 />
               </div>
             </div>
+
+            {/* Photo Upload - Sadece Akademisyen için */}
+            {userType === 'academician' && (
+              <div className="form-group">
+                <label className="form-label">Kimlik Fotoğrafı</label>
+                <div className="photo-upload-container">
+                  {!photoPreview ? (
+                    <label className="photo-upload-label">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoChange}
+                        className="photo-input"
+                      />
+                      <div className="photo-upload-content">
+                        <svg className="upload-icon" viewBox="0 0 24 24" fill="none">
+                          <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M17 8L12 3L7 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M12 3V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <span className="upload-text">Fotoğraf Yükle</span>
+                        <span className="upload-hint">PNG, JPG (max. 5MB)</span>
+                      </div>
+                    </label>
+                  ) : (
+                    <div className="photo-preview-container">
+                      <img src={photoPreview} alt="Preview" className="photo-preview" />
+                      <button
+                        type="button"
+                        onClick={removePhoto}
+                        className="remove-photo-btn"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <button
               type="submit"

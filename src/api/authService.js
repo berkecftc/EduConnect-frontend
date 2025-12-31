@@ -11,7 +11,16 @@ const authService = {
   registerAcademician: async (data) => {
     // Eski hatalı url: /auth/register/academician
     // Postman'deki doğru url: /auth/request/academician-account
-    return await api.post('/auth/request/academician-account', data);
+    
+    // FormData gönderiliyorsa, Content-Type'ı multipart/form-data olarak ayarla
+    const config = {};
+    if (data instanceof FormData) {
+      config.headers = {
+        'Content-Type': 'multipart/form-data'
+      };
+    }
+    
+    return await api.post('/auth/request/academician-account', data, config);
   }
 };
 

@@ -572,6 +572,109 @@
   color: #667eea;
 }
 
+/* Photo Upload Styles */
+.photo-upload-container {
+  margin-top: 0.5rem;
+  animation: fadeIn 0.6s ease-out 0.7s both;
+}
+
+.photo-upload-label {
+  display: block;
+  cursor: pointer;
+  border: 2px dashed rgba(102, 126, 234, 0.3);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  background: rgba(102, 126, 234, 0.02);
+}
+
+.photo-upload-label:hover {
+  border-color: rgba(102, 126, 234, 0.5);
+  background: rgba(102, 126, 234, 0.05);
+  transform: translateY(-2px);
+}
+
+.photo-input {
+  display: none;
+}
+
+.photo-upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.upload-icon {
+  width: 48px;
+  height: 48px;
+  color: #667eea;
+  transition: transform 0.3s ease;
+}
+
+.photo-upload-label:hover .upload-icon {
+  transform: translateY(-4px);
+}
+
+.upload-text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  display: block;
+}
+
+.upload-hint {
+  font-size: 0.875rem;
+  color: #718096;
+}
+
+.photo-preview-container {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.photo-preview {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+}
+
+.remove-photo-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 32px;
+  height: 32px;
+  background: rgba(239, 68, 68, 0.9);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  padding: 0;
+  backdrop-filter: blur(4px);
+}
+
+.remove-photo-btn:hover {
+  background: rgba(220, 38, 38, 1);
+  transform: scale(1.1);
+}
+
+.remove-photo-btn svg {
+  width: 18px;
+  height: 18px;
+  color: white;
+}
+
 /* Submit Button */
 .submit-button {
   margin-top: 0.5rem;
