@@ -4,7 +4,7 @@ import adminService from '../../../api/adminService';
 import { 
   Shield, Users, GraduationCap, Building2, Calendar, Archive, 
   Search, Check, X, Eye, Crown, Image, Trash2, LogOut, Loader2, 
-  Sun, Moon, AlertCircle, UserCheck, UserX, Clock, ChevronRight
+  AlertCircle, UserCheck, UserX, Clock, ChevronRight
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -18,15 +18,13 @@ export default function AdminDashboard() {
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
   const [boardMembers, setBoardMembers] = useState([]);
   const [selectedClubName, setSelectedClubName] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('adminDarkMode');
-    return saved !== null ? JSON.parse(saved) : true; // Varsayılan olarak dark mode
-  });
   const [isPresidentModalOpen, setIsPresidentModalOpen] = useState(false);
   const [selectedClubForPresident, setSelectedClubForPresident] = useState(null);
   const [newPresidentId, setNewPresidentId] = useState('');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedClubForDelete, setSelectedClubForDelete] = useState(null);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
   const [stats, setStats] = useState({
     totalStudents: 0,
     activeClubs: 0,
@@ -45,23 +43,29 @@ export default function AdminDashboard() {
       const getAllEvents =
         (adminService.getAllEvents && adminService.getAllEvents.bind(adminService)) ||
         (adminService.getEventRequests && adminService.getEventRequests.bind(adminService));
+      const getAcademicianRequests = adminService.getAcademicianRequests?.bind(adminService);
+      const getClubOfficialRequests = adminService.getClubOfficialRequests?.bind(adminService);
 
       const safeCall = async (fn) => {
         if (!fn) return { data: [] };
         return fn();
       };
 
-      const [usersRes, clubsRes, clubReqRes, eventsRes] = await Promise.all([
+      const [usersRes, clubsRes, clubReqRes, eventsRes, academicianReqRes, clubOfficialReqRes] = await Promise.all([
         safeCall(getAllUsers),
         safeCall(getAllActiveClubs),
         safeCall(getClubRequests),
-        safeCall(getAllEvents)
+        safeCall(getAllEvents),
+        safeCall(getAcademicianRequests),
+        safeCall(getClubOfficialRequests)
       ]);
 
       const users = usersRes.data || [];
       const clubs = clubsRes.data || [];
       const clubRequests = clubReqRes.data || [];
       const events = eventsRes.data || [];
+      const academicianRequests = academicianReqRes.data || [];
+      const clubOfficialRequests = clubOfficialReqRes.data || [];
 
       const studentCount = users.filter((u) => u.roles && u.roles.includes('ROLE_STUDENT')).length;
       const activeClubCount = clubs.length;
@@ -78,7 +82,11 @@ export default function AdminDashboard() {
         return eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear;
       }).length;
 
-      const totalPending = clubRequests.length;
+      // Bekleyen etkinlikler
+      const pendingEvents = events.filter((event) => event.status === 'PENDING').length;
+
+      // Toplam bekleyen onaylar: akademisyen + kulüp başkanı + kulüp kurma + bekleyen etkinlikler
+      const totalPending = academicianRequests.length + clubOfficialRequests.length + clubRequests.length + pendingEvents;
 
       setStats({
         totalStudents: studentCount,
@@ -353,14 +361,6 @@ export default function AdminDashboard() {
   };
 
   const displayData = activeTab === 'events' ? getFilteredEvents() : getFilteredData();
-  
-  const toggleTheme = () => {
-    setIsDarkMode(prev => {
-      const newValue = !prev;
-      localStorage.setItem('adminDarkMode', JSON.stringify(newValue));
-      return newValue;
-    });
-  };
 
   const tabCategories = [
     {
@@ -417,8 +417,8 @@ export default function AdminDashboard() {
   );
 
   const EmptyState = ({ message }) => (
-    <div className={`flex flex-col items-center justify-center py-12 ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
-      <div className={`w-16 h-16 mb-4 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-slate-700/60' : 'bg-gray-100'}`}>
+    <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+      <div className="w-16 h-16 mb-4 rounded-full flex items-center justify-center bg-slate-700/60">
         <span className="text-3xl">📭</span>
       </div>
       <p className="text-sm">{message}</p>
@@ -426,32 +426,29 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className={`min-h-screen transition-all duration-500 ${isDarkMode ? 'bg-linear-to-br from-slate-900 via-blue-900 to-slate-900' : 'bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50'}`}>
+    <div className="min-h-screen transition-all duration-500 bg-linear-to-br from-slate-900 via-blue-900 to-slate-900">
       <div className="relative z-10 p-4 md:p-8">
         {/* Header */}
-        <header className={`backdrop-blur-xl border rounded-2xl p-6 mb-8 shadow-2xl transition-all duration-300 ${isDarkMode ? 'bg-white/10 border-white/20' : 'bg-white/70 border-gray-200'}`}>
+        <header className="backdrop-blur-xl border rounded-2xl p-6 mb-8 shadow-2xl transition-all duration-300 bg-white/10 border-white/20">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
                 <Shield className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className={`text-3xl font-bold ${isDarkMode ? 'bg-linear-to-r from-white to-blue-200 bg-clip-text text-transparent' : 'text-slate-900'}`}>
-                  🎯 Yönetici Paneli
+                <h1 className="text-3xl font-bold flex items-center gap-2">
+                  <span className="text-3xl">🎯</span>
+                  <span className="bg-linear-to-r from-white to-blue-200 bg-clip-text text-transparent">
+                    Yönetici Paneli
+                  </span>
                 </h1>
-                <p className={`mt-1 ${isDarkMode ? 'text-blue-200/70' : 'text-slate-700'}`}>Hoş geldiniz, Admin</p>
+                <p className="mt-1 text-blue-200/70">Hoş geldiniz, Admin</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <button 
-                onClick={toggleTheme}
-                className={`p-3 rounded-xl transition-all duration-300 hover:scale-110 ${isDarkMode ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/30' : 'bg-amber-100 hover:bg-amber-200 text-amber-700 border border-amber-300'}`}
-              >
-                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
-              <button 
                 onClick={handleLogout} 
-                className={`group flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all duration-300 hover:scale-105 ${isDarkMode ? 'bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300' : 'bg-red-100 hover:bg-red-200 border border-red-300 text-red-700'}`}
+                className="group flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all duration-300 hover:scale-105 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300"
               >
                 <LogOut className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
                 <span>Çıkış Yap</span>
@@ -465,7 +462,7 @@ export default function AdminDashboard() {
           {tabCategories.map((category, catIndex) => (
             <div 
               key={catIndex} 
-              className={`backdrop-blur-xl border rounded-2xl p-4 transition-all duration-300 hover:scale-[1.02] ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white/70 border-gray-200 hover:bg-white/90'}`}
+              className={`backdrop-blur-xl border rounded-2xl p-4 transition-all duration-300 hover:scale-[1.02] ${'bg-white/5 border-white/10 hover:bg-white/10'}`}
             >
               <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-linear-to-r ${category.gradient} text-white text-sm font-semibold mb-3`}>
                 <category.icon className="w-4 h-4" />
@@ -479,9 +476,7 @@ export default function AdminDashboard() {
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
                       activeTab === tab.id
                         ? `bg-linear-to-r ${category.gradient} text-white shadow-lg`
-                        : isDarkMode
-                          ? 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
-                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-300'
+                        : 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
                     }`}
                   >
                     <span>{tab.icon}</span>
@@ -499,12 +494,12 @@ export default function AdminDashboard() {
             {statsCards.map((stat, index) => (
               <div 
                 key={index}
-                className={`backdrop-blur-xl border rounded-2xl p-6 transition-all duration-500 hover:scale-105 hover:shadow-2xl ${isDarkMode ? 'bg-white/10 border-white/20' : 'bg-white/80 border-gray-200'}`}
+                className={`backdrop-blur-xl border rounded-2xl p-6 transition-all duration-500 hover:scale-105 hover:shadow-2xl ${'bg-white/10 border-white/20'}`}
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-slate-700'}`}>{stat.label}</p>
-                    <p className={`text-3xl font-bold mt-1 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                    <p className={`text-sm font-medium ${'text-gray-400'}`}>{stat.label}</p>
+                    <p className={`text-3xl font-bold mt-1 ${'text-white'}`}>
                       {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : stat.value}
                     </p>
                   </div>
@@ -519,9 +514,9 @@ export default function AdminDashboard() {
 
         {/* Content Area */}
         {activeTab !== 'overview' && (
-          <div className={`backdrop-blur-xl border rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 ${isDarkMode ? 'bg-white/10 border-white/20' : 'bg-white/80 border-gray-200'}`}>
+          <div className={`backdrop-blur-xl border rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 ${'bg-white/10 border-white/20'}`}>
             {/* Filter Bar */}
-            <div className={`p-4 border-b ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-white/60'}`}>
+            <div className={`p-4 border-b ${'border-white/10 bg-white/5'}`}>
               <div className="flex flex-wrap items-center justify-between gap-4">
                 {/* Event Filters */}
                 {activeTab === 'events' && (
@@ -538,9 +533,7 @@ export default function AdminDashboard() {
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
                           eventFilter === filter.value
                             ? 'bg-linear-to-r from-blue-500 to-indigo-600 text-white shadow-lg'
-                            : isDarkMode
-                              ? 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
-                              : 'bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-300'
+                            : 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
                         }`}
                       >
                         {filter.label}
@@ -565,9 +558,7 @@ export default function AdminDashboard() {
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
                           userRoleFilter === filter.value
                             ? 'bg-linear-to-r from-blue-500 to-indigo-600 text-white shadow-lg'
-                            : isDarkMode
-                              ? 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
-                              : 'bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-300'
+                            : 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
                         }`}
                       >
                         {filter.label}
@@ -580,17 +571,13 @@ export default function AdminDashboard() {
 
                 {/* Search */}
                 <div className="relative">
-                  <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`} />
+                  <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${'text-slate-400'}`} />
                   <input
                     type="text"
                     placeholder="Ara..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className={`pl-10 pr-4 py-2 rounded-xl border w-64 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
-                      isDarkMode 
-                        ? 'bg-slate-700/60 border-slate-600/50 text-slate-200 placeholder-slate-400' 
-                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                    }`}
+                    className="pl-10 pr-4 py-2 rounded-xl border w-64 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 bg-slate-700/60 border-slate-600/50 text-slate-200 placeholder-slate-400"
                   />
                 </div>
               </div>
@@ -605,7 +592,7 @@ export default function AdminDashboard() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className={`${isDarkMode ? 'bg-linear-to-r from-blue-600 to-indigo-600' : 'bg-linear-to-r from-blue-500 to-indigo-500'}`}>
+                    <tr className={`${'bg-linear-to-r from-blue-600 to-indigo-600'}`}>
                       <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">ID</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Başlık / İsim</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Detay</th>
@@ -616,14 +603,36 @@ export default function AdminDashboard() {
                     {displayData.map((item, index) => (
                       <tr 
                         key={item.archiveId || item.originalId || item.id || index}
-                        className={`transition-all duration-300 ${isDarkMode ? 'hover:bg-slate-700/30' : 'hover:bg-gray-50'}`}
+                        className={`transition-all duration-300 ${'hover:bg-slate-700/30'}`}
                       >
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${'text-slate-300'}`}>
                           {String(item.archiveId || item.originalId || item.id || item.userId || 'N/A').substring(0, 8)}...
                         </td>
-                        <td className={`px-6 py-4 ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>
+                        <td className={`px-6 py-4 ${'text-slate-100'}`}>
                           {activeTab === 'users' && item.email}
-                          {activeTab === 'academicians' && `${item.title || ''} ${item.firstName} ${item.lastName}`}
+                          {activeTab === 'academicians' && (
+                            <div className="flex items-center gap-3">
+                              {item.idCardImageUrl ? (
+                                <img 
+                                  src={item.idCardImageUrl} 
+                                  alt="Kimlik Fotoğrafı" 
+                                  className="w-12 h-12 rounded-lg object-cover border-2 border-blue-500/30 shadow-lg cursor-pointer hover:border-blue-500 hover:scale-110 transition-all" 
+                                  onClick={() => {
+                                    setSelectedImage(item.idCardImageUrl);
+                                    setIsImageModalOpen(true);
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-12 h-12 rounded-lg bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
+                                  {item.firstName?.charAt(0)}{item.lastName?.charAt(0)}
+                                </div>
+                              )}
+                              <div>
+                                <p className="font-medium">{`${item.title || ''} ${item.firstName} ${item.lastName}`}</p>
+                                <p className={`text-xs ${'text-gray-400'}`}>{item.email}</p>
+                              </div>
+                            </div>
+                          )}
                           {activeTab === 'clubOfficials' && `${item.firstName} ${item.lastName}`}
                           {activeTab === 'clubs' && item.clubName}
                           {activeTab === 'events' && (
@@ -631,7 +640,7 @@ export default function AdminDashboard() {
                               <img src={item.imageUrl || '/placeholder-event.jpg'} alt="" className="w-10 h-10 rounded-lg object-cover" />
                               <div>
                                 <p className="font-medium">{item.title || item.eventName}</p>
-                                <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-slate-600'}`}>{item.clubName}</p>
+                                <p className={`text-xs ${'text-gray-400'}`}>{item.clubName}</p>
                               </div>
                             </div>
                           )}
@@ -644,7 +653,7 @@ export default function AdminDashboard() {
                               )}
                               <div>
                                 <p className="font-medium">{item.name}</p>
-                                <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-slate-600'}`}>{item.memberCount} üye</p>
+                                <p className={`text-xs ${'text-gray-400'}`}>{item.memberCount} üye</p>
                               </div>
                             </div>
                           )}
@@ -654,29 +663,36 @@ export default function AdminDashboard() {
                             </span>
                           )}
                         </td>
-                        <td className={`px-6 py-4 text-sm ${isDarkMode ? 'text-gray-400' : 'text-slate-700'}`}>
+                        <td className={`px-6 py-4 text-sm ${'text-gray-400'}`}>
                           {activeTab === 'users' && (
                             <div className="flex flex-wrap gap-1">
                               {(item.roles || []).map((role, i) => (
-                                <span key={i} className={`px-2 py-0.5 rounded-full text-xs ${isDarkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                                <span key={i} className={`px-2 py-0.5 rounded-full text-xs ${'bg-blue-500/20 text-blue-300'}`}>
                                   {String(role).replace('ROLE_', '')}
                                 </span>
                               ))}
                             </div>
                           )}
-                          {activeTab === 'academicians' && item.department}
+                          {activeTab === 'academicians' && (
+                            <div>
+                              <p className="font-medium text-slate-200">{item.department}</p>
+                              <p className={`text-xs ${'text-gray-400'} mt-1`}>
+                                {item.university || 'Bilgi Yok'}
+                              </p>
+                            </div>
+                          )}
                           {activeTab === 'clubOfficials' && item.email}
                           {activeTab === 'clubs' && (item.description?.substring(0, 50) + '...')}
                           {activeTab === 'events' && (
                             <div>
                               <p>{parseDate(item)?.toLocaleDateString('tr-TR') || 'Tarih Yok'}</p>
-                              <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-slate-600'}`}>{item.location || 'Online'}</p>
+                              <p className={`text-xs ${'text-gray-500'}`}>{item.location || 'Online'}</p>
                               <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${
                                 item.status === 'ACTIVE' || item.status === 'APPROVED' 
-                                  ? isDarkMode ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-700'
+                                  ? 'bg-emerald-500/20 text-emerald-300'
                                   : item.status === 'PENDING' 
-                                    ? isDarkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700'
-                                    : isDarkMode ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700'
+                                    ? 'bg-amber-500/20 text-amber-300'
+                                    : 'bg-red-500/20 text-red-300'
                               }`}>
                                 {item.status === 'ACTIVE' || item.status === 'APPROVED' ? (parseDate(item) && parseDate(item) < new Date() ? 'GEÇMİŞ' : 'ONAYLI') : item.status === 'PENDING' ? 'BEKLİYOR' : 'REDDEDİLDİ'}
                               </span>
@@ -733,10 +749,10 @@ export default function AdminDashboard() {
                               </>
                             )}
                             {(activeTab === 'inactiveClubs' || activeTab === 'inactiveStudents' || activeTab === 'inactiveAcademicians') && (
-                              <span className={`text-sm ${isDarkMode ? 'text-gray-500' : 'text-slate-500'}`}>Arşivlendi</span>
+                              <span className={`text-sm ${'text-gray-500'}`}>Arşivlendi</span>
                             )}
                             {activeTab === 'events' && item.status !== 'PENDING' && (
-                              <span className={`text-sm ${isDarkMode ? 'text-gray-500' : 'text-slate-500'}`}>—</span>
+                              <span className={`text-sm ${'text-gray-500'}`}>—</span>
                             )}
                           </div>
                         </td>
@@ -753,7 +769,7 @@ export default function AdminDashboard() {
       {/* Board Modal */}
       {isBoardModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className={`w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden ${isDarkMode ? 'bg-slate-800' : 'bg-white'}`}>
+          <div className={`w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden ${'bg-slate-800'}`}>
             <div className="p-6 bg-linear-to-r from-blue-500 to-indigo-600">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-white">{selectedClubName} - Yönetim Kurulu</h3>
@@ -766,9 +782,9 @@ export default function AdminDashboard() {
               {boardMembers.length > 0 ? (
                 <div className="space-y-3">
                   {boardMembers.map((member, index) => (
-                    <div key={index} className={`flex items-center justify-between p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-slate-100'}`}>
-                      <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>{member.firstName} {member.lastName}</span>
-                      <span className={`px-3 py-1 rounded-full text-xs ${member.role.includes('PRESIDENT') ? (isDarkMode ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-700') : (isDarkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700')}`}>
+                    <div key={index} className={`flex items-center justify-between p-4 rounded-xl ${'bg-white/5'}`}>
+                      <span className={'text-white'}>{member.firstName} {member.lastName}</span>
+                      <span className={`px-3 py-1 rounded-full text-xs ${member.role.includes('PRESIDENT') ? ('bg-emerald-500/20 text-emerald-300') : ('bg-amber-500/20 text-amber-300')}`}>
                         {member.role.replace('CLUB_', '').replace('_', ' ')}
                       </span>
                     </div>
@@ -778,7 +794,7 @@ export default function AdminDashboard() {
                 <EmptyState message="Bu kulüpte kayıtlı yetkili bulunamadı." />
               )}
             </div>
-            <div className={`p-4 border-t ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
+            <div className={`p-4 border-t ${'border-white/10'}`}>
               <button onClick={() => setIsBoardModalOpen(false)} className="w-full py-2 rounded-xl bg-linear-to-r from-blue-500 to-indigo-600 text-white font-medium hover:shadow-lg transition-all">
                 Kapat
               </button>
@@ -790,7 +806,7 @@ export default function AdminDashboard() {
       {/* President Change Modal */}
       {isPresidentModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className={`w-full max-w-md rounded-2xl shadow-2xl overflow-hidden ${isDarkMode ? 'bg-slate-800' : 'bg-white'}`}>
+          <div className={`w-full max-w-md rounded-2xl shadow-2xl overflow-hidden ${'bg-slate-800'}`}>
             <div className="p-6 bg-linear-to-r from-amber-500 to-orange-600">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2"><Crown className="w-6 h-6" /> Başkan Değiştir</h3>
@@ -800,22 +816,22 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="p-6">
-              <div className={`p-4 rounded-xl mb-4 ${isDarkMode ? 'bg-white/5' : 'bg-slate-100'}`}>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-slate-600'}`}>Kulüp: <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>{selectedClubForPresident?.name}</span></p>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-slate-600'}`}>Mevcut Başkan: <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>{selectedClubForPresident?.presidentName}</span></p>
+              <div className={`p-4 rounded-xl mb-4 ${'bg-white/5'}`}>
+                <p className={`text-sm ${'text-gray-400'}`}>Kulüp: <span className={'text-white'}>{selectedClubForPresident?.name}</span></p>
+                <p className={`text-sm ${'text-gray-400'}`}>Mevcut Başkan: <span className={'text-white'}>{selectedClubForPresident?.presidentName}</span></p>
               </div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-slate-700'}`}>Yeni Başkanın Öğrenci ID'si (UUID)</label>
+              <label className={`block text-sm font-medium mb-2 ${'text-gray-300'}`}>Yeni Başkanın Öğrenci ID'si (UUID)</label>
               <input
                 type="text"
                 value={newPresidentId}
                 onChange={(e) => setNewPresidentId(e.target.value)}
                 placeholder="a1b2c3d4-e5f6-7890-..."
-                className={`w-full px-4 py-3 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${isDarkMode ? 'bg-white/10 border-white/20 text-white placeholder-gray-400' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'}`}
+                className={`w-full px-4 py-3 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${'bg-white/10 border-white/20 text-white placeholder-gray-400'}`}
               />
-              <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-500' : 'text-slate-600'}`}>⚠️ Yeni başkanın kulüp üyesi olduğundan emin olun.</p>
+              <p className={`text-xs mt-2 ${'text-gray-500'}`}>⚠️ Yeni başkanın kulüp üyesi olduğundan emin olun.</p>
             </div>
-            <div className={`p-4 border-t flex gap-3 ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
-              <button onClick={() => { setIsPresidentModalOpen(false); setNewPresidentId(''); setSelectedClubForPresident(null); }} className={`flex-1 py-2 rounded-xl border transition-all ${isDarkMode ? 'border-white/20 text-gray-300 hover:bg-white/10' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}>
+            <div className={`p-4 border-t flex gap-3 ${'border-white/10'}`}>
+              <button onClick={() => { setIsPresidentModalOpen(false); setNewPresidentId(''); setSelectedClubForPresident(null); }} className={`flex-1 py-2 rounded-xl border transition-all ${'border-white/20 text-gray-300 hover:bg-white/10'}`}>
                 İptal
               </button>
               <button onClick={confirmChangePresident} className="flex-1 py-2 rounded-xl bg-linear-to-r from-amber-500 to-orange-600 text-white font-medium hover:shadow-lg transition-all">
@@ -829,7 +845,7 @@ export default function AdminDashboard() {
       {/* Delete Club Modal */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className={`w-full max-w-md rounded-2xl shadow-2xl overflow-hidden ${isDarkMode ? 'bg-slate-800' : 'bg-white'}`}>
+          <div className={`w-full max-w-md rounded-2xl shadow-2xl overflow-hidden ${'bg-slate-800'}`}>
             <div className="p-6 bg-linear-to-r from-red-500 to-rose-600">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2"><AlertCircle className="w-6 h-6" /> Kulübü Kapat</h3>
@@ -841,21 +857,51 @@ export default function AdminDashboard() {
             <div className="p-6">
               <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 mb-4">
                 <p className="text-sm text-red-400 flex items-center gap-2"><AlertCircle className="w-4 h-4" /> <strong>Dikkat:</strong> Bu işlem geri alınamaz!</p>
-                <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-slate-700'}`}>Kulüp kapatıldığında tüm üyelikler ve veriler silinecektir.</p>
+                <p className={`text-sm mt-1 ${'text-gray-400'}`}>Kulüp kapatıldığında tüm üyelikler ve veriler silinecektir.</p>
               </div>
-              <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-slate-100'}`}>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-slate-600'}`}>Kulüp Adı: <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>{selectedClubForDelete?.name}</span></p>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-slate-600'}`}>Başkan: <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>{selectedClubForDelete?.presidentName}</span></p>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-slate-600'}`}>Üye Sayısı: <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>{selectedClubForDelete?.memberCount}</span></p>
+              <div className={`p-4 rounded-xl ${'bg-white/5'}`}>
+                <p className={`text-sm ${'text-gray-400'}`}>Kulüp Adı: <span className={'text-white'}>{selectedClubForDelete?.name}</span></p>
+                <p className={`text-sm ${'text-gray-400'}`}>Başkan: <span className={'text-white'}>{selectedClubForDelete?.presidentName}</span></p>
+                <p className={`text-sm ${'text-gray-400'}`}>Üye Sayısı: <span className={'text-white'}>{selectedClubForDelete?.memberCount}</span></p>
               </div>
             </div>
-            <div className={`p-4 border-t flex gap-3 ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
-              <button onClick={() => { setIsDeleteModalOpen(false); setSelectedClubForDelete(null); }} className={`flex-1 py-2 rounded-xl border transition-all ${isDarkMode ? 'border-white/20 text-gray-300 hover:bg-white/10' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}>
+            <div className={`p-4 border-t flex gap-3 ${'border-white/10'}`}>
+              <button onClick={() => { setIsDeleteModalOpen(false); setSelectedClubForDelete(null); }} className={`flex-1 py-2 rounded-xl border transition-all ${'border-white/20 text-gray-300 hover:bg-white/10'}`}>
                 İptal
               </button>
               <button onClick={confirmDeleteClub} className="flex-1 py-2 rounded-xl bg-linear-to-r from-red-500 to-rose-600 text-white font-medium hover:shadow-lg transition-all">
                 Kulübü Kapat
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Preview Modal */}
+      {isImageModalOpen && selectedImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+          onClick={() => setIsImageModalOpen(false)}
+        >
+          <div 
+            className="relative max-w-4xl max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute top-4 right-4 z-10">
+              <button 
+                onClick={() => setIsImageModalOpen(false)}
+                className="p-2 rounded-full bg-red-500/80 hover:bg-red-500 text-white transition-all shadow-lg hover:scale-110"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <img 
+              src={selectedImage} 
+              alt="Kimlik Fotoğrafı Önizleme" 
+              className="max-w-full max-h-[90vh] object-contain"
+            />
+            <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent p-4">
+              <p className="text-white text-center font-medium">Akademisyen Kimlik Fotoğrafı</p>
             </div>
           </div>
         </div>

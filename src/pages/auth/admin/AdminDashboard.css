@@ -1,111 +1,129 @@
-/* ==================== MODERN ADMIN DASHBOARD STYLES ==================== */
+/* ==================== MODERN ADMIN DASHBOARD - DARK MODE ONLY ==================== */
+/* Bu CSS dosyası sadece animasyonlar için gereklidir */
+/* Tüm stil kuralları Tailwind CSS ile inline olarak uygulanmıştır */
 
-/* ==================== THEME VARIABLES ==================== */
-:root {
-  /* Light Mode Colors */
-  --light-bg-primary: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  --light-bg-secondary: rgba(255, 255, 255, 0.9);
-  --light-text-primary: #1e293b;
-  --light-text-secondary: #64748b;
-  --light-border: #e2e8f0;
-  --light-accent: #3b82f6;
-  --light-accent-hover: #2563eb;
-  --light-shadow: rgba(0, 0, 0, 0.1);
-  
-  /* Dark Mode Colors */
-  --dark-bg-primary: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  --dark-bg-secondary: rgba(30, 41, 59, 0.9);
-  --dark-text-primary: #f1f5f9;
-  --dark-text-secondary: #94a3b8;
-  --dark-border: #334155;
-  --dark-accent: #3b82f6;
-  --dark-accent-hover: #60a5fa;
-  --dark-shadow: rgba(0, 0, 0, 0.3);
+/* ==================== ANIMATIONS ==================== */
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* Ana Container */
-.admin-dashboard {
-  min-height: 100vh;
-  background: var(--light-bg-primary);
-  padding: 2rem;
-  transition: background 0.3s ease;
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.admin-dashboard.dark-mode {
-  background: var(--dark-bg-primary);
+@keyframes slideInScale {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-/* Header Container for Theme Toggle and Logout */
-.admin-header {
-  position: fixed;
-  top: 2rem;
-  right: 2rem;
-  z-index: 1000;
-  display: flex;
-  gap: 1rem;
-  align-items: center;
+@keyframes gradientFlow {
+  0% { 
+    background-position: 0% 0%; 
+  }
+  100% { 
+    background-position: 200% 0%; 
+  }
 }
 
-/* Theme Toggle Button */
-.theme-toggle {
-  background: rgba(255, 255, 255, 0.9);
-  border: 2px solid #e2e8f0;
-  border-radius: 9999px;
-  padding: 0.75rem;
-  cursor: pointer;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 3.5rem;
-  height: 3.5rem;
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  }
+  50% {
+    box-shadow: 0 8px 32px rgba(139, 92, 246, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+  }
 }
 
-.admin-dashboard.dark-mode .theme-toggle {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: #334155;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.theme-toggle:hover {
-  transform: scale(1.1) rotate(15deg);
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+@keyframes pulse {
+  0%, 100% { 
+    transform: scale(1); 
+  }
+  50% { 
+    transform: scale(1.1); 
+  }
 }
 
-.theme-toggle svg {
-  width: 1.5rem;
-  height: 1.5rem;
-  color: #3b82f6;
-  transition: all 0.3s ease;
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+  }
+  to { 
+    opacity: 1; 
+  }
 }
 
-.admin-dashboard.dark-mode .theme-toggle svg {
-  color: #60a5fa;
+@keyframes fadeInRow {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-/* Logout Button */
-.logout-button {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  border: none;
-  border-radius: 12px;
-  padding: 0.75rem 1.5rem;
-  cursor: pointer;
-  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: white;
-  font-weight: 600;
-  font-size: 0.95rem;
+@keyframes bounceIn {
+  0% { 
+    transform: scale(0); 
+  }
+  50% { 
+    transform: scale(1.1); 
+  }
+  100% { 
+    transform: scale(1); 
+  }
 }
 
-.logout-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
+
+@keyframes spin {
+  to { 
+    transform: rotate(360deg); 
+  }
+}
+
 
 .logout-button:active {
   transform: translateY(0);
