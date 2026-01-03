@@ -4,6 +4,7 @@ import Register from './pages/auth/Register';
 import AdminDashboard from './pages/auth/admin/AdminDashboard';
 import StudentDashboard from './pages/student/StudentDashboard';
 import InstructorDashboard from './pages/instructor/InstructorDashboard';
+import ClubOfficialDashboard from './pages/clubofficial/ClubOfficialDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -39,6 +40,16 @@ function App() {
         element={
           <ProtectedRoute allowedRoles={['ROLE_INSTRUCTOR', 'ROLE_ACADEMICIAN']}>
             <InstructorDashboard />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Kulüp Yetkilisi Rotası */}
+      <Route 
+        path="/clubofficial/dashboard" 
+        element={
+          <ProtectedRoute allowedRoles={['ROLE_CLUB_OFFICIAL']}>
+            <ClubOfficialDashboard />
           </ProtectedRoute>
         } 
       />

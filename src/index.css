@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Reset Tailwind's input color inheritance */
+input, textarea, select {
+  color: #1e293b;
+  background-color: white;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #94a3b8;
+}
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;

@@ -61,6 +61,8 @@ export default function Login() {
             navigate('/student/dashboard');
           } else if (role === 'ROLE_INSTRUCTOR' || role === 'ROLE_ACADEMICIAN') {
             navigate('/instructor/dashboard');
+          } else if (role === 'ROLE_CLUB_OFFICIAL') {
+            navigate('/clubofficial/dashboard');
           } else {
             navigate('/dashboard');
           }
