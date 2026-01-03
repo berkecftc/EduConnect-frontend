@@ -457,7 +457,7 @@
   display: block;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #334155;
+  color: #0f172a !important;
   margin-bottom: 0.5rem;
 }
 
@@ -472,24 +472,26 @@
   left: 1rem;
   width: 20px;
   height: 20px;
-  color: #94a3b8;
+  color: #64748b;
   pointer-events: none;
   transition: color 0.3s ease;
 }
 
 .form-input {
   width: 100%;
-  padding: 0.875rem 1rem 0.875rem 3rem;
-  border: 2px solid #e2e8f0;
+  padding: 0.875rem 1rem 0.875rem 3.5rem !important;
+  border: 2px solid #cbd5e1;
   border-radius: 12px;
   font-size: 1rem;
-  color: #1e293b;
-  background: white;
+  color: #020617 !important;
+  background-color: #ffffff !important;
   transition: all 0.3s ease;
+  color-scheme: light;
 }
 
 .form-input::placeholder {
-  color: #cbd5e1;
+  color: #64748b !important;
+  opacity: 1;
 }
 
 .form-input:focus {
