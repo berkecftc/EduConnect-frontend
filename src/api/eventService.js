@@ -21,8 +21,15 @@ export const getMyEvents = async () => {
 
 // Kulüp Yetkilisi - Etkinliğe Kayıtlılar
 export const getEventRegistrations = async (eventId) => {
-  const response = await api.get(`/events/manage/${eventId}/registrations`);
-  return response.data;
+  try {
+    console.log(`Etkinlik kayıtları getiriliyor: GET /api/events/manage/${eventId}/registrations`);
+    const response = await api.get(`/events/manage/${eventId}/registrations`);
+    console.log('Etkinlik kayıtları API yanıtı:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Etkinlik kayıtları API hatası:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 // Kulüp Yetkilisi - Etkinlik Oluştur
@@ -83,14 +90,33 @@ export const getAllClubEvents = async () => {
 
 // Öğrenci - Katılım isteği gönder
 export const sendParticipationRequest = async (eventId) => {
-  const response = await api.post(`/events/${eventId}/participation-request`);
-  return response.data;
+  try {
+    console.log(`Katılım isteği gönderiliyor: POST /api/events/${eventId}/participation-request`);
+    const response = await api.post(`/events/${eventId}/participation-request`);
+    console.log('Katılım isteği yanıtı:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Katılım isteği hatası:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message
+    });
+    throw error;
+  }
 };
 
 // Öğrenci - Kendi katılım isteklerimi görüntüle
 export const getMyParticipationRequests = async () => {
-  const response = await api.get('/events/my-participation-requests');
-  return response.data;
+  try {
+    console.log('Katılım istekleri getiriliyor: GET /api/events/my-participation-requests');
+    const response = await api.get('/events/my-participation-requests');
+    console.log('Katılım istekleri API yanıtı:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Katılım istekleri API hatası:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 // ==================== KULÜP YETKİLİSİ - KATILIM İSTEKLERİ ====================

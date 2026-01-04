@@ -175,8 +175,11 @@ function ClubOfficialDashboard() {
     setLoading(prev => ({ ...prev, eventRegistrations: true }));
     try {
       const response = await getEventRegistrations(eventId);
+      console.log('Etkinlik kayıtları (raw):', response);
+      console.log('İlk kayıt örneği:', response?.[0]);
       setEventRegistrations(response || []);
     } catch (error) {
+      console.error('Kayıtlar yüklenirken hata:', error);
       setErrors(prev => ({ ...prev, eventRegistrations: 'Kayıtlar yüklenemedi' }));
     } finally {
       setLoading(prev => ({ ...prev, eventRegistrations: false }));
@@ -332,7 +335,14 @@ function ClubOfficialDashboard() {
     try {
       await approveParticipationRequest(requestId);
       setSuccessMessage('Katılım isteği onaylandı!');
-      fetchEventParticipationRequests();
+      
+      // Bekleyen istekleri güncelle
+      await fetchEventParticipationRequests();
+      
+      // Eğer bir etkinlik seçiliyse, o etkinliğin kayıtlarını da güncelle
+      if (selectedEventId) {
+        await fetchEventRegistrations(selectedEventId);
+      }
     } catch (error) {
       setErrors(prev => ({ 
         ...prev, 
@@ -349,7 +359,14 @@ function ClubOfficialDashboard() {
     try {
       await rejectParticipationRequest(requestId);
       setSuccessMessage('Katılım isteği reddedildi');
-      fetchEventParticipationRequests();
+      
+      // Bekleyen istekleri güncelle
+      await fetchEventParticipationRequests();
+      
+      // Eğer bir etkinlik seçiliyse, o etkinliğin kayıtlarını da güncelle
+      if (selectedEventId) {
+        await fetchEventRegistrations(selectedEventId);
+      }
     } catch (error) {
       setErrors(prev => ({ 
         ...prev, 
@@ -707,13 +724,61 @@ function ClubOfficialDashboard() {
                  errors.eventRegistrations ? <ErrorState message={errors.eventRegistrations} /> :
                  eventRegistrations.length === 0 ? <EmptyState message="Kayıtlı katılımcı yok" /> : (
                   <div className="scrollable-list">
-                    {eventRegistrations.map((reg, index) => (
-                      <div key={reg.id || index} className="list-item">
-                        <h3 className="item-title">{reg.studentName || reg.name}</h3>
-                        <p className="item-subtitle">{reg.email}</p>
-                        <span className={`status-badge ${reg.attended ? 'success' : 'warning'}`}>{reg.attended ? 'Katıldı' : 'Bekliyor'}</span>
-                      </div>
-                    ))}
+                    {eventRegistrations.map((reg, index) => {
+                      // Backend'den gelebilecek farklı veri formatlarını destekle
+                      // firstName ve lastName varsa birleştir
+                      let studentName = '';
+                      if (reg.firstName || reg.lastName) {
+                        studentName = `${reg.firstName || ''} ${reg.lastName || ''}`.trim();
+                      } else {
+                        studentName = reg.studentName || 
+                                     reg.student?.name || 
+                                     reg.student?.fullName ||
+                                     reg.name || 
+                                     reg.user?.name ||
+                                     reg.user?.fullName ||
+                                     (reg.student?.firstName && reg.student?.lastName 
+                                       ? `${reg.student.firstName} ${reg.student.lastName}`.trim()
+                                       : 'İsimsiz Katılımcı');
+                      }
+                      
+                      const studentEmail = reg.email || 
+                                          reg.studentEmail ||
+                                          reg.student?.email || 
+                                          reg.user?.email ||
+                                          'Email bilgisi yok';
+                      
+                      const studentId = reg.studentId || 
+                                       reg.student?.id || 
+                                       reg.userId ||
+                                       reg.user?.id;
+                      
+                      const department = reg.department || 
+                                        reg.student?.department ||
+                                        null;
+                      
+                      console.log('Kayıt detayı:', { 
+                        raw: reg, 
+                        parsed: { studentName, studentEmail, studentId, department } 
+                      });
+                      
+                      return (
+                        <div key={reg.id || index} className="list-item">
+                          <div className="flex-1">
+                            <h3 className="item-title">{studentName}</h3>
+                            <p className="item-subtitle">{studentEmail || 'Email bilgisi yok'}</p>
+                            {department && (
+                              <p className="item-subtitle text-xs text-indigo-300/70">
+                                🎓 {department}
+                              </p>
+                            )}
+                          </div>
+                          <span className={`status-badge ${reg.attended ? 'success' : 'warning'}`}>
+                            {reg.attended ? 'Katıldı' : 'Bekliyor'}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

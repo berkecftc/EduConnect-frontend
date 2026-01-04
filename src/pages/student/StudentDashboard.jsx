@@ -164,8 +164,12 @@ function StudentDashboard() {
   const fetchParticipationRequests = async () => {
     try {
       const data = await getMyParticipationRequests();
-      console.log('Katılım isteklerim:', data);
-      setParticipationRequests(data);
+      console.log('Katılım isteklerim (raw):', data);
+      console.log('İlk istek örneği:', data?.[0]);
+      if (data?.[0]) {
+        console.log('İlk istek event bilgisi:', data[0].event);
+      }
+      setParticipationRequests(Array.isArray(data) ? data : []);
       
       // Kulüp etkinliklerini ayır (üye olduğum kulüplerin etkinlikleri)
       if (clubs.length > 0) {
@@ -177,6 +181,7 @@ function StudentDashboard() {
         setClubEvents(myClubEvents);
       }
     } catch (error) {
+      console.error('Katılım istekleri yüklenirken hata:', error);
       setErrors(prev => ({ ...prev, participationRequests: 'Katılım istekleri yüklenemedi' }));
     } finally {
       setLoading(prev => ({ ...prev, participationRequests: false }));
@@ -185,6 +190,7 @@ function StudentDashboard() {
 
   const handleSendParticipationRequest = async (eventId) => {
     try {
+      console.log('Katılım isteği gönderiliyor, eventId:', eventId);
       await sendParticipationRequest(eventId);
       setSuccessMessage('Katılım isteği başarıyla gönderildi');
       setTimeout(() => setSuccessMessage(''), 3000);
@@ -195,11 +201,17 @@ function StudentDashboard() {
       // Etkinliği manuel olarak listeden kaldır (state güncelleme beklemeden)
       setClubEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
     } catch (error) {
+      console.error('Katılım isteği gönderilirken hata:', error);
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error ||
+                          error.message || 
+                          'Katılım isteği gönderilemedi';
+      console.error('Hata mesajı:', errorMessage);
       setErrors(prev => ({ 
         ...prev, 
-        participationRequests: error.response?.data?.message || 'Katılım isteği gönderilemedi' 
+        participationRequests: errorMessage
       }));
-      setTimeout(() => setErrors(prev => ({ ...prev, participationRequests: null })), 3000);
+      setTimeout(() => setErrors(prev => ({ ...prev, participationRequests: null })), 5000);
     }
   };
 
@@ -565,6 +577,13 @@ function StudentDashboard() {
                 {clubEvents.length}
               </span>
             </div>
+            
+            {errors.participationRequests && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 text-sm">
+                ⚠️ {errors.participationRequests}
+              </div>
+            )}
+            
             <div className="max-h-64 overflow-y-auto">
               {loading.clubEvents ? <CardLoader /> :
                errors.clubEvents ? <ErrorState message={errors.clubEvents} /> :
@@ -655,8 +674,27 @@ function StudentDashboard() {
                participationRequests.length === 0 ? <EmptyState message="Henüz katılım isteği yok" /> : (
                 <div className="space-y-3">
                   {participationRequests.map((request, index) => {
-                    const eventData = request.event || {};
-                    const eventDate = eventData.eventTime || eventData.eventDate;
+                    // Backend'den gelen farklı veri formatlarını destekle
+                    const eventData = request.event || request.eventDto || {};
+                    
+                    // Etkinlik adı - önce request'in kendisine bak, sonra nested event'e
+                    const eventTitle = request.eventTitle ||
+                                      request.title ||
+                                      eventData.title || 
+                                      eventData.name || 
+                                      eventData.eventTitle ||
+                                      eventData.eventName ||
+                                      'Etkinlik';
+                    
+                    // Etkinlik tarihi - önce request'in kendisine bak
+                    const eventDate = request.eventTime ||
+                                     request.eventDate || 
+                                     request.date ||
+                                     eventData.eventTime || 
+                                     eventData.eventDate || 
+                                     eventData.date ||
+                                     eventData.time;
+                    
                     let formattedDate = 'Tarih belirtilmemiş';
                     
                     if (eventDate) {
@@ -675,17 +713,36 @@ function StudentDashboard() {
                         console.error('Tarih parse hatası:', e);
                       }
                     }
+                    
+                    // Konum bilgisi - önce request'in kendisine bak
+                    const location = request.location ||
+                                    request.eventLocation ||
+                                    eventData.location || 
+                                    eventData.venue ||
+                                    eventData.place ||
+                                    'Konum belirtilmemiş';
+                    
+                    // Debug log
+                    console.log('Katılım isteği detayı:', {
+                      request,
+                      parsed: { eventTitle, formattedDate, location, eventDate }
+                    });
 
                     return (
                       <div 
                         key={request.id || index}
                         className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300"
                       >
-                        <h3 className="font-medium text-white">{eventData.title || 'Etkinlik'}</h3>
-                        <p className="text-sm text-purple-200/60 mt-1">{formattedDate}</p>
+                        <h3 className="font-medium text-white">{eventTitle}</h3>
+                        <p className="text-sm text-purple-200/60 mt-1">📅 {formattedDate}</p>
                         <p className="text-xs text-purple-200/50 mt-1">
-                          📍 {eventData.location || 'Konum belirtilmemiş'}
+                          📍 {location}
                         </p>
+                        {request.studentName && (
+                          <p className="text-xs text-indigo-300/70 mt-1">
+                            👤 {request.studentName}
+                          </p>
+                        )}
                         <div className="flex items-center justify-between mt-2">
                           <span className={`inline-block px-2 py-0.5 rounded-md text-xs ${
                             request.status === 'PENDING' ? 'bg-amber-500/20 text-amber-300' :
@@ -695,9 +752,9 @@ function StudentDashboard() {
                             {request.status === 'PENDING' ? '⏳ Bekliyor' :
                              request.status === 'APPROVED' ? '✅ Onaylandı' : '❌ Reddedildi'}
                           </span>
-                          {request.requestDate && (
+                          {(request.requestDate || request.createdAt || request.requestedAt) && (
                             <span className="text-xs text-purple-200/50">
-                              {new Date(request.requestDate).toLocaleDateString('tr-TR')}
+                              {new Date(request.requestDate || request.createdAt || request.requestedAt).toLocaleDateString('tr-TR')}
                             </span>
                           )}
                         </div>
