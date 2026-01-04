@@ -5,6 +5,7 @@ import AdminDashboard from './pages/auth/admin/AdminDashboard';
 import StudentDashboard from './pages/student/StudentDashboard';
 import InstructorDashboard from './pages/instructor/InstructorDashboard';
 import ClubOfficialDashboard from './pages/clubofficial/ClubOfficialDashboard';
+import ClubList from './pages/club/ClubList';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -30,6 +31,16 @@ function App() {
         element={
           <ProtectedRoute allowedRoles={['ROLE_STUDENT']}>
             <StudentDashboard />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Kulüpler Listesi (Öğrenciler için) */}
+      <Route 
+        path="/clubs" 
+        element={
+          <ProtectedRoute allowedRoles={['ROLE_STUDENT']}>
+            <ClubList />
           </ProtectedRoute>
         } 
       />

@@ -279,6 +279,10 @@
   background: linear-gradient(135deg, #14b8a6, #0d9488);
 }
 
+.icon-container.orange {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
 /* Count Badges */
 .count-badge {
   padding: 0.25rem 0.75rem;
@@ -325,6 +329,11 @@
 .count-badge.teal {
   background: rgba(20, 184, 166, 0.2);
   color: #5eead4;
+}
+
+.count-badge.orange {
+  background: rgba(249, 115, 22, 0.2);
+  color: #fdba74;
 }
 
 /* Scrollable List */

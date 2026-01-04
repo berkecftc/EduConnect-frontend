@@ -2,7 +2,15 @@ import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../store/slices/authSlice';
-import { getMyManagedClubs, getClubBoardMembers, getMyMemberships } from '../../api/clubService';
+import { 
+  getMyManagedClubs, 
+  getClubBoardMembers, 
+  getMyMemberships,
+  getPendingMembershipRequests,
+  getPendingMembershipRequestCount,
+  approveMembershipRequest,
+  rejectMembershipRequest
+} from '../../api/clubService';
 import { getMyEvents, getEventRegistrations, createEvent, verifyQrCode, getMyRegistrations } from '../../api/eventService';
 import { getMyCourses } from '../../api/courseService';
 import { getMyAssignments } from '../../api/assignmentService';
@@ -21,7 +29,8 @@ import {
   Check,
   AlertCircle,
   X,
-  FileText
+  FileText,
+  UserPlus
 } from 'lucide-react';
 
 import './ClubOfficialDashboard.css';
@@ -37,6 +46,8 @@ function ClubOfficialDashboard() {
   const [myEvents, setMyEvents] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [eventRegistrations, setEventRegistrations] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [pendingCount, setPendingCount] = useState(0);
   
   const [courses, setCourses] = useState([]);
   const [assignments, setAssignments] = useState([]);
@@ -66,6 +77,8 @@ function ClubOfficialDashboard() {
     events: true,
     creatingEvent: false,
     verifyingQr: false,
+    pendingRequests: false,
+    approvingRequest: false,
   });
   
   const [errors, setErrors] = useState({
@@ -79,6 +92,7 @@ function ClubOfficialDashboard() {
     events: null,
     createEvent: null,
     verifyQr: null,
+    pendingRequests: null,
   });
 
   const [successMessage, setSuccessMessage] = useState('');
@@ -96,6 +110,8 @@ function ClubOfficialDashboard() {
   useEffect(() => {
     if (selectedClubId) {
       fetchBoardMembers(selectedClubId);
+      fetchPendingRequests(selectedClubId);
+      fetchPendingCount(selectedClubId);
     }
   }, [selectedClubId]);
 
@@ -116,6 +132,9 @@ function ClubOfficialDashboard() {
     try {
       const response = await getMyManagedClubs();
       console.log('Managed Clubs Response:', response);
+      if (response && response.length > 0) {
+        console.log('İlk yönetilen kulüp örneği:', response[0]);
+      }
       setManagedClubs(response || []);
     } catch (error) {
       setErrors(prev => ({ ...prev, managedClubs: 'Kulüpler yüklenemedi' }));
@@ -184,6 +203,10 @@ function ClubOfficialDashboard() {
   const fetchClubs = async () => {
     try {
       const response = await getMyMemberships();
+      console.log('Kulüp Başkanı - Kulüplerim verisi:', response);
+      if (response && response.length > 0) {
+        console.log('İlk kulüp membership örneği:', response[0]);
+      }
       setClubs(response || []);
     } catch (error) {
       setErrors(prev => ({ ...prev, clubs: 'Kulüpler yüklenemedi' }));
@@ -201,6 +224,59 @@ function ClubOfficialDashboard() {
       setErrors(prev => ({ ...prev, events: 'Etkinlikler yüklenemedi' }));
     } finally {
       setLoading(prev => ({ ...prev, events: false }));
+    }
+  };
+
+  const fetchPendingRequests = async (clubId) => {
+    setLoading(prev => ({ ...prev, pendingRequests: true }));
+    try {
+      const response = await getPendingMembershipRequests(clubId);
+      setPendingRequests(response || []);
+    } catch (error) {
+      setErrors(prev => ({ ...prev, pendingRequests: 'Üyelik istekleri yüklenemedi' }));
+    } finally {
+      setLoading(prev => ({ ...prev, pendingRequests: false }));
+    }
+  };
+
+  const fetchPendingCount = async (clubId) => {
+    try {
+      const response = await getPendingMembershipRequestCount(clubId);
+      setPendingCount(response?.count || 0);
+    } catch (error) {
+      console.error('Bekleyen istek sayısı alınamadı:', error);
+    }
+  };
+
+  const handleApproveRequest = async (requestId) => {
+    if (!selectedClubId) return;
+    
+    setLoading(prev => ({ ...prev, approvingRequest: true }));
+    try {
+      await approveMembershipRequest(selectedClubId, requestId);
+      setSuccessMessage('Üyelik isteği onaylandı!');
+      fetchPendingRequests(selectedClubId);
+      fetchPendingCount(selectedClubId);
+    } catch (error) {
+      setErrors(prev => ({ ...prev, pendingRequests: error.response?.data?.message || 'İstek onaylanamadı' }));
+    } finally {
+      setLoading(prev => ({ ...prev, approvingRequest: false }));
+    }
+  };
+
+  const handleRejectRequest = async (requestId) => {
+    if (!selectedClubId) return;
+    
+    setLoading(prev => ({ ...prev, approvingRequest: true }));
+    try {
+      await rejectMembershipRequest(selectedClubId, requestId);
+      setSuccessMessage('Üyelik isteği reddedildi');
+      fetchPendingRequests(selectedClubId);
+      fetchPendingCount(selectedClubId);
+    } catch (error) {
+      setErrors(prev => ({ ...prev, pendingRequests: error.response?.data?.message || 'İstek reddedilemedi' }));
+    } finally {
+      setLoading(prev => ({ ...prev, approvingRequest: false }));
     }
   };
 
@@ -394,10 +470,23 @@ function ClubOfficialDashboard() {
                       const clubId = clubData.id || club.clubId || club.id;
                       const clubName = clubData.name || clubData.clubName || club.clubName || 'İsimsiz Kulüp';
                       const clubDesc = clubData.description || club.description || '';
+                      const advisorName = clubData.advisorName || club.advisorName;
+                      const memberCount = clubData.memberCount || club.memberCount;
+                      
                       return (
                         <div key={clubId || index} onClick={() => setSelectedClubId(clubId)} className={`list-item ${selectedClubId === clubId ? 'selected' : ''}`}>
                           <h3 className="item-title">{clubName}</h3>
                           <p className="item-subtitle">{clubDesc}</p>
+                          {advisorName && (
+                            <p className="item-subtitle text-xs mt-1" style={{color: '#a5b4fc'}}>
+                              👨‍🏫 Danışman: {advisorName}
+                            </p>
+                          )}
+                          {memberCount !== undefined && (
+                            <span className="status-badge success text-xs mt-1">
+                              👥 {memberCount} üye
+                            </span>
+                          )}
                         </div>
                       );
                     })}
@@ -441,13 +530,85 @@ function ClubOfficialDashboard() {
                  errors.myEvents ? <ErrorState message={errors.myEvents} /> :
                  myEvents.length === 0 ? <EmptyState message="Henüz etkinlik oluşturmadınız" /> : (
                   <div className="scrollable-list">
-                    {myEvents.map((event, index) => (
-                      <div key={event.id || index} onClick={() => setSelectedEventId(event.id)} className={`list-item ${selectedEventId === event.id ? 'selected cyan' : ''}`}>
-                        <h3 className="item-title">{event.title || event.name}</h3>
-                        <p className="item-subtitle">{new Date(event.eventDate || event.date).toLocaleDateString('tr-TR')}</p>
-                        <p className="item-subtitle">{event.location}</p>
-                      </div>
-                    ))}
+                    {myEvents.map((event, index) => {
+                      // Tarih formatı düzeltmesi
+                      const eventDate = event.eventTime || event.eventDate || event.date;
+                      let formattedDate = 'Tarih belirtilmemiş';
+                      let eventStatus = 'upcoming'; // upcoming, past, cancelled, rejected
+                      
+                      if (eventDate) {
+                        try {
+                          // ISO 8601 formatını düzgün parse et
+                          let dateObj;
+                          
+                          // Eğer string ise
+                          if (typeof eventDate === 'string') {
+                            // ISO 8601 format (2026-01-15T19:00:00)
+                            dateObj = new Date(eventDate);
+                          } else {
+                            dateObj = new Date(eventDate);
+                          }
+                          
+                          if (!isNaN(dateObj.getTime())) {
+                            formattedDate = dateObj.toLocaleDateString('tr-TR', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            });
+                            
+                            // Etkinlik durumunu belirle - Şu anki zamanla karşılaştır
+                            const now = new Date();
+                            const eventLocalTime = dateObj.getTime();
+                            const nowLocalTime = now.getTime();
+                            
+                            if (eventLocalTime < nowLocalTime) {
+                              eventStatus = 'past';
+                            } else {
+                              eventStatus = 'upcoming';
+                            }
+                          }
+                        } catch (e) {
+                          console.error('Tarih parse hatası:', e, 'Tarih:', eventDate);
+                        }
+                      }
+
+                      // Backend'den gelen status varsa onu kullan (öncelikli)
+                      if (event.status === 'CANCELLED' || event.cancelled) {
+                        eventStatus = 'cancelled';
+                      } else if (event.status === 'REJECTED') {
+                        eventStatus = 'rejected';
+                      } else if (event.status === 'APPROVED' || event.status === 'ACTIVE') {
+                        // Status APPROVED veya ACTIVE ise, tarih kontrolüne bak
+                        // Yukarıda zaten tarih kontrolü yapıldı
+                      }
+
+                      return (
+                        <div 
+                          key={event.id || index} 
+                          onClick={() => setSelectedEventId(event.id)} 
+                          className={`list-item ${selectedEventId === event.id ? 'selected cyan' : ''}`}
+                        >
+                          <div className="flex flex-col gap-1">
+                            <h3 className="item-title">{event.title || event.name}</h3>
+                            <p className="item-subtitle">{formattedDate}</p>
+                            {event.location && <p className="item-subtitle">📍 {event.location}</p>}
+                            <span className={`status-badge ${
+                              eventStatus === 'upcoming' ? 'success' : 
+                              eventStatus === 'past' ? 'warning' : 
+                              eventStatus === 'rejected' ? 'danger' :
+                              'danger'
+                            }`}>
+                              {eventStatus === 'upcoming' ? '🟢 Aktif' : 
+                               eventStatus === 'past' ? '⏰ Geçmiş' : 
+                               eventStatus === 'rejected' ? '🔴 Reddedildi' :
+                               '🔴 İptal Edildi'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -470,6 +631,52 @@ function ClubOfficialDashboard() {
                         <h3 className="item-title">{reg.studentName || reg.name}</h3>
                         <p className="item-subtitle">{reg.email}</p>
                         <span className={`status-badge ${reg.attended ? 'success' : 'warning'}`}>{reg.attended ? 'Katıldı' : 'Bekliyor'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="dashboard-card">
+              <div className="card-header">
+                <div className="icon-container orange"><UserPlus className="w-6 h-6 text-white" /></div>
+                <h2 className="card-title">Bekleyen Üyelik İstekleri</h2>
+                <span className="count-badge orange">{pendingCount}</span>
+              </div>
+              <div className="card-content">
+                {!selectedClubId ? <EmptyState message="Kulüp seçin" /> :
+                 loading.pendingRequests ? <CardLoader /> :
+                 errors.pendingRequests ? <ErrorState message={errors.pendingRequests} /> :
+                 pendingRequests.length === 0 ? <EmptyState message="Bekleyen istek yok" /> : (
+                  <div className="scrollable-list">
+                    {pendingRequests.map((request, index) => (
+                      <div key={request.id || index} className="list-item">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h3 className="item-title">{request.studentName || request.name}</h3>
+                            <p className="item-subtitle">{request.email}</p>
+                            <p className="item-subtitle text-xs">{new Date(request.requestDate || request.createdAt).toLocaleDateString('tr-TR')}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleApproveRequest(request.id)}
+                              disabled={loading.approvingRequest}
+                              className="p-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-300 transition-all duration-300 disabled:opacity-50"
+                              title="Onayla"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleRejectRequest(request.id)}
+                              disabled={loading.approvingRequest}
+                              className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 transition-all duration-300 disabled:opacity-50"
+                              title="Reddet"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -539,10 +746,23 @@ function ClubOfficialDashboard() {
                   <div className="scrollable-list">
                     {clubs.map((club, index) => {
                       const clubData = club.club || club;
+                      const advisorName = clubData.advisorName || club.advisorName;
+                      const memberCount = clubData.memberCount || club.memberCount;
+                      
                       return (
                         <div key={clubData.id || index} className="list-item">
                           <h3 className="item-title">{clubData.name || club.clubName}</h3>
                           <p className="item-subtitle">{clubData.description || ''}</p>
+                          {advisorName && (
+                            <p className="item-subtitle text-xs mt-1" style={{color: '#a5b4fc'}}>
+                              👨‍🏫 Danışman: {advisorName}
+                            </p>
+                          )}
+                          {memberCount !== undefined && (
+                            <span className="status-badge success text-xs mt-1">
+                              👥 {memberCount} üye
+                            </span>
+                          )}
                         </div>
                       );
                     })}
@@ -564,10 +784,37 @@ function ClubOfficialDashboard() {
                   <div className="scrollable-list">
                     {events.map((event, index) => {
                       const eventData = event.event || event;
+                      const eventDate = eventData.eventTime || eventData.eventDate || eventData.date;
+                      let formattedDate = 'Tarih belirtilmemiş';
+                      let eventStatus = 'upcoming';
+                      
+                      if (eventDate) {
+                        try {
+                          const dateObj = new Date(eventDate);
+                          if (!isNaN(dateObj.getTime())) {
+                            formattedDate = dateObj.toLocaleDateString('tr-TR', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            });
+                            
+                            const now = new Date();
+                            eventStatus = dateObj < now ? 'past' : 'upcoming';
+                          }
+                        } catch (e) {
+                          console.error('Tarih parse hatası:', e);
+                        }
+                      }
+
                       return (
                         <div key={eventData.id || index} className="list-item">
                           <h3 className="item-title">{eventData.title || eventData.name}</h3>
-                          <p className="item-subtitle">{new Date(eventData.eventDate || eventData.date).toLocaleDateString('tr-TR')}</p>
+                          <p className="item-subtitle">{formattedDate}</p>
+                          <span className={`status-badge ${eventStatus === 'upcoming' ? 'success' : 'warning'}`}>
+                            {eventStatus === 'upcoming' ? 'Yaklaşan' : 'Geçmiş'}
+                          </span>
                         </div>
                       );
                     })}
