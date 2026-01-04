@@ -51,6 +51,8 @@ function ClubOfficialDashboard() {
     eventTime: '',
     location: '',
   });
+  const [posterFile, setPosterFile] = useState(null);
+  const [posterPreview, setPosterPreview] = useState(null);
   const [qrCode, setQrCode] = useState('');
   
   const [loading, setLoading] = useState({
@@ -216,11 +218,34 @@ function ClubOfficialDashboard() {
       return;
     }
 
+    if (!posterFile) {
+      setErrors(prev => ({ ...prev, createEvent: 'Etkinlik afişi zorunludur' }));
+      setLoading(prev => ({ ...prev, creatingEvent: false }));
+      return;
+    }
+
     try {
-      await createEvent({ ...eventForm, clubName });
+      const formData = new FormData();
+      
+      // Add event data as JSON Blob (required format)
+      const eventData = {
+        title: eventForm.title,
+        description: eventForm.description,
+        eventTime: eventForm.eventTime,
+        location: eventForm.location,
+        clubName: clubName
+      };
+      formData.append('data', new Blob([JSON.stringify(eventData)], { type: 'application/json' }));
+      
+      // Add poster file
+      formData.append('poster', posterFile);
+
+      await createEvent(formData);
       setSuccessMessage('Etkinlik başarıyla oluşturuldu!');
       setShowCreateEventModal(false);
       setEventForm({ title: '', description: '', eventTime: '', location: '' });
+      setPosterFile(null);
+      setPosterPreview(null);
       fetchMyEvents();
     } catch (error) {
       setErrors(prev => ({ ...prev, createEvent: error.response?.data?.message || 'Etkinlik oluşturulamadı' }));
@@ -246,6 +271,42 @@ function ClubOfficialDashboard() {
     } finally {
       setLoading(prev => ({ ...prev, verifyingQr: false }));
     }
+  };
+
+  const handlePosterChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+      if (!validTypes.includes(file.type)) {
+        setErrors(prev => ({ ...prev, createEvent: 'Sadece JPG ve PNG formatları desteklenmektedir' }));
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        setErrors(prev => ({ ...prev, createEvent: 'Dosya boyutu 5MB\'dan küçük olmalıdır' }));
+        return;
+      }
+
+      setPosterFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPosterPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+      
+      // Clear any previous errors
+      setErrors(prev => ({ ...prev, createEvent: null }));
+    }
+  };
+
+  const handleRemovePoster = () => {
+    setPosterFile(null);
+    setPosterPreview(null);
   };
 
   const handleLogout = () => {
@@ -542,6 +603,33 @@ function ClubOfficialDashboard() {
               <div className="form-group">
                 <label className="form-label">Konum</label>
                 <input type="text" className="form-input" value={eventForm.location} onChange={(e) => setEventForm(prev => ({ ...prev, location: e.target.value }))} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Etkinlik Afişi <span className="text-red-500">*</span></label>
+                <input 
+                  type="file" 
+                  className="form-input" 
+                  accept="image/jpeg,image/jpg,image/png"
+                  onChange={handlePosterChange}
+                  required 
+                />
+                <p className="text-xs text-gray-500 mt-1">JPG veya PNG formatında, maksimum 5MB</p>
+                {posterPreview && (
+                  <div className="mt-3 relative">
+                    <img 
+                      src={posterPreview} 
+                      alt="Afiş önizleme" 
+                      className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemovePoster}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowCreateEventModal(false)}>İptal</button>

@@ -19,18 +19,25 @@ export const getEventRegistrations = async (eventId) => {
 };
 
 // Kulüp Yetkilisi - Etkinlik Oluştur
-export const createEvent = async (eventData) => {
-  const formData = new FormData();
+export const createEvent = async (formData) => {
+  // Use fetch API instead of axios for FormData to avoid Content-Type issues
+  const token = localStorage.getItem('token');
   
-  // Backend 'data' part'ı bekliyor - JSON string olarak gönder
-  formData.append('data', new Blob([JSON.stringify(eventData)], { type: 'application/json' }));
-
-  const response = await api.post('/events/manage', formData, {
+  const response = await fetch('http://localhost:8080/api/events/manage', {
+    method: 'POST',
     headers: {
-      'Content-Type': 'multipart/form-data',
+      'Authorization': `Bearer ${token}`,
+      // Don't set Content-Type - browser will set it with boundary automatically
     },
+    body: formData,
   });
-  return response.data;
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Etkinlik oluşturulamadı');
+  }
+
+  return await response.json();
 };
 
 // Kulüp Yetkilisi - QR Kod Doğrula
