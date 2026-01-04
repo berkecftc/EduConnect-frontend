@@ -51,6 +51,7 @@ function ClubOfficialDashboard() {
   
   const [courses, setCourses] = useState([]);
   const [assignments, setAssignments] = useState([]);
+  const [allAssignments, setAllAssignments] = useState([]); // Tüm ödevler
   const [clubs, setClubs] = useState([]);
   const [events, setEvents] = useState([]);
 
@@ -181,7 +182,10 @@ function ClubOfficialDashboard() {
   const fetchCourses = async () => {
     try {
       const response = await getMyCourses();
+      console.log('Kulüp Başkanı - Kayıtlı derslerim:', response);
       setCourses(response || []);
+      // Dersler yüklendikten sonra ödevleri filtrele
+      filterAssignmentsByCourses(response || []);
     } catch (error) {
       setErrors(prev => ({ ...prev, courses: 'Kurslar yüklenemedi' }));
     } finally {
@@ -192,12 +196,39 @@ function ClubOfficialDashboard() {
   const fetchAssignments = async () => {
     try {
       const response = await getMyAssignments();
-      setAssignments(response || []);
+      console.log('Kulüp Başkanı - Tüm ödevler:', response);
+      setAllAssignments(response || []);
+      // Dersler yüklendiyse ödevleri filtrele
+      if (courses.length > 0) {
+        filterAssignmentsByCourses(courses, response || []);
+      }
     } catch (error) {
       setErrors(prev => ({ ...prev, assignments: 'Ödevler yüklenemedi' }));
     } finally {
       setLoading(prev => ({ ...prev, assignments: false }));
     }
+  };
+
+  const filterAssignmentsByCourses = (coursesData = courses, assignmentsData = allAssignments) => {
+    if (!coursesData || coursesData.length === 0 || !assignmentsData || assignmentsData.length === 0) {
+      return;
+    }
+
+    // Kayıtlı olunan ders ID'lerini al
+    const enrolledCourseIds = coursesData.map(course => 
+      course.id || course.courseId || course.course?.id
+    ).filter(id => id !== undefined);
+
+    console.log('Kulüp Başkanı - Kayıtlı ders IDleri:', enrolledCourseIds);
+
+    // Sadece kayıtlı olunan derslerin ödevlerini filtrele
+    const filteredAssignments = assignmentsData.filter(assignment => {
+      const assignmentCourseId = assignment.courseId || assignment.course?.id;
+      return enrolledCourseIds.includes(assignmentCourseId);
+    });
+
+    console.log('Kulüp Başkanı - Filtrelenmiş ödevler:', filteredAssignments);
+    setAssignments(filteredAssignments);
   };
 
   const fetchClubs = async () => {
