@@ -11,7 +11,7 @@ import {
   approveMembershipRequest,
   rejectMembershipRequest
 } from '../../api/clubService';
-import { getMyEvents, getEventRegistrations, createEvent, verifyQrCode, getMyRegistrations } from '../../api/eventService';
+import { getMyEvents, getEventRegistrations, createEvent, verifyQrCode, getMyRegistrations, getAllMyPendingRequests, approveParticipationRequest, rejectParticipationRequest } from '../../api/eventService';
 import { getMyCourses } from '../../api/courseService';
 import { getMyAssignments } from '../../api/assignmentService';
 
@@ -48,6 +48,7 @@ function ClubOfficialDashboard() {
   const [eventRegistrations, setEventRegistrations] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [eventParticipationRequests, setEventParticipationRequests] = useState([]);
   
   const [courses, setCourses] = useState([]);
   const [assignments, setAssignments] = useState([]);
@@ -80,6 +81,7 @@ function ClubOfficialDashboard() {
     verifyingQr: false,
     pendingRequests: false,
     approvingRequest: false,
+    eventParticipationRequests: true,
   });
   
   const [errors, setErrors] = useState({
@@ -94,6 +96,7 @@ function ClubOfficialDashboard() {
     createEvent: null,
     verifyQr: null,
     pendingRequests: null,
+    eventParticipationRequests: null,
   });
 
   const [successMessage, setSuccessMessage] = useState('');
@@ -106,6 +109,7 @@ function ClubOfficialDashboard() {
     fetchAssignments();
     fetchClubs();
     fetchEvents();
+    fetchEventParticipationRequests();
   }, []);
 
   useEffect(() => {
@@ -306,6 +310,52 @@ function ClubOfficialDashboard() {
       fetchPendingCount(selectedClubId);
     } catch (error) {
       setErrors(prev => ({ ...prev, pendingRequests: error.response?.data?.message || 'İstek reddedilemedi' }));
+    } finally {
+      setLoading(prev => ({ ...prev, approvingRequest: false }));
+    }
+  };
+
+  const fetchEventParticipationRequests = async () => {
+    try {
+      const response = await getAllMyPendingRequests();
+      console.log('Etkinlik katılım istekleri:', response);
+      setEventParticipationRequests(response || []);
+    } catch (error) {
+      setErrors(prev => ({ ...prev, eventParticipationRequests: 'Katılım istekleri yüklenemedi' }));
+    } finally {
+      setLoading(prev => ({ ...prev, eventParticipationRequests: false }));
+    }
+  };
+
+  const handleApproveParticipationRequest = async (requestId) => {
+    setLoading(prev => ({ ...prev, approvingRequest: true }));
+    try {
+      await approveParticipationRequest(requestId);
+      setSuccessMessage('Katılım isteği onaylandı!');
+      fetchEventParticipationRequests();
+    } catch (error) {
+      setErrors(prev => ({ 
+        ...prev, 
+        eventParticipationRequests: error.response?.data?.message || 'İstek onaylanamadı' 
+      }));
+      setTimeout(() => setErrors(prev => ({ ...prev, eventParticipationRequests: null })), 3000);
+    } finally {
+      setLoading(prev => ({ ...prev, approvingRequest: false }));
+    }
+  };
+
+  const handleRejectParticipationRequest = async (requestId) => {
+    setLoading(prev => ({ ...prev, approvingRequest: true }));
+    try {
+      await rejectParticipationRequest(requestId);
+      setSuccessMessage('Katılım isteği reddedildi');
+      fetchEventParticipationRequests();
+    } catch (error) {
+      setErrors(prev => ({ 
+        ...prev, 
+        eventParticipationRequests: error.response?.data?.message || 'İstek reddedilemedi' 
+      }));
+      setTimeout(() => setErrors(prev => ({ ...prev, eventParticipationRequests: null })), 3000);
     } finally {
       setLoading(prev => ({ ...prev, approvingRequest: false }));
     }
@@ -710,6 +760,83 @@ function ClubOfficialDashboard() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="dashboard-card">
+              <div className="card-header">
+                <div className="icon-container teal"><UserCheck className="w-6 h-6 text-white" /></div>
+                <h2 className="card-title">Bekleyen Etkinlik İstekleri</h2>
+                <span className="count-badge teal">{eventParticipationRequests.length}</span>
+              </div>
+              <div className="card-content">
+                {loading.eventParticipationRequests ? <CardLoader /> :
+                 errors.eventParticipationRequests ? <ErrorState message={errors.eventParticipationRequests} /> :
+                 eventParticipationRequests.length === 0 ? <EmptyState message="Bekleyen etkinlik isteği yok" /> : (
+                  <div className="scrollable-list">
+                    {eventParticipationRequests.map((request, index) => {
+                      const eventData = request.event || {};
+                      const studentData = request.student || {};
+                      const eventDate = eventData.eventTime || eventData.eventDate;
+                      let formattedDate = 'Tarih belirtilmemiş';
+                      
+                      if (eventDate) {
+                        try {
+                          const dateObj = new Date(eventDate);
+                          if (!isNaN(dateObj.getTime())) {
+                            formattedDate = dateObj.toLocaleDateString('tr-TR', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            });
+                          }
+                        } catch (e) {
+                          console.error('Tarih parse hatası:', e);
+                        }
+                      }
+
+                      return (
+                        <div key={request.id || index} className="list-item">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="item-title">{eventData.title || 'Etkinlik'}</h3>
+                              <p className="item-subtitle">
+                                👤 {studentData.name || studentData.studentName || request.studentName || 'Öğrenci'}
+                              </p>
+                              <p className="item-subtitle text-xs">📅 {formattedDate}</p>
+                              <p className="item-subtitle text-xs">
+                                📍 {eventData.location || 'Konum belirtilmemiş'}
+                              </p>
+                              <p className="item-subtitle text-xs text-purple-300/50">
+                                {new Date(request.requestDate || request.createdAt).toLocaleDateString('tr-TR')} tarihinde istendi
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleApproveParticipationRequest(request.id)}
+                                disabled={loading.approvingRequest}
+                                className="p-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-300 transition-all duration-300 disabled:opacity-50"
+                                title="Onayla"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleRejectParticipationRequest(request.id)}
+                                disabled={loading.approvingRequest}
+                                className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 transition-all duration-300 disabled:opacity-50"
+                                title="Reddet"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
