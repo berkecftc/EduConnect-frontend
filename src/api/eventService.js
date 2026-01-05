@@ -15,7 +15,16 @@ export const getMyRegistrations = async () => {
 
 // Kulüp Yetkilisi - Oluşturduğum Etkinlikler
 export const getMyEvents = async () => {
-  const response = await api.get('/events/manage/my-events');
+  const response = await api.get('/events/manage/my-events', {
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    },
+    params: {
+      _t: Date.now() // Timestamp to force fresh request
+    }
+  });
   return response.data;
 };
 
@@ -23,7 +32,16 @@ export const getMyEvents = async () => {
 export const getEventRegistrations = async (eventId) => {
   try {
     console.log(`Etkinlik kayıtları getiriliyor: GET /api/events/manage/${eventId}/registrations`);
-    const response = await api.get(`/events/manage/${eventId}/registrations`);
+    const response = await api.get(`/events/manage/${eventId}/registrations`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      },
+      params: {
+        _t: Date.now() // Timestamp to force fresh request
+      }
+    });
     console.log('Etkinlik kayıtları API yanıtı:', response.data);
     return response.data;
   } catch (error) {
@@ -135,7 +153,16 @@ export const getAllParticipationRequests = async (eventId) => {
 
 // Kulüp Yetkilisi - Tüm etkinliklerimin bekleyen istekleri
 export const getAllMyPendingRequests = async () => {
-  const response = await api.get('/events/official/pending-requests');
+  const response = await api.get('/events/official/pending-requests', {
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    },
+    params: {
+      _t: Date.now() // Timestamp to force fresh request
+    }
+  });
   return response.data;
 };
 
