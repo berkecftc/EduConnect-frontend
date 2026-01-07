@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import adminService from '../../../api/adminService';
-import { 
-  Shield, Users, GraduationCap, Building2, Calendar, Archive, 
-  Search, Check, X, Eye, Crown, Image, Trash2, LogOut, Loader2, 
+import {
+  Shield, Users, GraduationCap, Building2, Calendar, Archive,
+  Search, Check, X, Eye, Crown, Image, Trash2, LogOut, Loader2,
   AlertCircle, UserCheck, UserX, Clock, ChevronRight
 } from 'lucide-react';
 
@@ -113,7 +113,7 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       let response;
-      
+
       if (activeTab === 'users') {
         response = await adminService.getAllUsers();
       } else if (activeTab === 'academicians') {
@@ -133,11 +133,11 @@ export default function AdminDashboard() {
       } else if (activeTab === 'inactiveAcademicians') {
         response = await adminService.getInactiveAcademicians();
       }
-      
-      setData(response?.data || []); 
+
+      setData(response?.data || []);
     } catch (error) {
       console.error("Veri çekilemedi:", error);
-      setData([]); 
+      setData([]);
     } finally {
       setLoading(false);
     }
@@ -157,13 +157,13 @@ export default function AdminDashboard() {
   };
 
   const handleApprove = async (id) => {
-    if(!window.confirm("Bu isteği onaylamak istiyor musunuz?")) return;
+    if (!window.confirm("Bu isteği onaylamak istiyor musunuz?")) return;
     try {
       if (activeTab === 'academicians') await adminService.approveAcademician(id);
       else if (activeTab === 'clubOfficials') await adminService.approveClubOfficial(id);
       else if (activeTab === 'clubs') await adminService.approveClubCreation(id);
       else if (activeTab === 'events') await adminService.approveEvent(id);
-      
+
       alert("İşlem Başarılı!");
       fetchData();
     } catch (error) {
@@ -189,14 +189,14 @@ export default function AdminDashboard() {
       return;
     }
 
-    if(!window.confirm("Bu isteği REDDETMEK istediğinize emin misiniz?")) return;
+    if (!window.confirm("Bu isteği REDDETMEK istediğinize emin misiniz?")) return;
 
     try {
       if (activeTab === 'academicians') await adminService.rejectAcademician(id);
       else if (activeTab === 'clubOfficials') await adminService.rejectClubOfficial(id);
       else if (activeTab === 'clubs') await adminService.rejectClubCreation(id);
       else if (activeTab === 'events') await adminService.rejectEvent(id);
-      
+
       alert("İstek reddedildi/silindi.");
       fetchData();
     } catch (error) {
@@ -205,7 +205,7 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteUser = async (userId) => {
-    if(!window.confirm("Bu kullanıcıyı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!")) return;
+    if (!window.confirm("Bu kullanıcıyı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!")) return;
     try {
       await adminService.deleteUser(userId);
       alert("Kullanıcı silindi.");
@@ -317,7 +317,7 @@ export default function AdminDashboard() {
       switch (eventFilter) {
         case 'PENDING':
           return status === 'PENDING';
-        case 'APPROVED': 
+        case 'APPROVED':
           return status === 'ACTIVE' && isValidDate && eventDate > now;
         case 'PAST':
           return status === 'ACTIVE' && (!isValidDate || eventDate <= now);
@@ -338,20 +338,20 @@ export default function AdminDashboard() {
 
     if (searchTerm.trim() !== '') {
       const lowerTerm = searchTerm.toLowerCase();
-      
+
       filtered = filtered.filter(item => {
         if (activeTab === 'users') {
           return item.email?.toLowerCase().includes(lowerTerm);
         }
         if (activeTab === 'academicians') {
           const fullName = `${item.firstName} ${item.lastName}`.toLowerCase();
-          return item.email?.toLowerCase().includes(lowerTerm) || 
-                 fullName.includes(lowerTerm) ||
-                 item.department?.toLowerCase().includes(lowerTerm);
+          return item.email?.toLowerCase().includes(lowerTerm) ||
+            fullName.includes(lowerTerm) ||
+            item.department?.toLowerCase().includes(lowerTerm);
         }
         if (activeTab === 'clubs' || activeTab === 'clubRequests') {
           return item.name?.toLowerCase().includes(lowerTerm) ||
-                 item.description?.toLowerCase().includes(lowerTerm);
+            item.description?.toLowerCase().includes(lowerTerm);
         }
         return JSON.stringify(item).toLowerCase().includes(lowerTerm);
       });
@@ -446,8 +446,8 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button 
-                onClick={handleLogout} 
+              <button
+                onClick={handleLogout}
                 className="group flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all duration-300 hover:scale-105 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300"
               >
                 <LogOut className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
@@ -460,8 +460,8 @@ export default function AdminDashboard() {
         {/* Tab Categories */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {tabCategories.map((category, catIndex) => (
-            <div 
-              key={catIndex} 
+            <div
+              key={catIndex}
               className={`backdrop-blur-xl border rounded-2xl p-4 transition-all duration-300 hover:scale-[1.02] ${'bg-white/5 border-white/10 hover:bg-white/10'}`}
             >
               <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-linear-to-r ${category.gradient} text-white text-sm font-semibold mb-3`}>
@@ -473,11 +473,10 @@ export default function AdminDashboard() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-                      activeTab === tab.id
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${activeTab === tab.id
                         ? `bg-linear-to-r ${category.gradient} text-white shadow-lg`
                         : 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
-                    }`}
+                      }`}
                   >
                     <span>{tab.icon}</span>
                     <span className="hidden sm:inline">{tab.label}</span>
@@ -492,7 +491,7 @@ export default function AdminDashboard() {
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {statsCards.map((stat, index) => (
-              <div 
+              <div
                 key={index}
                 className={`backdrop-blur-xl border rounded-2xl p-6 transition-all duration-500 hover:scale-105 hover:shadow-2xl ${'bg-white/10 border-white/20'}`}
               >
@@ -504,7 +503,7 @@ export default function AdminDashboard() {
                     </p>
                   </div>
                   <div className={`p-4 rounded-xl ${stat.bgColor}`}>
-                    <stat.icon className={`w-8 h-8 bg-linear-to-br ${stat.gradient} bg-clip-text text-transparent`} style={{color: stat.gradient.includes('blue') ? '#3b82f6' : stat.gradient.includes('purple') ? '#a855f7' : stat.gradient.includes('emerald') ? '#10b981' : '#f97316'}} />
+                    <stat.icon className={`w-8 h-8 bg-linear-to-br ${stat.gradient} bg-clip-text text-transparent`} style={{ color: stat.gradient.includes('blue') ? '#3b82f6' : stat.gradient.includes('purple') ? '#a855f7' : stat.gradient.includes('emerald') ? '#10b981' : '#f97316' }} />
                   </div>
                 </div>
               </div>
@@ -530,11 +529,10 @@ export default function AdminDashboard() {
                       <button
                         key={filter.value}
                         onClick={() => setEventFilter(filter.value)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-                          eventFilter === filter.value
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${eventFilter === filter.value
                             ? 'bg-linear-to-r from-blue-500 to-indigo-600 text-white shadow-lg'
                             : 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
-                        }`}
+                          }`}
                       >
                         {filter.label}
                       </button>
@@ -555,11 +553,10 @@ export default function AdminDashboard() {
                       <button
                         key={filter.value}
                         onClick={() => setUserRoleFilter(filter.value)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-                          userRoleFilter === filter.value
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${userRoleFilter === filter.value
                             ? 'bg-linear-to-r from-blue-500 to-indigo-600 text-white shadow-lg'
                             : 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
-                        }`}
+                          }`}
                       >
                         {filter.label}
                       </button>
@@ -601,7 +598,7 @@ export default function AdminDashboard() {
                   </thead>
                   <tbody className="divide-y divide-white/10">
                     {displayData.map((item, index) => (
-                      <tr 
+                      <tr
                         key={item.archiveId || item.originalId || item.id || index}
                         className={`transition-all duration-300 ${'hover:bg-slate-700/30'}`}
                       >
@@ -613,10 +610,10 @@ export default function AdminDashboard() {
                           {activeTab === 'academicians' && (
                             <div className="flex items-center gap-3">
                               {item.idCardImageUrl ? (
-                                <img 
-                                  src={item.idCardImageUrl} 
-                                  alt="Kimlik Fotoğrafı" 
-                                  className="w-12 h-12 rounded-lg object-cover border-2 border-blue-500/30 shadow-lg cursor-pointer hover:border-blue-500 hover:scale-110 transition-all" 
+                                <img
+                                  src={item.idCardImageUrl}
+                                  alt="Kimlik Fotoğrafı"
+                                  className="w-12 h-12 rounded-lg object-cover border-2 border-blue-500/30 shadow-lg cursor-pointer hover:border-blue-500 hover:scale-110 transition-all"
                                   onClick={() => {
                                     setSelectedImage(item.idCardImageUrl);
                                     setIsImageModalOpen(true);
@@ -637,7 +634,11 @@ export default function AdminDashboard() {
                           {activeTab === 'clubs' && item.clubName}
                           {activeTab === 'events' && (
                             <div className="flex items-center gap-3">
-                              <img src={item.imageUrl || '/placeholder-event.jpg'} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                              {item.imageUrl ? (
+                                <img src={item.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs">N/A</div>
+                              )}
                               <div>
                                 <p className="font-medium">{item.title || item.eventName}</p>
                                 <p className={`text-xs ${'text-gray-400'}`}>{item.clubName}</p>
@@ -687,13 +688,12 @@ export default function AdminDashboard() {
                             <div>
                               <p>{parseDate(item)?.toLocaleDateString('tr-TR') || 'Tarih Yok'}</p>
                               <p className={`text-xs ${'text-gray-500'}`}>{item.location || 'Online'}</p>
-                              <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${
-                                item.status === 'ACTIVE' || item.status === 'APPROVED' 
+                              <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${item.status === 'ACTIVE' || item.status === 'APPROVED'
                                   ? 'bg-emerald-500/20 text-emerald-300'
-                                  : item.status === 'PENDING' 
+                                  : item.status === 'PENDING'
                                     ? 'bg-amber-500/20 text-amber-300'
                                     : 'bg-red-500/20 text-red-300'
-                              }`}>
+                                }`}>
                                 {item.status === 'ACTIVE' || item.status === 'APPROVED' ? (parseDate(item) && parseDate(item) < new Date() ? 'GEÇMİŞ' : 'ONAYLI') : item.status === 'PENDING' ? 'BEKLİYOR' : 'REDDEDİLDİ'}
                               </span>
                             </div>
@@ -879,25 +879,25 @@ export default function AdminDashboard() {
 
       {/* Image Preview Modal */}
       {isImageModalOpen && selectedImage && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
           onClick={() => setIsImageModalOpen(false)}
         >
-          <div 
+          <div
             className="relative max-w-4xl max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute top-4 right-4 z-10">
-              <button 
+              <button
                 onClick={() => setIsImageModalOpen(false)}
                 className="p-2 rounded-full bg-red-500/80 hover:bg-red-500 text-white transition-all shadow-lg hover:scale-110"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <img 
-              src={selectedImage} 
-              alt="Kimlik Fotoğrafı Önizleme" 
+            <img
+              src={selectedImage}
+              alt="Kimlik Fotoğrafı Önizleme"
               className="max-w-full max-h-[90vh] object-contain"
             />
             <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent p-4">
