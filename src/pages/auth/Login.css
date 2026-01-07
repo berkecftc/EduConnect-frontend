@@ -12,13 +12,7 @@
   --error-color: #ef4444;
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  font-family: 'Outfit', sans-serif;
-  overflow: hidden; /* Prevent body scroll */
-  background-color: var(--bg-dark);
-}
+
 
 .login-container {
   display: flex;
@@ -43,7 +37,7 @@ body {
 .bg-gradient-overlay {
   position: absolute;
   inset: 0;
-  background: 
+  background:
     radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.4) 0%, transparent 50%),
     radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.4) 0%, transparent 50%);
   z-index: 1;
@@ -74,6 +68,7 @@ body {
   margin: 0;
   background: linear-gradient(to right, #fff, #94a3b8);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: -1px;
 }
@@ -121,8 +116,15 @@ body {
 }
 
 @keyframes float {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(20px, -20px); }
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  50% {
+    transform: translate(20px, -20px);
+  }
 }
 
 .ornament-glass {
@@ -285,7 +287,8 @@ body {
   font-size: 1rem;
   font-family: inherit;
   transition: all 0.3s ease;
-  box-sizing: border-box; /* Important for 100% width */
+  box-sizing: border-box;
+  /* Important for 100% width */
 }
 
 .input-field input:focus {
@@ -295,7 +298,7 @@ body {
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
 }
 
-.input-field input:focus + svg {
+.input-field input:focus+svg {
   color: #6366f1;
 }
 
@@ -377,17 +380,21 @@ body {
 .login-container.admin-mode .circle-1 {
   background: #dc2626;
 }
+
 .login-container.admin-mode .circle-2 {
   background: #991b1b;
 }
+
 .login-container.admin-mode .bg-gradient-overlay {
-  background: 
+  background:
     radial-gradient(circle at 20% 20%, rgba(220, 38, 38, 0.4) 0%, transparent 50%),
     radial-gradient(circle at 80% 80%, rgba(153, 27, 27, 0.4) 0%, transparent 50%);
 }
+
 .login-container.admin-mode .btn-primary {
   background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
 }
+
 .login-container.admin-mode .form-logo-icon {
   background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
   box-shadow: 0 10px 20px rgba(220, 38, 38, 0.3);
@@ -396,9 +403,10 @@ body {
 /* --- Responsive --- */
 @media (max-width: 1024px) {
   .login-visual-side {
-    display: none; /* Hide visual side on tablet/mobile for simplicity & focus */
+    display: none;
+    /* Hide visual side on tablet/mobile for simplicity & focus */
   }
-  
+
   .login-form-side {
     width: 100vw;
   }
@@ -411,9 +419,10 @@ body {
 
 @media (max-width: 768px) {
   .login-container {
-    height: 100dvh; /* Dynamic viewport height for mobile browsers */
+    height: 100dvh;
+    /* Dynamic viewport height for mobile browsers */
   }
-  
+
   .form-header h2 {
     font-size: 1.75rem;
   }

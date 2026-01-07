@@ -15,12 +15,7 @@
   --success-color: #10b981;
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  font-family: 'Outfit', sans-serif;
-  background-color: var(--bg-dark);
-}
+
 
 .register-container {
   display: flex;
