@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import adminService from '../../../api/adminService';
 import {
   Shield, Users, GraduationCap, Building2, Calendar, Archive,
@@ -9,6 +10,9 @@ import {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const { role } = useSelector((state) => state.auth);
+  console.log("User Role:", role);
+
   const [activeTab, setActiveTab] = useState('overview');
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -474,8 +478,8 @@ export default function AdminDashboard() {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${activeTab === tab.id
-                        ? `bg-linear-to-r ${category.gradient} text-white shadow-lg`
-                        : 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
+                      ? `bg-linear-to-r ${category.gradient} text-white shadow-lg`
+                      : 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
                       }`}
                   >
                     <span>{tab.icon}</span>
@@ -530,8 +534,8 @@ export default function AdminDashboard() {
                         key={filter.value}
                         onClick={() => setEventFilter(filter.value)}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${eventFilter === filter.value
-                            ? 'bg-linear-to-r from-blue-500 to-indigo-600 text-white shadow-lg'
-                            : 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
+                          ? 'bg-linear-to-r from-blue-500 to-indigo-600 text-white shadow-lg'
+                          : 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
                           }`}
                       >
                         {filter.label}
@@ -554,8 +558,8 @@ export default function AdminDashboard() {
                         key={filter.value}
                         onClick={() => setUserRoleFilter(filter.value)}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${userRoleFilter === filter.value
-                            ? 'bg-linear-to-r from-blue-500 to-indigo-600 text-white shadow-lg'
-                            : 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
+                          ? 'bg-linear-to-r from-blue-500 to-indigo-600 text-white shadow-lg'
+                          : 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
                           }`}
                       >
                         {filter.label}
@@ -689,10 +693,10 @@ export default function AdminDashboard() {
                               <p>{parseDate(item)?.toLocaleDateString('tr-TR') || 'Tarih Yok'}</p>
                               <p className={`text-xs ${'text-gray-500'}`}>{item.location || 'Online'}</p>
                               <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${item.status === 'ACTIVE' || item.status === 'APPROVED'
-                                  ? 'bg-emerald-500/20 text-emerald-300'
-                                  : item.status === 'PENDING'
-                                    ? 'bg-amber-500/20 text-amber-300'
-                                    : 'bg-red-500/20 text-red-300'
+                                ? 'bg-emerald-500/20 text-emerald-300'
+                                : item.status === 'PENDING'
+                                  ? 'bg-amber-500/20 text-amber-300'
+                                  : 'bg-red-500/20 text-red-300'
                                 }`}>
                                 {item.status === 'ACTIVE' || item.status === 'APPROVED' ? (parseDate(item) && parseDate(item) < new Date() ? 'GEÇMİŞ' : 'ONAYLI') : item.status === 'PENDING' ? 'BEKLİYOR' : 'REDDEDİLDİ'}
                               </span>

@@ -9,13 +9,14 @@ import { GraduationCap, BookOpen, UserPlus, ClipboardCheck, LogOut, Loader2, Che
 function InstructorDashboard() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { user } = useSelector((state) => state.auth);
+  const { user, role } = useSelector((state) => state.auth);
+  console.log("User Role:", role);
 
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState('');
   const [submissions, setSubmissions] = useState([]);
   const [grades, setGrades] = useState({});
-  
+
   const [enrollForm, setEnrollForm] = useState({
     courseId: '',
     studentEmail: '',
@@ -27,13 +28,13 @@ function InstructorDashboard() {
     enrolling: false,
     grading: {},
   });
-  
+
   const [errors, setErrors] = useState({
     courses: null,
     submissions: null,
     enroll: null,
   });
-  
+
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
@@ -64,10 +65,10 @@ function InstructorDashboard() {
 
   const fetchSubmissions = async () => {
     if (!selectedCourse) return;
-    
+
     setLoading(prev => ({ ...prev, submissions: true }));
     setErrors(prev => ({ ...prev, submissions: null }));
-    
+
     try {
       const data = await getCourseSubmissions(selectedCourse);
       setSubmissions(data);
@@ -161,8 +162,8 @@ function InstructorDashboard() {
                 <p className="text-emerald-200/70 mt-1">Hoş geldin, {user}</p>
               </div>
             </div>
-            <button 
-              onClick={handleLogout} 
+            <button
+              onClick={handleLogout}
               className="group flex items-center gap-2 px-5 py-2.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-xl text-red-300 transition-all duration-300 hover:scale-105"
             >
               <LogOut className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
@@ -190,19 +191,19 @@ function InstructorDashboard() {
               </span>
             </div>
             <div className="max-h-64 overflow-y-auto">
-              {loading.courses ? <CardLoader /> : 
-               errors.courses ? <div className="text-red-400 text-center py-4">{errors.courses}</div> :
-               courses.length === 0 ? <EmptyState message="Henüz ders yok" /> : (
-                <div className="space-y-3">
-                  {courses.map((course, index) => (
-                    <div key={course.id || index} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300">
-                      <h3 className="font-medium text-white">{course.name || course.title}</h3>
-                      <p className="text-sm text-emerald-200/60 mt-1">{course.studentCount || 0} öğrenci kayıtlı</p>
-                      <span className="inline-block mt-2 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-xs">Aktif</span>
+              {loading.courses ? <CardLoader /> :
+                errors.courses ? <div className="text-red-400 text-center py-4">{errors.courses}</div> :
+                  courses.length === 0 ? <EmptyState message="Henüz ders yok" /> : (
+                    <div className="space-y-3">
+                      {courses.map((course, index) => (
+                        <div key={course.id || index} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300">
+                          <h3 className="font-medium text-white">{course.name || course.title}</h3>
+                          <p className="text-sm text-emerald-200/60 mt-1">{course.studentCount || 0} öğrenci kayıtlı</p>
+                          <span className="inline-block mt-2 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-xs">Aktif</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
+                  )}
             </div>
           </div>
 
