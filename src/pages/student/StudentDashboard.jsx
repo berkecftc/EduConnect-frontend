@@ -56,10 +56,15 @@ function StudentDashboard() {
 
   // Kulüpler yüklendikten sonra etkinlikleri getir
   useEffect(() => {
-    if (clubs.length > 0) {
-      fetchClubEvents();
+    if (!loading.clubs) {
+      if (clubs.length > 0) {
+        fetchClubEvents();
+      } else {
+        // Kulüp yoksa loading'i kapat
+        setLoading(prev => ({ ...prev, clubEvents: false }));
+      }
     }
-  }, [clubs]);
+  }, [clubs, loading.clubs]);
 
   const fetchCourses = async () => {
     try {
@@ -542,8 +547,8 @@ function StudentDashboard() {
                                 {new Date(request.requestDate || request.createdAt).toLocaleDateString('tr-TR')}
                               </p>
                               <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs ${request.status === 'PENDING' ? 'bg-amber-500/20 text-amber-300' :
-                                  request.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' :
-                                    'bg-red-500/20 text-red-300'
+                                request.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' :
+                                  'bg-red-500/20 text-red-300'
                                 }`}>
                                 {request.status === 'PENDING' ? 'Bekliyor' :
                                   request.status === 'APPROVED' ? 'Onaylandı' : 'Reddedildi'}
@@ -743,8 +748,8 @@ function StudentDashboard() {
                             )}
                             <div className="flex items-center justify-between mt-2">
                               <span className={`inline-block px-2 py-0.5 rounded-md text-xs ${request.status === 'PENDING' ? 'bg-amber-500/20 text-amber-300' :
-                                  request.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' :
-                                    'bg-red-500/20 text-red-300'
+                                request.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' :
+                                  'bg-red-500/20 text-red-300'
                                 }`}>
                                 {request.status === 'PENDING' ? '⏳ Bekliyor' :
                                   request.status === 'APPROVED' ? '✅ Onaylandı' : '❌ Reddedildi'}
