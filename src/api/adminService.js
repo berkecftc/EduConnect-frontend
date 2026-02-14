@@ -2,15 +2,25 @@ import api from './axiosConfig';
 
 const adminService = {
   // --- 1. AKADEMİSYEN İŞLEMLERİ (Auth Service) ---
-  // Bu endpointleri birazdan Backend'de oluşturacağız
   getAcademicianRequests: async () => {
-    return await api.get('/auth/admin/requests/academicians'); 
+    return await api.get('/auth/admin/requests/academicians');
   },
   approveAcademician: async (userId) => {
     return await api.post(`/auth/admin/approve-academician/${userId}`);
   },
   rejectAcademician: async (userId) => {
     return await api.post(`/auth/admin/reject-academician/${userId}`);
+  },
+
+  // --- 1.5 ÖĞRENCİ BAŞVURU İŞLEMLERİ (Auth Service) ---
+  getStudentRequests: async () => {
+    return await api.get('/auth/admin/requests/students');
+  },
+  approveStudent: async (userId) => {
+    return await api.post(`/auth/admin/approve-student/${userId}`);
+  },
+  rejectStudent: async (userId) => {
+    return await api.post(`/auth/admin/reject-student/${userId}`);
   },
 
   // --- 2. KULÜP BAŞKANI İŞLEMLERİ ---
@@ -56,9 +66,9 @@ const adminService = {
 
     // DİKKAT: /admin/clubs/{clubId}/logo adresine atıyoruz
     return await api.post(`/admin/clubs/${clubId}/logo`, formData, {
-        headers: { 
-          'Content-Type': 'multipart/form-data' 
-        }
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
   },
 

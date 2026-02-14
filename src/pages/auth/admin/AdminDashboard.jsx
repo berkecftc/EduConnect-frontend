@@ -48,6 +48,7 @@ export default function AdminDashboard() {
         (adminService.getAllEvents && adminService.getAllEvents.bind(adminService)) ||
         (adminService.getEventRequests && adminService.getEventRequests.bind(adminService));
       const getAcademicianRequests = adminService.getAcademicianRequests?.bind(adminService);
+      const getStudentRequests = adminService.getStudentRequests?.bind(adminService);
       const getClubOfficialRequests = adminService.getClubOfficialRequests?.bind(adminService);
 
       const safeCall = async (fn) => {
@@ -55,12 +56,13 @@ export default function AdminDashboard() {
         return fn();
       };
 
-      const [usersRes, clubsRes, clubReqRes, eventsRes, academicianReqRes, clubOfficialReqRes] = await Promise.all([
+      const [usersRes, clubsRes, clubReqRes, eventsRes, academicianReqRes, studentReqRes, clubOfficialReqRes] = await Promise.all([
         safeCall(getAllUsers),
         safeCall(getAllActiveClubs),
         safeCall(getClubRequests),
         safeCall(getAllEvents),
         safeCall(getAcademicianRequests),
+        safeCall(getStudentRequests),
         safeCall(getClubOfficialRequests)
       ]);
 
@@ -69,6 +71,7 @@ export default function AdminDashboard() {
       const clubRequests = clubReqRes.data || [];
       const events = eventsRes.data || [];
       const academicianRequests = academicianReqRes.data || [];
+      const studentRequests = studentReqRes.data || [];
       const clubOfficialRequests = clubOfficialReqRes.data || [];
 
       const studentCount = users.filter((u) => u.roles && u.roles.includes('ROLE_STUDENT')).length;
@@ -90,7 +93,7 @@ export default function AdminDashboard() {
       const pendingEvents = events.filter((event) => event.status === 'PENDING').length;
 
       // Toplam bekleyen onaylar: akademisyen + kulüp başkanı + kulüp kurma + bekleyen etkinlikler
-      const totalPending = academicianRequests.length + clubOfficialRequests.length + clubRequests.length + pendingEvents;
+      const totalPending = academicianRequests.length + studentRequests.length + clubOfficialRequests.length + clubRequests.length + pendingEvents;
 
       setStats({
         totalStudents: studentCount,
@@ -120,6 +123,8 @@ export default function AdminDashboard() {
 
       if (activeTab === 'users') {
         response = await adminService.getAllUsers();
+      } else if (activeTab === 'students') {
+        response = await adminService.getStudentRequests();
       } else if (activeTab === 'academicians') {
         response = await adminService.getAcademicianRequests();
       } else if (activeTab === 'clubOfficials') {
@@ -138,7 +143,17 @@ export default function AdminDashboard() {
         response = await adminService.getInactiveAcademicians();
       }
 
-      setData(response?.data || []);
+      const result = response?.data || [];
+
+      // DEBUG: Backend'den gelen veriyi incele
+      if (activeTab === 'students' && result.length > 0) {
+        console.log('========== STUDENT REQUESTS DATA ==========');
+        console.log('İlk öğrenci verisi:', JSON.stringify(result[0], null, 2));
+        console.log('Tüm alanlar:', Object.keys(result[0]));
+        console.log('Tüm öğrenci verileri:', result);
+      }
+
+      setData(result);
     } catch (error) {
       console.error("Veri çekilemedi:", error);
       setData([]);
@@ -163,7 +178,8 @@ export default function AdminDashboard() {
   const handleApprove = async (id) => {
     if (!window.confirm("Bu isteği onaylamak istiyor musunuz?")) return;
     try {
-      if (activeTab === 'academicians') await adminService.approveAcademician(id);
+      if (activeTab === 'students') await adminService.approveStudent(id);
+      else if (activeTab === 'academicians') await adminService.approveAcademician(id);
       else if (activeTab === 'clubOfficials') await adminService.approveClubOfficial(id);
       else if (activeTab === 'clubs') await adminService.approveClubCreation(id);
       else if (activeTab === 'events') await adminService.approveEvent(id);
@@ -196,7 +212,8 @@ export default function AdminDashboard() {
     if (!window.confirm("Bu isteği REDDETMEK istediğinize emin misiniz?")) return;
 
     try {
-      if (activeTab === 'academicians') await adminService.rejectAcademician(id);
+      if (activeTab === 'students') await adminService.rejectStudent(id);
+      else if (activeTab === 'academicians') await adminService.rejectAcademician(id);
       else if (activeTab === 'clubOfficials') await adminService.rejectClubOfficial(id);
       else if (activeTab === 'clubs') await adminService.rejectClubCreation(id);
       else if (activeTab === 'events') await adminService.rejectEvent(id);
@@ -347,6 +364,12 @@ export default function AdminDashboard() {
         if (activeTab === 'users') {
           return item.email?.toLowerCase().includes(lowerTerm);
         }
+        if (activeTab === 'students') {
+          const fullName = `${item.firstName || item.first_name || ''} ${item.lastName || item.last_name || ''}`.toLowerCase();
+          return item.email?.toLowerCase().includes(lowerTerm) ||
+            fullName.includes(lowerTerm) ||
+            (item.department || item.studentNumber || '').toLowerCase().includes(lowerTerm);
+        }
         if (activeTab === 'academicians') {
           const fullName = `${item.firstName} ${item.lastName}`.toLowerCase();
           return item.email?.toLowerCase().includes(lowerTerm) ||
@@ -381,6 +404,7 @@ export default function AdminDashboard() {
       icon: UserCheck,
       gradient: 'from-purple-500 to-pink-600',
       tabs: [
+        { id: 'students', label: 'Öğrenci', icon: '🎒' },
         { id: 'academicians', label: 'Akademisyen', icon: '👨‍🏫' },
         { id: 'clubOfficials', label: 'Kulüp Başkanı', icon: '🎓' },
         { id: 'clubs', label: 'Kulüp Kurma', icon: '🏛️' }
@@ -634,6 +658,39 @@ export default function AdminDashboard() {
                               </div>
                             </div>
                           )}
+                          {activeTab === 'students' && (
+                            <div className="flex items-center gap-3">
+                              {item.studentDocumentUrl ? (
+                                item.studentDocumentUrl.toLowerCase().endsWith('.pdf') ? (
+                                  <div className="w-12 h-12 rounded-lg bg-linear-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:scale-110 transition-all"
+                                    onClick={() => {
+                                      window.open(item.studentDocumentUrl, '_blank');
+                                    }}
+                                  >
+                                    PDF
+                                  </div>
+                                ) : (
+                                  <img
+                                    src={item.studentDocumentUrl}
+                                    alt="Öğrenci Belgesi"
+                                    className="w-12 h-12 rounded-lg object-cover border-2 border-emerald-500/30 shadow-lg cursor-pointer hover:border-emerald-500 hover:scale-110 transition-all"
+                                    onClick={() => {
+                                      setSelectedImage(item.studentDocumentUrl);
+                                      setIsImageModalOpen(true);
+                                    }}
+                                  />
+                                )
+                              ) : (
+                                <div className="w-12 h-12 rounded-lg bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold">
+                                  {(item.firstName || item.first_name || '?').charAt(0)}{(item.lastName || item.last_name || '?').charAt(0)}
+                                </div>
+                              )}
+                              <div>
+                                <p className="font-medium">{`${item.firstName || item.first_name || ''} ${item.lastName || item.last_name || ''}`}</p>
+                                <p className={`text-xs ${'text-gray-400'}`}>{item.email}</p>
+                              </div>
+                            </div>
+                          )}
                           {activeTab === 'clubOfficials' && `${item.firstName} ${item.lastName}`}
                           {activeTab === 'clubs' && item.clubName}
                           {activeTab === 'events' && (
@@ -683,6 +740,14 @@ export default function AdminDashboard() {
                               <p className="font-medium text-slate-200">{item.department}</p>
                               <p className={`text-xs ${'text-gray-400'} mt-1`}>
                                 {item.university || 'Bilgi Yok'}
+                              </p>
+                            </div>
+                          )}
+                          {activeTab === 'students' && (
+                            <div>
+                              <p className="font-medium text-slate-200">{item.department}</p>
+                              <p className={`text-xs ${'text-gray-400'} mt-1`}>
+                                Okul No: {item.studentNumber || 'Bilgi Yok'}
                               </p>
                             </div>
                           )}
@@ -742,12 +807,12 @@ export default function AdminDashboard() {
                                 </button>
                               </>
                             )}
-                            {(activeTab === 'academicians' || activeTab === 'clubOfficials' || activeTab === 'clubs') && (
+                            {(activeTab === 'students' || activeTab === 'academicians' || activeTab === 'clubOfficials' || activeTab === 'clubs') && (
                               <>
-                                <button onClick={() => handleApprove(activeTab === 'clubs' ? item.id : item.userId)} className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-sm transition-all flex items-center gap-1">
+                                <button onClick={() => handleApprove(activeTab === 'clubs' ? item.id : activeTab === 'students' ? item.id : item.userId)} className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-sm transition-all flex items-center gap-1">
                                   <Check className="w-4 h-4" /> Onayla
                                 </button>
-                                <button onClick={() => handleReject(activeTab === 'clubs' ? item.id : item.userId)} className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm transition-all flex items-center gap-1">
+                                <button onClick={() => handleReject(activeTab === 'clubs' ? item.id : activeTab === 'students' ? item.id : item.userId)} className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm transition-all flex items-center gap-1">
                                   <X className="w-4 h-4" /> Reddet
                                 </button>
                               </>
