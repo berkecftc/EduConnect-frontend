@@ -18,7 +18,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [userRoleFilter, setUserRoleFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  const [eventFilter, setEventFilter] = useState('PENDING');
+
   const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
   const [boardMembers, setBoardMembers] = useState([]);
   const [selectedClubName, setSelectedClubName] = useState('');
@@ -89,11 +89,8 @@ export default function AdminDashboard() {
         return eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear;
       }).length;
 
-      // Bekleyen etkinlikler
-      const pendingEvents = events.filter((event) => event.status === 'PENDING').length;
-
-      // Toplam bekleyen onaylar: akademisyen + kulüp başkanı + kulüp kurma + bekleyen etkinlikler
-      const totalPending = academicianRequests.length + studentRequests.length + clubOfficialRequests.length + clubRequests.length + pendingEvents;
+      // Toplam bekleyen onaylar: akademisyen + kulüp başkanı + kulüp kurma
+      const totalPending = academicianRequests.length + studentRequests.length + clubOfficialRequests.length + clubRequests.length;
 
       setStats({
         totalStudents: studentCount,
@@ -133,8 +130,6 @@ export default function AdminDashboard() {
         response = await adminService.getClubCreationRequests();
       } else if (activeTab === 'activeClubs') {
         response = await adminService.getAllActiveClubs();
-      } else if (activeTab === 'events') {
-        response = await adminService.getAllEvents();
       } else if (activeTab === 'inactiveClubs') {
         response = await adminService.getInactiveClubs();
       } else if (activeTab === 'inactiveStudents') {
@@ -182,7 +177,7 @@ export default function AdminDashboard() {
       else if (activeTab === 'academicians') await adminService.approveAcademician(id);
       else if (activeTab === 'clubOfficials') await adminService.approveClubOfficial(id);
       else if (activeTab === 'clubs') await adminService.approveClubCreation(id);
-      else if (activeTab === 'events') await adminService.approveEvent(id);
+
 
       alert("İşlem Başarılı!");
       fetchData();
@@ -191,15 +186,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleApproveEvent = async (eventId) => {
-    try {
-      await adminService.approveEvent(eventId);
-      alert("Etkinlik onaylandı!");
-      fetchData();
-    } catch (err) {
-      alert("Onaylanırken hata oluştu.");
-    }
-  };
 
   const handleReject = async (id) => {
     if (activeTab === 'activeClubs') {
@@ -216,7 +202,7 @@ export default function AdminDashboard() {
       else if (activeTab === 'academicians') await adminService.rejectAcademician(id);
       else if (activeTab === 'clubOfficials') await adminService.rejectClubOfficial(id);
       else if (activeTab === 'clubs') await adminService.rejectClubCreation(id);
-      else if (activeTab === 'events') await adminService.rejectEvent(id);
+
 
       alert("İstek reddedildi/silindi.");
       fetchData();
@@ -326,29 +312,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const getFilteredEvents = () => {
-    if (!data || !Array.isArray(data)) return [];
-    const now = new Date();
 
-    return data.filter(event => {
-      const eventDate = parseDate(event);
-      const isValidDate = eventDate && !isNaN(eventDate.getTime());
-      const status = event.status ? event.status.trim() : '';
-
-      switch (eventFilter) {
-        case 'PENDING':
-          return status === 'PENDING';
-        case 'APPROVED':
-          return status === 'ACTIVE' && isValidDate && eventDate > now;
-        case 'PAST':
-          return status === 'ACTIVE' && (!isValidDate || eventDate <= now);
-        case 'REJECTED':
-          return status === 'REJECTED';
-        default:
-          return true;
-      }
-    });
-  };
 
   const getFilteredData = () => {
     let filtered = data;
@@ -387,7 +351,7 @@ export default function AdminDashboard() {
     return filtered;
   };
 
-  const displayData = activeTab === 'events' ? getFilteredEvents() : getFilteredData();
+  const displayData = getFilteredData();
 
   const tabCategories = [
     {
@@ -411,12 +375,11 @@ export default function AdminDashboard() {
       ]
     },
     {
-      label: 'Kulüp & Etkinlikler',
+      label: 'Kulüpler',
       icon: Calendar,
       gradient: 'from-emerald-500 to-teal-600',
       tabs: [
-        { id: 'activeClubs', label: 'Aktif Kulüpler', icon: '✅' },
-        { id: 'events', label: 'Etkinlikler', icon: '🎉' }
+        { id: 'activeClubs', label: 'Aktif Kulüpler', icon: '✅' }
       ]
     },
     {
@@ -545,28 +508,7 @@ export default function AdminDashboard() {
             {/* Filter Bar */}
             <div className={`p-4 border-b ${'border-white/10 bg-white/5'}`}>
               <div className="flex flex-wrap items-center justify-between gap-4">
-                {/* Event Filters */}
-                {activeTab === 'events' && (
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { label: '⏳ Bekleyen', value: 'PENDING' },
-                      { label: '📅 Gelecek', value: 'APPROVED' },
-                      { label: '🕒 Geçmiş', value: 'PAST' },
-                      { label: '❌ Reddedilen', value: 'REJECTED' },
-                    ].map((filter) => (
-                      <button
-                        key={filter.value}
-                        onClick={() => setEventFilter(filter.value)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${eventFilter === filter.value
-                          ? 'bg-linear-to-r from-blue-500 to-indigo-600 text-white shadow-lg'
-                          : 'bg-slate-700/60 text-slate-200 hover:bg-slate-600/70 border border-slate-600/50'
-                          }`}
-                      >
-                        {filter.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
+
 
                 {/* User Role Filters */}
                 {activeTab === 'users' && (
@@ -592,7 +534,7 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                {activeTab !== 'events' && activeTab !== 'users' && <div />}
+                {activeTab !== 'users' && <div />}
 
                 {/* Search */}
                 <div className="relative">
@@ -693,19 +635,7 @@ export default function AdminDashboard() {
                           )}
                           {activeTab === 'clubOfficials' && `${item.firstName} ${item.lastName}`}
                           {activeTab === 'clubs' && item.clubName}
-                          {activeTab === 'events' && (
-                            <div className="flex items-center gap-3">
-                              {item.imageUrl ? (
-                                <img src={item.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                              ) : (
-                                <div className="w-10 h-10 rounded-lg bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs">N/A</div>
-                              )}
-                              <div>
-                                <p className="font-medium">{item.title || item.eventName}</p>
-                                <p className={`text-xs ${'text-gray-400'}`}>{item.clubName}</p>
-                              </div>
-                            </div>
-                          )}
+
                           {activeTab === 'activeClubs' && (
                             <div className="flex items-center gap-3">
                               {item.logoUrl ? (
@@ -753,20 +683,7 @@ export default function AdminDashboard() {
                           )}
                           {activeTab === 'clubOfficials' && item.email}
                           {activeTab === 'clubs' && (item.description?.substring(0, 50) + '...')}
-                          {activeTab === 'events' && (
-                            <div>
-                              <p>{parseDate(item)?.toLocaleDateString('tr-TR') || 'Tarih Yok'}</p>
-                              <p className={`text-xs ${'text-gray-500'}`}>{item.location || 'Online'}</p>
-                              <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${item.status === 'ACTIVE' || item.status === 'APPROVED'
-                                ? 'bg-emerald-500/20 text-emerald-300'
-                                : item.status === 'PENDING'
-                                  ? 'bg-amber-500/20 text-amber-300'
-                                  : 'bg-red-500/20 text-red-300'
-                                }`}>
-                                {item.status === 'ACTIVE' || item.status === 'APPROVED' ? (parseDate(item) && parseDate(item) < new Date() ? 'GEÇMİŞ' : 'ONAYLI') : item.status === 'PENDING' ? 'BEKLİYOR' : 'REDDEDİLDİ'}
-                              </span>
-                            </div>
-                          )}
+
                           {activeTab === 'activeClubs' && `Başkan: ${item.presidentName}`}
                           {(activeTab === 'inactiveClubs' || activeTab === 'inactiveStudents' || activeTab === 'inactiveAcademicians') && (
                             <span className="opacity-60">
@@ -781,16 +698,7 @@ export default function AdminDashboard() {
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             )}
-                            {activeTab === 'events' && item.status === 'PENDING' && (
-                              <>
-                                <button onClick={() => handleApproveEvent(item.id)} className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-sm transition-all flex items-center gap-1">
-                                  <Check className="w-4 h-4" /> Onayla
-                                </button>
-                                <button onClick={() => handleReject(item.id)} className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm transition-all flex items-center gap-1">
-                                  <X className="w-4 h-4" /> Reddet
-                                </button>
-                              </>
-                            )}
+
                             {activeTab === 'activeClubs' && (
                               <>
                                 <button onClick={() => handleViewBoard(item.id, item.name)} className="px-3 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-sm transition-all flex items-center gap-1">
@@ -820,9 +728,7 @@ export default function AdminDashboard() {
                             {(activeTab === 'inactiveClubs' || activeTab === 'inactiveStudents' || activeTab === 'inactiveAcademicians') && (
                               <span className={`text-sm ${'text-gray-500'}`}>Arşivlendi</span>
                             )}
-                            {activeTab === 'events' && item.status !== 'PENDING' && (
-                              <span className={`text-sm ${'text-gray-500'}`}>—</span>
-                            )}
+
                           </div>
                         </td>
                       </tr>
