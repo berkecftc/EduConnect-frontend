@@ -59,7 +59,7 @@ function ClubOfficialDashboard() {
   const [roleChangeRequests, setRoleChangeRequests] = useState([]);
   const [showRoleChangeModal, setShowRoleChangeModal] = useState(false);
   const [roleChangeForm, setRoleChangeForm] = useState({
-    studentId: '',
+    studentNumber: '',
     requestedRole: 'ROLE_VICE_PRESIDENT',
   });
 
@@ -360,19 +360,19 @@ function ClubOfficialDashboard() {
 
   const handleCreateRoleChangeRequest = async (e) => {
     e.preventDefault();
-    if (!selectedClubId || !roleChangeForm.studentId) return;
+    if (!selectedClubId || !roleChangeForm.studentNumber) return;
 
     setLoading(prev => ({ ...prev, creatingRoleChange: true }));
     setErrors(prev => ({ ...prev, roleChange: null }));
 
     try {
       await createRoleChangeRequest(selectedClubId, {
-        studentId: roleChangeForm.studentId,
+        studentNumber: roleChangeForm.studentNumber,
         requestedRole: roleChangeForm.requestedRole,
       });
       setSuccessMessage('Görev değişikliği talebi başarıyla oluşturuldu!');
       setShowRoleChangeModal(false);
-      setRoleChangeForm({ studentId: '', requestedRole: 'ROLE_VICE_PRESIDENT' });
+      setRoleChangeForm({ studentNumber: '', requestedRole: 'ROLE_VICE_PRESIDENT' });
       fetchRoleChangeRequests(selectedClubId);
     } catch (error) {
       setErrors(prev => ({ ...prev, roleChange: error.response?.data?.message || 'Talep oluşturulamadı' }));
@@ -1291,13 +1291,13 @@ function ClubOfficialDashboard() {
             <form onSubmit={handleCreateRoleChangeRequest} className="modal-body">
               {errors.roleChange && <div className="error-message">{errors.roleChange}</div>}
               <div className="form-group">
-                <label className="form-label">Öğrenci ID</label>
+                <label className="form-label">Öğrenci Numarası</label>
                 <input
                   type="text"
                   className="form-input"
-                  value={roleChangeForm.studentId}
-                  onChange={(e) => setRoleChangeForm(prev => ({ ...prev, studentId: e.target.value }))}
-                  placeholder="Öğrenci UUID girin"
+                  value={roleChangeForm.studentNumber}
+                  onChange={(e) => setRoleChangeForm(prev => ({ ...prev, studentNumber: e.target.value }))}
+                  placeholder="Öğrenci numarası girin"
                   required
                 />
               </div>
