@@ -1,6 +1,8 @@
 import { Routes, Route } from 'react-router-dom';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import AdminDashboard from './pages/auth/admin/AdminDashboard';
 import StudentDashboard from './pages/student/StudentDashboard';
 import InstructorDashboard from './pages/instructor/InstructorDashboard';
@@ -14,57 +16,59 @@ function App() {
       <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Admin Rotası */}
-      <Route 
-        path="/admin/dashboard" 
+      <Route
+        path="/admin/dashboard"
         element={
           <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
             <AdminDashboard />
           </ProtectedRoute>
-        } 
+        }
       />
 
       {/* Öğrenci Rotası */}
-      <Route 
-        path="/student/dashboard" 
+      <Route
+        path="/student/dashboard"
         element={
           <ProtectedRoute allowedRoles={['ROLE_STUDENT']}>
             <StudentDashboard />
           </ProtectedRoute>
-        } 
+        }
       />
 
       {/* Kulüpler Listesi (Öğrenciler için) */}
-      <Route 
-        path="/clubs" 
+      <Route
+        path="/clubs"
         element={
           <ProtectedRoute allowedRoles={['ROLE_STUDENT']}>
             <ClubList />
           </ProtectedRoute>
-        } 
+        }
       />
 
       {/* Akademisyen Rotası */}
-      <Route 
-        path="/instructor/dashboard" 
+      <Route
+        path="/instructor/dashboard"
         element={
           <ProtectedRoute allowedRoles={['ROLE_INSTRUCTOR', 'ROLE_ACADEMICIAN']}>
             <InstructorDashboard />
           </ProtectedRoute>
-        } 
+        }
       />
 
       {/* Kulüp Yetkilisi Rotası */}
-      <Route 
-        path="/clubofficial/dashboard" 
+      <Route
+        path="/clubofficial/dashboard"
         element={
           <ProtectedRoute allowedRoles={['ROLE_CLUB_OFFICIAL']}>
             <ClubOfficialDashboard />
           </ProtectedRoute>
-        } 
+        }
       />
-      
+
       {/* Şimdilik boş dashboard */}
       <Route path="/dashboard" element={<h1 className="text-3xl p-10">Hoşgeldiniz! (Dashboard)</h1>} />
     </Routes>

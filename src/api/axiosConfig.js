@@ -37,7 +37,7 @@ api.interceptors.response.use(
       const currentPath = window.location.pathname;
 
       // Register ve login sayfasında redirect yapma (logları kaybetmemek için)
-      if (currentPath === '/register' || currentPath === '/login') {
+      if (currentPath === '/register' || currentPath === '/login' || currentPath === '/forgot-password' || currentPath === '/reset-password') {
         console.warn('⚠️ 401 on auth page, NOT redirecting. URL:', error.config?.url);
         return Promise.reject(error);
       }

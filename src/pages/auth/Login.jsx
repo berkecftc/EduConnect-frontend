@@ -9,7 +9,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isAdminMode, setIsAdminMode] = useState(false);
-  
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -23,9 +23,9 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const resultAction = await dispatch(loginUser({ email, password }));
-    
+
     if (loginUser.fulfilled.match(resultAction)) {
       const data = resultAction.payload;
 
@@ -33,7 +33,7 @@ export default function Login() {
         localStorage.setItem('token', data.token);
         localStorage.setItem('userId', data.userId);
         localStorage.setItem('username', data.username);
-        
+
         const roles = Array.from(data.roles || []);
         const role = roles[0];
         localStorage.setItem('role', role);
@@ -85,14 +85,14 @@ export default function Login() {
               </div>
             </div>
           </div>
-          
+
           <div className="feature-pills">
             <div className="pill">🚀 Hızlı Erişim</div>
             <div className="pill">🤝 Kolay İletişim</div>
             <div className="pill">📅 Etkinlik Yönetimi</div>
           </div>
         </div>
-        
+
         {/* Background Elements */}
         <div className="bg-gradient-overlay"></div>
         <div className="bg-pattern"></div>
@@ -104,9 +104,9 @@ export default function Login() {
           <div className="form-header">
             <div className="form-logo-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 2L2 7L12 12L22 7L12 2Z" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M2 17L12 22L22 17" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M2 12L12 17L22 12" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12 2L2 7L12 12L22 7L12 2Z" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M2 17L12 22L22 17" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M2 12L12 17L22 12" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
             <h2>{isAdminMode ? 'Yönetici Girişi' : 'Giriş Yap'}</h2>
@@ -116,9 +116,9 @@ export default function Login() {
           {error && (
             <div className="error-alert">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
               <span>{typeof error === 'object' ? 'Giriş başarısız' : error}</span>
             </div>
@@ -129,8 +129,8 @@ export default function Login() {
               <label>E-Posta Adresi</label>
               <div className="input-field">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z"/>
-                  <path d="M22 6L12 13L2 6"/>
+                  <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" />
+                  <path d="M22 6L12 13L2 6" />
                 </svg>
                 <input
                   type="email"
@@ -146,8 +146,8 @@ export default function Login() {
               <label>Şifre</label>
               <div className="input-field">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                  <path d="M7 11V7C7 4.79 8.79 3 11 3H13C15.21 3 17 4.79 17 7V11"/>
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7C7 4.79 8.79 3 11 3H13C15.21 3 17 4.79 17 7V11" />
                 </svg>
                 <input
                   type="password"
@@ -160,11 +160,11 @@ export default function Login() {
             </div>
 
             <div className="form-actions">
-               {/* Forgot password link could go here */}
+              <Link to="/forgot-password" className="forgot-password-link">Şifremi Unuttum</Link>
             </div>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className={`btn-primary ${status === 'loading' ? 'loading' : ''}`}
               disabled={status === 'loading'}
             >
@@ -187,7 +187,7 @@ export default function Login() {
             )}
           </div>
         </div>
-        
+
         {!isAdminMode && <div className="admin-toggle-wrapper"><AdminButton /></div>}
       </div>
     </div>
