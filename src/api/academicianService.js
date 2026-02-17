@@ -20,6 +20,29 @@ const academicianService = {
     rejectEvent: async (eventId) => {
         return await api.post(`/events/advisor/${eventId}/reject`);
     },
+
+    // ==================== GÖREV DEĞİŞİKLİĞİ TALEPLERİ ====================
+
+    // Danışman - Bekleyen görev değişikliği taleplerini listele
+    getPendingRoleChangeRequests: async () => {
+        return await api.get('/academician/role-change-requests');
+    },
+
+    // Danışman - Görev değişikliği talebini onayla
+    approveRoleChangeRequest: async (requestId) => {
+        return await api.put(`/academician/role-change-requests/${requestId}/approve`);
+    },
+
+    // Danışman - Görev değişikliği talebini reddet
+    rejectRoleChangeRequest: async (requestId, data = {}) => {
+        return await api.put(`/academician/role-change-requests/${requestId}/reject`, data);
+    },
+
+    // Danışman - Belirli bir kulübün bekleyen talep sayısı
+    getRoleChangeRequestCount: async (clubId) => {
+        return await api.get(`/academician/clubs/${clubId}/role-change-requests/count`);
+    },
 };
 
 export default academicianService;
+

@@ -9,7 +9,10 @@ import {
   getPendingMembershipRequests,
   getPendingMembershipRequestCount,
   approveMembershipRequest,
-  rejectMembershipRequest
+  rejectMembershipRequest,
+  createRoleChangeRequest,
+  getClubRoleChangeRequests,
+  removeMemberRole
 } from '../../api/clubService';
 import { getMyEvents, getEventRegistrations, createEvent, verifyQrCode, getMyRegistrations, getAllMyPendingRequests, approveParticipationRequest, rejectParticipationRequest } from '../../api/eventService';
 import { getMyCourses } from '../../api/courseService';
@@ -30,7 +33,10 @@ import {
   AlertCircle,
   X,
   FileText,
-  UserPlus
+  UserPlus,
+  Shield,
+  Trash2,
+  ArrowUpDown
 } from 'lucide-react';
 
 import './ClubOfficialDashboard.css';
@@ -50,6 +56,12 @@ function ClubOfficialDashboard() {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [eventParticipationRequests, setEventParticipationRequests] = useState([]);
+  const [roleChangeRequests, setRoleChangeRequests] = useState([]);
+  const [showRoleChangeModal, setShowRoleChangeModal] = useState(false);
+  const [roleChangeForm, setRoleChangeForm] = useState({
+    studentId: '',
+    requestedRole: 'ROLE_VICE_PRESIDENT',
+  });
 
   const [courses, setCourses] = useState([]);
   const [assignments, setAssignments] = useState([]);
@@ -83,6 +95,9 @@ function ClubOfficialDashboard() {
     pendingRequests: false,
     approvingRequest: false,
     eventParticipationRequests: true,
+    roleChangeRequests: false,
+    creatingRoleChange: false,
+    removingRole: false,
   });
 
   const [errors, setErrors] = useState({
@@ -98,6 +113,8 @@ function ClubOfficialDashboard() {
     verifyQr: null,
     pendingRequests: null,
     eventParticipationRequests: null,
+    roleChangeRequests: null,
+    roleChange: null,
   });
 
   const [successMessage, setSuccessMessage] = useState('');
@@ -118,6 +135,7 @@ function ClubOfficialDashboard() {
       fetchBoardMembers(selectedClubId);
       fetchPendingRequests(selectedClubId);
       fetchPendingCount(selectedClubId);
+      fetchRoleChangeRequests(selectedClubId);
     }
   }, [selectedClubId]);
 
@@ -138,10 +156,17 @@ function ClubOfficialDashboard() {
     try {
       const response = await getMyManagedClubs();
       console.log('Managed Clubs Response:', response);
-      if (response && response.length > 0) {
-        console.log('İlk yönetilen kulüp örneği:', response[0]);
+      const clubList = response || [];
+      setManagedClubs(clubList);
+
+      // Kulüp başkanı zaten tek bir kulübü yönettiği için otomatik seç
+      if (clubList.length > 0 && !selectedClubId) {
+        const firstClub = clubList[0];
+        const clubId = firstClub.id || firstClub.clubId;
+        if (clubId) {
+          setSelectedClubId(clubId);
+        }
       }
-      setManagedClubs(response || []);
     } catch (error) {
       setErrors(prev => ({ ...prev, managedClubs: 'Kulüpler yüklenemedi' }));
     } finally {
@@ -316,6 +341,59 @@ function ClubOfficialDashboard() {
       setErrors(prev => ({ ...prev, pendingRequests: error.response?.data?.message || 'İstek reddedilemedi' }));
     } finally {
       setLoading(prev => ({ ...prev, approvingRequest: false }));
+    }
+  };
+
+  // ==================== GÖREV DEĞİŞİKLİĞİ TALEPLERİ ====================
+
+  const fetchRoleChangeRequests = async (clubId) => {
+    setLoading(prev => ({ ...prev, roleChangeRequests: true }));
+    try {
+      const response = await getClubRoleChangeRequests(clubId);
+      setRoleChangeRequests(response || []);
+    } catch (error) {
+      setErrors(prev => ({ ...prev, roleChangeRequests: 'Görev değişikliği talepleri yüklenemedi' }));
+    } finally {
+      setLoading(prev => ({ ...prev, roleChangeRequests: false }));
+    }
+  };
+
+  const handleCreateRoleChangeRequest = async (e) => {
+    e.preventDefault();
+    if (!selectedClubId || !roleChangeForm.studentId) return;
+
+    setLoading(prev => ({ ...prev, creatingRoleChange: true }));
+    setErrors(prev => ({ ...prev, roleChange: null }));
+
+    try {
+      await createRoleChangeRequest(selectedClubId, {
+        studentId: roleChangeForm.studentId,
+        requestedRole: roleChangeForm.requestedRole,
+      });
+      setSuccessMessage('Görev değişikliği talebi başarıyla oluşturuldu!');
+      setShowRoleChangeModal(false);
+      setRoleChangeForm({ studentId: '', requestedRole: 'ROLE_VICE_PRESIDENT' });
+      fetchRoleChangeRequests(selectedClubId);
+    } catch (error) {
+      setErrors(prev => ({ ...prev, roleChange: error.response?.data?.message || 'Talep oluşturulamadı' }));
+    } finally {
+      setLoading(prev => ({ ...prev, creatingRoleChange: false }));
+    }
+  };
+
+  const handleRemoveMemberRole = async (studentId) => {
+    if (!selectedClubId) return;
+    if (!window.confirm('Bu üyeyi görevden almak istediğinize emin misiniz?')) return;
+
+    setLoading(prev => ({ ...prev, removingRole: true }));
+    try {
+      await removeMemberRole(selectedClubId, studentId);
+      setSuccessMessage('Üye görevden alındı!');
+      fetchBoardMembers(selectedClubId);
+    } catch (error) {
+      setErrors(prev => ({ ...prev, boardMembers: error.response?.data?.message || 'Görevden alma işlemi başarısız' }));
+    } finally {
+      setLoading(prev => ({ ...prev, removingRole: false }));
     }
   };
 
@@ -608,9 +686,21 @@ function ClubOfficialDashboard() {
                         <div className="scrollable-list">
                           {boardMembers.map((member, index) => (
                             <div key={member.id || index} className="list-item">
-                              <h3 className="item-title">{member.name || member.fullName}</h3>
-                              <p className="item-subtitle">{member.role || member.position}</p>
-                              <span className="status-badge warning">{member.email}</span>
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <h3 className="item-title">{member.name || member.fullName}</h3>
+                                  <p className="item-subtitle">{member.role || member.position}</p>
+                                  <span className="status-badge warning">{member.email}</span>
+                                </div>
+                                <button
+                                  onClick={() => handleRemoveMemberRole(member.studentId || member.id)}
+                                  disabled={loading.removingRole}
+                                  className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 transition-all duration-300 disabled:opacity-50 ml-2"
+                                  title="Görevden Al"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -694,9 +784,9 @@ function ClubOfficialDashboard() {
                                 <p className="item-subtitle">{formattedDate}</p>
                                 {event.location && <p className="item-subtitle">📍 {event.location}</p>}
                                 <span className={`status-badge ${eventStatus === 'upcoming' ? 'success' :
-                                    eventStatus === 'past' ? 'warning' :
-                                      eventStatus === 'rejected' ? 'danger' :
-                                        'danger'
+                                  eventStatus === 'past' ? 'warning' :
+                                    eventStatus === 'rejected' ? 'danger' :
+                                      'danger'
                                   }`}>
                                   {eventStatus === 'upcoming' ? '🟢 Aktif' :
                                     eventStatus === 'past' ? '⏰ Geçmiş' :
@@ -827,6 +917,61 @@ function ClubOfficialDashboard() {
                           ))}
                         </div>
                       )}
+              </div>
+            </div>
+
+            <div className="dashboard-card">
+              <div className="card-header">
+                <div className="icon-container violet"><ArrowUpDown className="w-6 h-6 text-white" /></div>
+                <h2 className="card-title">Görev Değişikliği Talepleri</h2>
+                <span className="count-badge violet">{roleChangeRequests.length}</span>
+              </div>
+              <div className="card-content">
+                {!selectedClubId ? <EmptyState message="Kulüp seçin" /> :
+                  loading.roleChangeRequests ? <CardLoader /> :
+                    errors.roleChangeRequests ? <ErrorState message={errors.roleChangeRequests} /> :
+                      <>
+                        <div style={{ marginBottom: '12px' }}>
+                          <button
+                            className="btn btn-indigo"
+                            onClick={() => setShowRoleChangeModal(true)}
+                            style={{ width: '100%', justifyContent: 'center' }}
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>Yeni Görev Talebi Oluştur</span>
+                          </button>
+                        </div>
+                        {roleChangeRequests.length === 0 ? <EmptyState message="Görev değişikliği talebi yok" /> : (
+                          <div className="scrollable-list">
+                            {roleChangeRequests.map((request, index) => (
+                              <div key={request.id || index} className="list-item">
+                                <div className="flex-1">
+                                  <h3 className="item-title">{request.studentName || request.student?.name || 'Öğrenci'}</h3>
+                                  <p className="item-subtitle">
+                                    <Shield className="w-3 h-3" style={{ display: 'inline', marginRight: '4px' }} />
+                                    {request.requestedRole === 'ROLE_VICE_PRESIDENT' ? 'Başkan Yardımcısı' :
+                                      request.requestedRole === 'ROLE_SECRETARY' ? 'Sekreter' :
+                                        request.requestedRole === 'ROLE_TREASURER' ? 'Sayman' :
+                                          request.requestedRole || 'Bilinmiyor'}
+                                  </p>
+                                  <span className={`status-badge ${request.status === 'APPROVED' ? 'success' :
+                                    request.status === 'REJECTED' ? 'danger' : 'warning'
+                                    }`}>
+                                    {request.status === 'APPROVED' ? '✅ Onaylandı' :
+                                      request.status === 'REJECTED' ? '❌ Reddedildi' : '⏳ Bekliyor'}
+                                  </span>
+                                  {request.rejectionReason && (
+                                    <p className="item-subtitle text-xs" style={{ color: '#fca5a5', marginTop: '4px' }}>
+                                      Red sebebi: {request.rejectionReason}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                }
               </div>
             </div>
 
@@ -1129,6 +1274,49 @@ function ClubOfficialDashboard() {
                 <button type="button" className="btn btn-secondary" onClick={() => setShowQrModal(false)}>İptal</button>
                 <button type="submit" className="btn btn-primary" disabled={loading.verifyingQr}>
                   {loading.verifyingQr ? <><Loader2 className="w-4 h-4 animate-spin" /> Doğrulanıyor...</> : 'Doğrula'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showRoleChangeModal && (
+        <div className="modal-overlay" onClick={() => setShowRoleChangeModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Görev Değişikliği Talebi Oluştur</h2>
+              <button className="modal-close" onClick={() => setShowRoleChangeModal(false)}>×</button>
+            </div>
+            <form onSubmit={handleCreateRoleChangeRequest} className="modal-body">
+              {errors.roleChange && <div className="error-message">{errors.roleChange}</div>}
+              <div className="form-group">
+                <label className="form-label">Öğrenci ID</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={roleChangeForm.studentId}
+                  onChange={(e) => setRoleChangeForm(prev => ({ ...prev, studentId: e.target.value }))}
+                  placeholder="Öğrenci UUID girin"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Talep Edilen Görev</label>
+                <select
+                  className="form-input"
+                  value={roleChangeForm.requestedRole}
+                  onChange={(e) => setRoleChangeForm(prev => ({ ...prev, requestedRole: e.target.value }))}
+                >
+                  <option value="ROLE_VICE_PRESIDENT">Başkan Yardımcısı</option>
+                  <option value="ROLE_SECRETARY">Sekreter</option>
+                  <option value="ROLE_TREASURER">Sayman</option>
+                </select>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowRoleChangeModal(false)}>İptal</button>
+                <button type="submit" className="btn btn-primary" disabled={loading.creatingRoleChange}>
+                  {loading.creatingRoleChange ? <><Loader2 className="w-4 h-4 animate-spin" /> Oluşturuluyor...</> : 'Talep Oluştur'}
                 </button>
               </div>
             </form>

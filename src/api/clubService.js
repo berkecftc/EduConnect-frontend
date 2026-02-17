@@ -71,3 +71,23 @@ export const rejectMembershipRequest = async (clubId, requestId) => {
   const response = await api.put(`/clubs/${clubId}/membership-requests/${requestId}/reject`);
   return response.data;
 };
+
+// ==================== KULÜP YETKİLİSİ - GÖREV DEĞİŞİKLİĞİ TALEPLERİ ====================
+
+// Kulüp Yetkilisi - Görev değişikliği talebi oluştur
+export const createRoleChangeRequest = async (clubId, data) => {
+  const response = await api.post(`/clubs/${clubId}/role-change-requests`, data);
+  return response.data;
+};
+
+// Kulüp Yetkilisi - Kulübün görev değişikliği taleplerini listele
+export const getClubRoleChangeRequests = async (clubId) => {
+  const response = await api.get(`/clubs/${clubId}/role-change-requests`);
+  return response.data;
+};
+
+// Kulüp Yetkilisi - Üyeyi görevden al (onay gerektirmez)
+export const removeMemberRole = async (clubId, studentId) => {
+  const response = await api.delete(`/clubs/${clubId}/members/${studentId}/role`);
+  return response.data;
+};

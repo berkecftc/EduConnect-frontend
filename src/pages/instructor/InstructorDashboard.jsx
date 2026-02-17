@@ -7,7 +7,7 @@ import { getCourseSubmissions, gradeSubmission } from '../../api/assignmentServi
 import academicianService from '../../api/academicianService';
 import {
   GraduationCap, BookOpen, UserPlus, ClipboardCheck, LogOut, Loader2, Check, AlertCircle,
-  Calendar, X, Eye, Clock, ChevronRight
+  Calendar, X, Eye, Clock, ChevronRight, Shield, ArrowUpDown
 } from 'lucide-react';
 
 function InstructorDashboard() {
@@ -28,6 +28,13 @@ function InstructorDashboard() {
   const [eventFilter, setEventFilter] = useState('PENDING');
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventSearchTerm, setEventSearchTerm] = useState('');
+
+  // Görev değişikliği talepleri state
+  const [roleChangeRequests, setRoleChangeRequests] = useState([]);
+  const [roleChangeLoading, setRoleChangeLoading] = useState(false);
+  const [showRejectReasonModal, setShowRejectReasonModal] = useState(false);
+  const [rejectingRequestId, setRejectingRequestId] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const [enrollForm, setEnrollForm] = useState({
     courseId: '',
@@ -56,6 +63,9 @@ function InstructorDashboard() {
   useEffect(() => {
     if (activeTab === 'pendingEvents') {
       fetchEvents();
+    }
+    if (activeTab === 'roleRequests') {
+      fetchRoleChangeRequests();
     }
   }, [activeTab]);
 
@@ -126,6 +136,54 @@ function InstructorDashboard() {
       } else {
         alert("Etkinlik reddedilirken hata: " + msg);
       }
+    }
+  };
+
+  // ==================== GÖREV DEĞİŞİKLİĞİ TALEPLERİ ====================
+
+  const fetchRoleChangeRequests = async () => {
+    setRoleChangeLoading(true);
+    try {
+      const res = await academicianService.getPendingRoleChangeRequests();
+      setRoleChangeRequests(res.data || []);
+    } catch (error) {
+      console.error('Görev talepleri yüklenirken hata:', error);
+    } finally {
+      setRoleChangeLoading(false);
+    }
+  };
+
+  const handleApproveRoleChange = async (requestId) => {
+    if (!window.confirm('Bu görev değişikliği talebini onaylamak istiyor musunuz?')) return;
+    try {
+      await academicianService.approveRoleChangeRequest(requestId);
+      setSuccessMessage('Görev değişikliği talebi onaylandı!');
+      fetchRoleChangeRequests();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data || 'Onaylanırken hata oluştu.';
+      alert('Görev talebi onaylanırken hata: ' + msg);
+    }
+  };
+
+  const openRejectReasonModal = (requestId) => {
+    setRejectingRequestId(requestId);
+    setRejectionReason('');
+    setShowRejectReasonModal(true);
+  };
+
+  const handleRejectRoleChange = async () => {
+    if (!rejectingRequestId) return;
+    try {
+      const data = rejectionReason.trim() ? { rejectionReason: rejectionReason.trim() } : {};
+      await academicianService.rejectRoleChangeRequest(rejectingRequestId, data);
+      setSuccessMessage('Görev değişikliği talebi reddedildi.');
+      setShowRejectReasonModal(false);
+      setRejectingRequestId(null);
+      setRejectionReason('');
+      fetchRoleChangeRequests();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data || 'Reddedilirken hata oluştu.';
+      alert('Görev talebi reddedilirken hata: ' + msg);
     }
   };
 
@@ -313,6 +371,20 @@ function InstructorDashboard() {
             {pendingEvents.length > 0 && (
               <span className="ml-1 px-2 py-0.5 rounded-full bg-red-500/80 text-white text-xs font-bold animate-pulse">
                 {pendingEvents.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('roleRequests')}
+            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${activeTab === 'roleRequests'
+              ? 'bg-linear-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30'
+              : 'bg-white/10 text-slate-200 hover:bg-white/20 border border-white/10'}`}
+          >
+            <Shield className="w-4 h-4" />
+            <span>Görev Talepleri</span>
+            {roleChangeRequests.length > 0 && (
+              <span className="ml-1 px-2 py-0.5 rounded-full bg-red-500/80 text-white text-xs font-bold animate-pulse">
+                {roleChangeRequests.length}
               </span>
             )}
           </button>
@@ -604,10 +676,10 @@ function InstructorDashboard() {
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${(event.status === 'ACTIVE' || event.status === 'APPROVED')
-                              ? (parseDate(event) && parseDate(event) < new Date() ? 'bg-gray-500/20 text-gray-300' : 'bg-emerald-500/20 text-emerald-300')
-                              : event.status === 'PENDING'
-                                ? 'bg-amber-500/20 text-amber-300'
-                                : 'bg-red-500/20 text-red-300'
+                            ? (parseDate(event) && parseDate(event) < new Date() ? 'bg-gray-500/20 text-gray-300' : 'bg-emerald-500/20 text-emerald-300')
+                            : event.status === 'PENDING'
+                              ? 'bg-amber-500/20 text-amber-300'
+                              : 'bg-red-500/20 text-red-300'
                             }`}>
                             {event.status === 'ACTIVE' || event.status === 'APPROVED'
                               ? (parseDate(event) && parseDate(event) < new Date() ? 'GEÇMİŞ' : 'ONAYLI')
@@ -642,6 +714,127 @@ function InstructorDashboard() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ===================== GÖREV DEĞİŞİKLİĞİ TALEPLERİ ===================== */}
+        {activeTab === 'roleRequests' && (
+          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl overflow-hidden shadow-2xl">
+            {/* Header */}
+            <div className="p-6 border-b border-white/10 bg-white/5">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-linear-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30">
+                  <Shield className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-white">Görev Değişikliği Talepleri</h2>
+                  <p className="text-sm text-emerald-200/60 mt-0.5">Danışmanı olduğunuz kulüplerin görev değişikliği taleplerini yönetin</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Tablo */}
+            {roleChangeLoading ? (
+              <CardLoader />
+            ) : roleChangeRequests.length === 0 ? (
+              <EmptyState message="Bekleyen görev değişikliği talebi bulunmuyor." />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-linear-to-r from-violet-600 to-purple-600">
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Öğrenci</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Kulüp</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Talep Edilen Görev</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Durum</th>
+                      <th className="px-6 py-4 text-right text-xs font-bold text-white uppercase tracking-wider">İşlemler</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/10">
+                    {roleChangeRequests.map((request, index) => {
+                      const roleName = request.requestedRole === 'ROLE_VICE_PRESIDENT' ? 'Başkan Yardımcısı' :
+                        request.requestedRole === 'ROLE_SECRETARY' ? 'Sekreter' :
+                          request.requestedRole === 'ROLE_TREASURER' ? 'Sayman' :
+                            request.requestedRole || 'Bilinmiyor';
+
+                      return (
+                        <tr key={request.id || index} className="hover:bg-white/5 transition-all duration-300">
+                          <td className="px-6 py-4">
+                            <div>
+                              <p className="font-medium text-white">{request.studentName || request.student?.name || 'Öğrenci'}</p>
+                              <p className="text-xs text-gray-400">{request.studentEmail || request.student?.email || ''}</p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-emerald-300 text-sm font-medium">{request.clubName || request.club?.name || 'Bilinmiyor'}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-500/20 text-violet-300 text-xs font-medium">
+                              <Shield className="w-3 h-3" />
+                              {roleName}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="inline-block px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-300">
+                              BEKLİYOR
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleApproveRoleChange(request.id)}
+                                className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-sm transition-all flex items-center gap-1 hover:scale-105"
+                              >
+                                <Check className="w-4 h-4" /> Onayla
+                              </button>
+                              <button
+                                onClick={() => openRejectReasonModal(request.id)}
+                                className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm transition-all flex items-center gap-1 hover:scale-105"
+                              >
+                                <X className="w-4 h-4" /> Reddet
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Reject Reason Modal */}
+        {showRejectReasonModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowRejectReasonModal(false)}>
+            <div className="bg-slate-800 border border-white/20 rounded-2xl p-6 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-lg font-semibold text-white mb-4">Görev Talebini Reddet</h3>
+              <div className="mb-4">
+                <label className="block text-sm text-emerald-200/70 mb-2">Red Sebebi (opsiyonel)</label>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Reddedilme sebebini yazınız..."
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-red-500/50 transition-all resize-none"
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowRejectReasonModal(false)}
+                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 transition-all"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={handleRejectRoleChange}
+                  className="px-4 py-2 rounded-xl bg-red-500/30 hover:bg-red-500/40 border border-red-500/40 text-red-300 transition-all"
+                >
+                  Reddet
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

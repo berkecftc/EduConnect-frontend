@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import adminService from '../../../api/adminService';
 import {
   Shield, Users, GraduationCap, Building2, Calendar, Archive,
-  Search, Check, X, Eye, Crown, Image, Trash2, LogOut, Loader2,
+  Search, Check, X, Image, Trash2, LogOut, Loader2,
   AlertCircle, UserCheck, UserX, Clock, ChevronRight
 } from 'lucide-react';
 
@@ -19,12 +19,7 @@ export default function AdminDashboard() {
   const [userRoleFilter, setUserRoleFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const [isBoardModalOpen, setIsBoardModalOpen] = useState(false);
-  const [boardMembers, setBoardMembers] = useState([]);
-  const [selectedClubName, setSelectedClubName] = useState('');
-  const [isPresidentModalOpen, setIsPresidentModalOpen] = useState(false);
-  const [selectedClubForPresident, setSelectedClubForPresident] = useState(null);
-  const [newPresidentId, setNewPresidentId] = useState('');
+
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedClubForDelete, setSelectedClubForDelete] = useState(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
@@ -255,40 +250,7 @@ export default function AdminDashboard() {
     fileInput.click();
   };
 
-  const handleViewBoard = async (clubId, clubName) => {
-    try {
-      const response = await adminService.getClubBoardMembers(clubId);
-      setBoardMembers(response.data);
-      setSelectedClubName(clubName);
-      setIsBoardModalOpen(true);
-    } catch (err) {
-      alert("Yönetim kurulu bilgileri alınamadı.");
-    }
-  };
 
-  const handleChangePresident = async (clubId) => {
-    const club = data.find(c => c.id === clubId);
-    setSelectedClubForPresident(club);
-    setIsPresidentModalOpen(true);
-  };
-
-  const confirmChangePresident = async () => {
-    if (!newPresidentId.trim()) {
-      alert("Lütfen geçerli bir Öğrenci ID'si giriniz!");
-      return;
-    }
-
-    try {
-      await adminService.changeClubPresident(selectedClubForPresident.id, newPresidentId);
-      alert("Başkan başarıyla değiştirildi.");
-      setIsPresidentModalOpen(false);
-      setNewPresidentId('');
-      setSelectedClubForPresident(null);
-      fetchData();
-    } catch (err) {
-      alert("Hata: " + (err.response?.data?.message || "Başkan değiştirilemedi. ID'nin kulübe üye olduğundan emin olun."));
-    }
-  };
 
   const handleLogout = () => {
     if (window.confirm("Çıkış yapmak istediğinize emin misiniz?")) {
@@ -701,12 +663,6 @@ export default function AdminDashboard() {
 
                             {activeTab === 'activeClubs' && (
                               <>
-                                <button onClick={() => handleViewBoard(item.id, item.name)} className="px-3 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-sm transition-all flex items-center gap-1">
-                                  <Eye className="w-4 h-4" /> Yönetim
-                                </button>
-                                <button onClick={() => handleChangePresident(item.id)} className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-sm transition-all flex items-center gap-1">
-                                  <Crown className="w-4 h-4" /> Başkan
-                                </button>
                                 <button onClick={() => handleUpdateLogo(item.id)} className="px-3 py-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-sm transition-all">
                                   <Image className="w-4 h-4" />
                                 </button>
@@ -741,81 +697,7 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* Board Modal */}
-      {isBoardModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className={`w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden ${'bg-slate-800'}`}>
-            <div className="p-6 bg-linear-to-r from-blue-500 to-indigo-600">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-white">{selectedClubName} - Yönetim Kurulu</h3>
-                <button onClick={() => setIsBoardModalOpen(false)} className="p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-all">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            <div className="p-6 max-h-80 overflow-y-auto">
-              {boardMembers.length > 0 ? (
-                <div className="space-y-3">
-                  {boardMembers.map((member, index) => (
-                    <div key={index} className={`flex items-center justify-between p-4 rounded-xl ${'bg-white/5'}`}>
-                      <span className={'text-white'}>{member.firstName} {member.lastName}</span>
-                      <span className={`px-3 py-1 rounded-full text-xs ${member.role.includes('PRESIDENT') ? ('bg-emerald-500/20 text-emerald-300') : ('bg-amber-500/20 text-amber-300')}`}>
-                        {member.role.replace('CLUB_', '').replace('_', ' ')}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState message="Bu kulüpte kayıtlı yetkili bulunamadı." />
-              )}
-            </div>
-            <div className={`p-4 border-t ${'border-white/10'}`}>
-              <button onClick={() => setIsBoardModalOpen(false)} className="w-full py-2 rounded-xl bg-linear-to-r from-blue-500 to-indigo-600 text-white font-medium hover:shadow-lg transition-all">
-                Kapat
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* President Change Modal */}
-      {isPresidentModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className={`w-full max-w-md rounded-2xl shadow-2xl overflow-hidden ${'bg-slate-800'}`}>
-            <div className="p-6 bg-linear-to-r from-amber-500 to-orange-600">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2"><Crown className="w-6 h-6" /> Başkan Değiştir</h3>
-                <button onClick={() => { setIsPresidentModalOpen(false); setNewPresidentId(''); setSelectedClubForPresident(null); }} className="p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-all">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            <div className="p-6">
-              <div className={`p-4 rounded-xl mb-4 ${'bg-white/5'}`}>
-                <p className={`text-sm ${'text-gray-400'}`}>Kulüp: <span className={'text-white'}>{selectedClubForPresident?.name}</span></p>
-                <p className={`text-sm ${'text-gray-400'}`}>Mevcut Başkan: <span className={'text-white'}>{selectedClubForPresident?.presidentName}</span></p>
-              </div>
-              <label className={`block text-sm font-medium mb-2 ${'text-gray-300'}`}>Yeni Başkanın Öğrenci ID'si (UUID)</label>
-              <input
-                type="text"
-                value={newPresidentId}
-                onChange={(e) => setNewPresidentId(e.target.value)}
-                placeholder="a1b2c3d4-e5f6-7890-..."
-                className={`w-full px-4 py-3 rounded-xl border transition-all focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${'bg-white/10 border-white/20 text-white placeholder-gray-400'}`}
-              />
-              <p className={`text-xs mt-2 ${'text-gray-500'}`}>⚠️ Yeni başkanın kulüp üyesi olduğundan emin olun.</p>
-            </div>
-            <div className={`p-4 border-t flex gap-3 ${'border-white/10'}`}>
-              <button onClick={() => { setIsPresidentModalOpen(false); setNewPresidentId(''); setSelectedClubForPresident(null); }} className={`flex-1 py-2 rounded-xl border transition-all ${'border-white/20 text-gray-300 hover:bg-white/10'}`}>
-                İptal
-              </button>
-              <button onClick={confirmChangePresident} className="flex-1 py-2 rounded-xl bg-linear-to-r from-amber-500 to-orange-600 text-white font-medium hover:shadow-lg transition-all">
-                Değiştir
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Delete Club Modal */}
       {isDeleteModalOpen && (
