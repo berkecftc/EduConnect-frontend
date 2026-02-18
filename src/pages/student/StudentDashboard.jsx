@@ -6,7 +6,7 @@ import { getMyCourses } from '../../api/courseService';
 import { getMyAssignments } from '../../api/assignmentService';
 import { getMyMemberships, getMyMembershipRequests, cancelMembershipRequest } from '../../api/clubService';
 import { getMyRegistrations, getMyParticipationRequests, sendParticipationRequest, getClubEvents } from '../../api/eventService';
-import { BookOpen, ClipboardList, Users, Calendar, LogOut, Loader2, Send, X, Check, UserCheck, CalendarPlus } from 'lucide-react';
+import { BookOpen, ClipboardList, Users, Calendar, LogOut, Loader2, Send, X, Check, UserCheck, CalendarPlus, Image } from 'lucide-react';
 
 function StudentDashboard() {
   const dispatch = useDispatch();
@@ -44,6 +44,7 @@ function StudentDashboard() {
   });
 
   const [successMessage, setSuccessMessage] = useState('');
+  const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => {
     fetchCourses();
@@ -504,14 +505,35 @@ function StudentDashboard() {
                         return (
                           <div
                             key={event.id || index}
-                            className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300 cursor-pointer hover:translate-x-1"
+                            className="rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300 cursor-pointer hover:translate-x-1 overflow-hidden"
                           >
-                            <h3 className="font-medium text-white">{eventData.title || eventData.name}</h3>
-                            <p className="text-sm text-purple-200/60 mt-1">{formattedDate}</p>
-                            <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs ${eventStatus === 'upcoming' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
-                              }`}>
-                              {eventStatus === 'upcoming' ? '🟢 Yaklaşan' : '⏰ Geçmiş'}
-                            </span>
+                            {(eventData.imageUrl || eventData.image_url || eventData.posterUrl) ? (
+                              <div
+                                className="relative w-full h-40 overflow-hidden cursor-pointer group"
+                                onClick={() => setSelectedImage(eventData.imageUrl || eventData.image_url || eventData.posterUrl)}
+                              >
+                                <img
+                                  src={eventData.imageUrl || eventData.image_url || eventData.posterUrl}
+                                  alt={eventData.title || eventData.name}
+                                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-2">
+                                  <span className="text-white/80 text-xs flex items-center gap-1"><Image className="w-3 h-3" /> Büyütmek için tıklayın</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="w-full h-24 bg-gradient-to-br from-rose-500/20 to-purple-600/20 flex items-center justify-center">
+                                <Image className="w-8 h-8 text-purple-300/40" />
+                              </div>
+                            )}
+                            <div className="p-4">
+                              <h3 className="font-medium text-white">{eventData.title || eventData.name}</h3>
+                              <p className="text-sm text-purple-200/60 mt-1">{formattedDate}</p>
+                              <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs ${eventStatus === 'upcoming' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
+                                }`}>
+                                {eventStatus === 'upcoming' ? '🟢 Yaklaşan' : '⏰ Geçmiş'}
+                              </span>
+                            </div>
                           </div>
                         );
                       })}
@@ -624,34 +646,55 @@ function StudentDashboard() {
                         return (
                           <div
                             key={event.id || index}
-                            className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300"
+                            className="rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden"
                           >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1">
-                                <h3 className="font-medium text-white">{event.title || event.name}</h3>
-                                <p className="text-sm text-purple-200/60 mt-1">
-                                  🏫 {event.clubName || 'Kulüp'}
-                                </p>
-                                <p className="text-sm text-purple-200/60 mt-1">
-                                  📅 {formattedDate}
-                                </p>
-                                <p className="text-xs text-purple-200/50 mt-1">
-                                  📍 {event.location || 'Konum belirtilmemiş'}
-                                </p>
-                                <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs ${eventStatus === 'upcoming' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-500/20 text-gray-300'
-                                  }`}>
-                                  {eventStatus === 'upcoming' ? '🟢 Yaklaşan' : '⏰ Geçmiş'}
-                                </span>
+                            {(event.imageUrl || event.image_url || event.posterUrl) ? (
+                              <div
+                                className="relative w-full h-40 overflow-hidden cursor-pointer group"
+                                onClick={() => setSelectedImage(event.imageUrl || event.image_url || event.posterUrl)}
+                              >
+                                <img
+                                  src={event.imageUrl || event.image_url || event.posterUrl}
+                                  alt={event.title || event.name}
+                                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-2">
+                                  <span className="text-white/80 text-xs flex items-center gap-1"><Image className="w-3 h-3" /> Büyütmek için tıklayın</span>
+                                </div>
                               </div>
-                              {canRequest && (
-                                <button
-                                  onClick={() => handleSendParticipationRequest(event.id)}
-                                  className="p-2 rounded-lg bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/30 text-violet-300 transition-all duration-300 hover:scale-110"
-                                  title="Katılım İsteği Gönder"
-                                >
-                                  <Send className="w-4 h-4" />
-                                </button>
-                              )}
+                            ) : (
+                              <div className="w-full h-24 bg-gradient-to-br from-violet-500/20 to-purple-600/20 flex items-center justify-center">
+                                <Image className="w-8 h-8 text-purple-300/40" />
+                              </div>
+                            )}
+                            <div className="p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1">
+                                  <h3 className="font-medium text-white">{event.title || event.name}</h3>
+                                  <p className="text-sm text-purple-200/60 mt-1">
+                                    🏫 {event.clubName || 'Kulüp'}
+                                  </p>
+                                  <p className="text-sm text-purple-200/60 mt-1">
+                                    📅 {formattedDate}
+                                  </p>
+                                  <p className="text-xs text-purple-200/50 mt-1">
+                                    📍 {event.location || 'Konum belirtilmemiş'}
+                                  </p>
+                                  <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs ${eventStatus === 'upcoming' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-500/20 text-gray-300'
+                                    }`}>
+                                    {eventStatus === 'upcoming' ? '🟢 Yaklaşan' : '⏰ Geçmiş'}
+                                  </span>
+                                </div>
+                                {canRequest && (
+                                  <button
+                                    onClick={() => handleSendParticipationRequest(event.id)}
+                                    className="p-2 rounded-lg bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/30 text-violet-300 transition-all duration-300 hover:scale-110"
+                                    title="Katılım İsteği Gönder"
+                                  >
+                                    <Send className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
@@ -734,31 +777,52 @@ function StudentDashboard() {
                         return (
                           <div
                             key={request.id || index}
-                            className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300"
+                            className="rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden"
                           >
-                            <h3 className="font-medium text-white">{eventTitle}</h3>
-                            <p className="text-sm text-purple-200/60 mt-1">📅 {formattedDate}</p>
-                            <p className="text-xs text-purple-200/50 mt-1">
-                              📍 {location}
-                            </p>
-                            {request.studentName && (
-                              <p className="text-xs text-indigo-300/70 mt-1">
-                                👤 {request.studentName}
-                              </p>
+                            {(eventData.imageUrl || eventData.image_url || eventData.posterUrl || request.imageUrl) ? (
+                              <div
+                                className="relative w-full h-32 overflow-hidden cursor-pointer group"
+                                onClick={() => setSelectedImage(eventData.imageUrl || eventData.image_url || eventData.posterUrl || request.imageUrl)}
+                              >
+                                <img
+                                  src={eventData.imageUrl || eventData.image_url || eventData.posterUrl || request.imageUrl}
+                                  alt={eventTitle}
+                                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-2">
+                                  <span className="text-white/80 text-xs flex items-center gap-1"><Image className="w-3 h-3" /> Büyütmek için tıklayın</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="w-full h-16 bg-gradient-to-br from-emerald-500/20 to-teal-600/20 flex items-center justify-center">
+                                <Image className="w-6 h-6 text-emerald-300/40" />
+                              </div>
                             )}
-                            <div className="flex items-center justify-between mt-2">
-                              <span className={`inline-block px-2 py-0.5 rounded-md text-xs ${request.status === 'PENDING' ? 'bg-amber-500/20 text-amber-300' :
-                                request.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' :
-                                  'bg-red-500/20 text-red-300'
-                                }`}>
-                                {request.status === 'PENDING' ? '⏳ Bekliyor' :
-                                  request.status === 'APPROVED' ? '✅ Onaylandı' : '❌ Reddedildi'}
-                              </span>
-                              {(request.requestDate || request.createdAt || request.requestedAt) && (
-                                <span className="text-xs text-purple-200/50">
-                                  {new Date(request.requestDate || request.createdAt || request.requestedAt).toLocaleDateString('tr-TR')}
-                                </span>
+                            <div className="p-4">
+                              <h3 className="font-medium text-white">{eventTitle}</h3>
+                              <p className="text-sm text-purple-200/60 mt-1">📅 {formattedDate}</p>
+                              <p className="text-xs text-purple-200/50 mt-1">
+                                📍 {location}
+                              </p>
+                              {request.studentName && (
+                                <p className="text-xs text-indigo-300/70 mt-1">
+                                  👤 {request.studentName}
+                                </p>
                               )}
+                              <div className="flex items-center justify-between mt-2">
+                                <span className={`inline-block px-2 py-0.5 rounded-md text-xs ${request.status === 'PENDING' ? 'bg-amber-500/20 text-amber-300' :
+                                  request.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' :
+                                    'bg-red-500/20 text-red-300'
+                                  }`}>
+                                  {request.status === 'PENDING' ? '⏳ Bekliyor' :
+                                    request.status === 'APPROVED' ? '✅ Onaylandı' : '❌ Reddedildi'}
+                                </span>
+                                {(request.requestDate || request.createdAt || request.requestedAt) && (
+                                  <span className="text-xs text-purple-200/50">
+                                    {new Date(request.requestDate || request.createdAt || request.requestedAt).toLocaleDateString('tr-TR')}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
@@ -769,6 +833,29 @@ function StudentDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Afiş Görsel Modal */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-8"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-2xl w-full flex flex-col items-center">
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute -top-10 right-0 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all duration-300 hover:scale-110"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img
+              src={selectedImage}
+              alt="Etkinlik Afişi"
+              className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
