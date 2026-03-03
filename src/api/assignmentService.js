@@ -17,3 +17,12 @@ export const gradeSubmission = async (submissionId, gradeData) => {
   const response = await api.put(`/assignments/submissions/${submissionId}/grade`, gradeData);
   return response.data;
 };
+
+// Assignment dosyası indirme
+export const downloadAssignmentFile = async (fileUrl) => {
+  const response = await api.get(`/assignments/files/download`, {
+    params: { url: fileUrl },
+    responseType: 'blob',
+  });
+  return response;
+};

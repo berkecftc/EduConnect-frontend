@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../store/slices/authSlice';
-import { getMyCourses } from '../../api/courseService';
-import { getMyAssignments } from '../../api/assignmentService';
+import { getMyCourses, applyToCourse, getMyApplications, getAnnouncements, downloadCourseFile } from '../../api/courseService';
+import { getMyAssignments, downloadAssignmentFile } from '../../api/assignmentService';
 import { getMyMemberships, getMyMembershipRequests, cancelMembershipRequest } from '../../api/clubService';
 import { getMyRegistrations, getMyParticipationRequests, sendParticipationRequest, getClubEvents } from '../../api/eventService';
-import { BookOpen, ClipboardList, Users, Calendar, LogOut, Loader2, Send, X, Check, UserCheck, CalendarPlus, Image } from 'lucide-react';
+import { BookOpen, ClipboardList, Users, Calendar, LogOut, Loader2, Send, X, Check, UserCheck, CalendarPlus, Image, Bell, FileDown, Megaphone } from 'lucide-react';
 
 function StudentDashboard() {
   const dispatch = useDispatch();
@@ -22,6 +22,15 @@ function StudentDashboard() {
   const [membershipRequests, setMembershipRequests] = useState([]);
   const [participationRequests, setParticipationRequests] = useState([]);
   const [clubEvents, setClubEvents] = useState([]); // Kulüp etkinlikleri
+
+  // Ders başvuruları state
+  const [myApplications, setMyApplications] = useState([]);
+  const [applicationsLoading, setApplicationsLoading] = useState(true);
+
+  // Ders duyuruları state
+  const [courseAnnouncements, setCourseAnnouncements] = useState([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(false);
+  const [selectedCourseForAnnouncements, setSelectedCourseForAnnouncements] = useState('');
 
   const [loading, setLoading] = useState({
     courses: true,
@@ -53,6 +62,7 @@ function StudentDashboard() {
     fetchEvents();
     fetchMembershipRequests();
     fetchParticipationRequests();
+    fetchMyApplications();
   }, []);
 
   // Kulüpler yüklendikten sonra etkinlikleri getir
@@ -286,6 +296,79 @@ function StudentDashboard() {
   const handleLogout = () => {
     dispatch(logout());
     navigate('/login');
+  };
+
+  // ==================== DERS BAŞVURULARI ====================
+
+  const fetchMyApplications = async () => {
+    setApplicationsLoading(true);
+    try {
+      const data = await getMyApplications();
+      setMyApplications(data || []);
+    } catch (error) {
+      console.error('Başvurular yüklenirken hata:', error);
+    } finally {
+      setApplicationsLoading(false);
+    }
+  };
+
+  const handleApplyToCourse = async (courseId) => {
+    try {
+      await applyToCourse(courseId);
+      setSuccessMessage('Derse başvuru başarıyla gönderildi!');
+      setTimeout(() => setSuccessMessage(''), 3000);
+      fetchMyApplications();
+    } catch (error) {
+      const msg = error.response?.data?.message || error.response?.data || 'Başvuru gönderilemedi';
+      alert('Başvuru hatası: ' + msg);
+    }
+  };
+
+  // ==================== DERS DUYURULARI ====================
+
+  const fetchCourseAnnouncements = async (courseId) => {
+    const cId = courseId || selectedCourseForAnnouncements;
+    if (!cId) return;
+    setAnnouncementsLoading(true);
+    try {
+      const data = await getAnnouncements(cId);
+      setCourseAnnouncements(data || []);
+    } catch (error) {
+      console.error('Duyurular yüklenirken hata:', error);
+      setCourseAnnouncements([]);
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  };
+
+  // ==================== DOSYA İNDİRME ====================
+
+  const handleDownloadCourseFile = async (fileUrl, fileName) => {
+    try {
+      const response = await downloadCourseFile(fileUrl);
+      const blob = new Blob([response.data]);
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = fileName || 'dosya';
+      link.click();
+      window.URL.revokeObjectURL(link.href);
+    } catch (err) {
+      alert('Dosya indirilirken hata: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleDownloadAssignmentFile = async (fileUrl, fileName) => {
+    try {
+      const response = await downloadAssignmentFile(fileUrl);
+      const blob = new Blob([response.data]);
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = fileName || 'dosya';
+      link.click();
+      window.URL.revokeObjectURL(link.href);
+    } catch (err) {
+      alert('Dosya indirilirken hata: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   const CardLoader = () => (
@@ -832,31 +915,139 @@ function StudentDashboard() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Afiş Görsel Modal */}
-      {selectedImage && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-8"
-          onClick={() => setSelectedImage(null)}
-        >
-          <div className="relative max-w-2xl w-full flex flex-col items-center">
-            <button
-              onClick={() => setSelectedImage(null)}
-              className="absolute -top-10 right-0 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all duration-300 hover:scale-110"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <img
-              src={selectedImage}
-              alt="Etkinlik Afişi"
-              className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
+        {/* ==================== DERS BAŞVURULARIM ==================== */}
+        <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="p-3 rounded-xl bg-linear-to-br from-teal-500 to-emerald-600 shadow-lg shadow-teal-500/30">
+              <Send className="w-6 h-6 text-white" />
+            </div>
+            <h2 className="text-xl font-semibold text-white">Ders Başvurularım</h2>
+            <span className="ml-auto px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-sm font-medium">
+              {myApplications.length}
+            </span>
+          </div>
+          <div className="max-h-72 overflow-y-auto">
+            {applicationsLoading ? <CardLoader /> :
+              myApplications.length === 0 ? <EmptyState message="Henüz ders başvurusu yok" /> : (
+                <div className="space-y-3">
+                  {myApplications.map((app, index) => (
+                    <div
+                      key={app.id || index}
+                      className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-white">{app.courseName || app.course?.name || 'Ders'}</h3>
+                          <p className="text-sm text-purple-200/60 mt-1">
+                            {app.applicationDate || app.createdAt
+                              ? new Date(app.applicationDate || app.createdAt).toLocaleDateString('tr-TR')
+                              : ''}
+                          </p>
+                          <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs ${app.status === 'PENDING' ? 'bg-amber-500/20 text-amber-300' :
+                            app.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' :
+                              'bg-red-500/20 text-red-300'
+                            }`}>
+                            {app.status === 'PENDING' ? '⏳ Bekliyor' :
+                              app.status === 'APPROVED' ? '✅ Onaylandı' : '❌ Reddedildi'}
+                          </span>
+                          {app.status === 'REJECTED' && app.reason && (
+                            <p className="text-xs text-red-300/70 mt-1">Sebep: {app.reason}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
           </div>
         </div>
-      )}
-    </div>
+
+        {/* ==================== DERS DUYURULARI ==================== */}
+        <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="p-3 rounded-xl bg-linear-to-br from-pink-500 to-rose-600 shadow-lg shadow-pink-500/30">
+              <Megaphone className="w-6 h-6 text-white" />
+            </div>
+            <h2 className="text-xl font-semibold text-white">Ders Duyuruları</h2>
+          </div>
+
+          {courses.length === 0 ? (
+            <EmptyState message="Duyuruları görmek için önce bir derse kayıt olun" />
+          ) : (
+            <>
+              <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                <select
+                  value={selectedCourseForAnnouncements}
+                  onChange={(e) => setSelectedCourseForAnnouncements(e.target.value)}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/20 text-white text-sm focus:outline-none focus:border-pink-500/50 transition-all"
+                >
+                  <option value="" className="bg-slate-800">Ders Seçin</option>
+                  {courses.map((course) => (
+                    <option key={course.id} value={course.id} className="bg-slate-800">{course.name || course.title}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => fetchCourseAnnouncements()}
+                  disabled={announcementsLoading || !selectedCourseForAnnouncements}
+                  className="px-4 py-2.5 rounded-xl bg-linear-to-r from-pink-500 to-rose-600 text-white text-sm font-medium transition-all hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {announcementsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+                  Getir
+                </button>
+              </div>
+
+              <div className="max-h-64 overflow-y-auto">
+                {announcementsLoading ? <CardLoader /> :
+                  courseAnnouncements.length === 0 ? (
+                    <EmptyState message="Duyuru bulunmuyor. Bir ders seçip 'Getir' butonuna tıklayın." />
+                  ) : (
+                    <div className="space-y-3">
+                      {courseAnnouncements.map((ann, index) => (
+                        <div
+                          key={ann.id || index}
+                          className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300"
+                        >
+                          <h3 className="font-medium text-white">{ann.title}</h3>
+                          <p className="text-sm text-purple-200/60 mt-1 whitespace-pre-wrap">{ann.content}</p>
+                          <span className="text-xs text-gray-400 mt-2 inline-block">
+                            {ann.createdAt ? new Date(ann.createdAt).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+              </div>
+            </>
+          )}
+        </div>
+
+      </div>
+
+      {
+        selectedImage && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-8"
+            onClick={() => setSelectedImage(null)}
+          >
+            <div className="relative max-w-2xl w-full flex flex-col items-center">
+              <button
+                onClick={() => setSelectedImage(null)}
+                className="absolute -top-10 right-0 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all duration-300 hover:scale-110"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <img
+                src={selectedImage}
+                alt="Etkinlik Afisi"
+                className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+        )
+      }
+    </div >
   );
 }
 

@@ -2,18 +2,24 @@ import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../store/slices/authSlice';
-import { getInstructorCourses, enrollStudentToCourse } from '../../api/courseService';
-import { getCourseSubmissions, gradeSubmission } from '../../api/assignmentService';
+import {
+  getInstructorCourses, enrollStudentToCourse, createCourse,
+  getPendingApplications, approveApplication, rejectApplication,
+  createAnnouncement, getAnnouncements, deleteAnnouncement,
+  getEnrolledStudents, downloadCourseFile
+} from '../../api/courseService';
+import { getCourseSubmissions, gradeSubmission, downloadAssignmentFile } from '../../api/assignmentService';
 import academicianService from '../../api/academicianService';
 import {
   GraduationCap, BookOpen, UserPlus, ClipboardCheck, LogOut, Loader2, Check, AlertCircle,
-  Calendar, X, Eye, Clock, ChevronRight, Shield, ArrowUpDown
+  Calendar, X, Eye, Clock, ChevronRight, Shield, ArrowUpDown, Bell, Users, FileDown, Trash2, Send, Megaphone,
+  PlusCircle, Image, Upload
 } from 'lucide-react';
 
 function InstructorDashboard() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { user, role } = useSelector((state) => state.auth);
+  const { user, role, userId } = useSelector((state) => state.auth);
   console.log("User Role:", role);
 
   const [activeTab, setActiveTab] = useState('overview');
@@ -36,6 +42,26 @@ function InstructorDashboard() {
   const [rejectingRequestId, setRejectingRequestId] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
+  // Başvurular state
+  const [pendingApplications, setPendingApplications] = useState([]);
+  const [applicationsLoading, setApplicationsLoading] = useState(false);
+  const [selectedCourseForApps, setSelectedCourseForApps] = useState('');
+  const [showAppRejectModal, setShowAppRejectModal] = useState(false);
+  const [rejectingAppId, setRejectingAppId] = useState(null);
+  const [appRejectionReason, setAppRejectionReason] = useState('');
+
+  // Duyurular state
+  const [announcements, setAnnouncements] = useState([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(false);
+  const [selectedCourseForAnnouncements, setSelectedCourseForAnnouncements] = useState('');
+  const [newAnnouncement, setNewAnnouncement] = useState({ title: '', content: '' });
+  const [creatingAnnouncement, setCreatingAnnouncement] = useState(false);
+
+  // Kayıtlı öğrenciler state
+  const [enrolledStudents, setEnrolledStudents] = useState([]);
+  const [enrolledStudentsLoading, setEnrolledStudentsLoading] = useState(false);
+  const [selectedCourseForStudents, setSelectedCourseForStudents] = useState('');
+
   const [enrollForm, setEnrollForm] = useState({
     courseId: '',
     studentEmail: '',
@@ -56,6 +82,20 @@ function InstructorDashboard() {
 
   const [successMessage, setSuccessMessage] = useState('');
 
+  // Ders oluşturma state
+  const [courseForm, setCourseForm] = useState({
+    title: '',
+    code: '',
+    description: '',
+    credit: 3,
+    semester: '',
+    capacity: 30,
+  });
+  const [courseImage, setCourseImage] = useState(null);
+  const [courseImagePreview, setCourseImagePreview] = useState(null);
+  const [creatingCourse, setCreatingCourse] = useState(false);
+  const [createCourseError, setCreateCourseError] = useState(null);
+
   useEffect(() => {
     fetchCourses();
   }, []);
@@ -67,7 +107,22 @@ function InstructorDashboard() {
     if (activeTab === 'roleRequests') {
       fetchRoleChangeRequests();
     }
-  }, [activeTab]);
+    if (activeTab === 'applications' && courses.length > 0) {
+      if (!selectedCourseForApps && courses.length > 0) {
+        setSelectedCourseForApps(courses[0].id);
+      }
+    }
+    if (activeTab === 'announcements' && courses.length > 0) {
+      if (!selectedCourseForAnnouncements && courses.length > 0) {
+        setSelectedCourseForAnnouncements(courses[0].id);
+      }
+    }
+    if (activeTab === 'enrolledStudents' && courses.length > 0) {
+      if (!selectedCourseForStudents && courses.length > 0) {
+        setSelectedCourseForStudents(courses[0].id);
+      }
+    }
+  }, [activeTab, courses]);
 
   useEffect(() => {
     if (successMessage) {
@@ -187,6 +242,147 @@ function InstructorDashboard() {
     }
   };
 
+  // ==================== BAŞVURULAR ====================
+
+  const fetchPendingApplications = async (courseId) => {
+    const cId = courseId || selectedCourseForApps;
+    if (!cId) return;
+    setApplicationsLoading(true);
+    try {
+      const data = await getPendingApplications(cId);
+      setPendingApplications(data || []);
+    } catch (error) {
+      console.error('Başvurular yüklenirken hata:', error);
+      setPendingApplications([]);
+    } finally {
+      setApplicationsLoading(false);
+    }
+  };
+
+  const handleApproveApplication = async (applicationId) => {
+    if (!window.confirm('Bu başvuruyu onaylamak istiyor musunuz?')) return;
+    try {
+      await approveApplication(applicationId);
+      setSuccessMessage('Başvuru başarıyla onaylandı!');
+      fetchPendingApplications();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data || 'Onaylanırken hata oluştu.';
+      alert('Başvuru onaylanırken hata: ' + msg);
+    }
+  };
+
+  const openAppRejectModal = (applicationId) => {
+    setRejectingAppId(applicationId);
+    setAppRejectionReason('');
+    setShowAppRejectModal(true);
+  };
+
+  const handleRejectApplication = async () => {
+    if (!rejectingAppId) return;
+    try {
+      await rejectApplication(rejectingAppId, appRejectionReason.trim() || undefined);
+      setSuccessMessage('Başvuru reddedildi.');
+      setShowAppRejectModal(false);
+      setRejectingAppId(null);
+      setAppRejectionReason('');
+      fetchPendingApplications();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data || 'Reddedilirken hata oluştu.';
+      alert('Başvuru reddedilirken hata: ' + msg);
+    }
+  };
+
+  // ==================== DUYURULAR ====================
+
+  const fetchAnnouncementsForCourse = async (courseId) => {
+    const cId = courseId || selectedCourseForAnnouncements;
+    if (!cId) return;
+    setAnnouncementsLoading(true);
+    try {
+      const data = await getAnnouncements(cId);
+      setAnnouncements(data || []);
+    } catch (error) {
+      console.error('Duyurular yüklenirken hata:', error);
+      setAnnouncements([]);
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  };
+
+  const handleCreateAnnouncement = async (e) => {
+    e.preventDefault();
+    if (!selectedCourseForAnnouncements || !newAnnouncement.title.trim() || !newAnnouncement.content.trim()) return;
+    setCreatingAnnouncement(true);
+    try {
+      await createAnnouncement(selectedCourseForAnnouncements, newAnnouncement);
+      setSuccessMessage('Duyuru başarıyla paylaşıldı!');
+      setNewAnnouncement({ title: '', content: '' });
+      fetchAnnouncementsForCourse();
+    } catch (err) {
+      alert('Duyuru paylaşılırken hata: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setCreatingAnnouncement(false);
+    }
+  };
+
+  const handleDeleteAnnouncement = async (announcementId) => {
+    if (!window.confirm('Bu duyuruyu silmek istediğinize emin misiniz?')) return;
+    try {
+      await deleteAnnouncement(announcementId);
+      setSuccessMessage('Duyuru silindi.');
+      fetchAnnouncementsForCourse();
+    } catch (err) {
+      alert('Duyuru silinirken hata: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  // ==================== KAYITLI ÖĞRENCİLER ====================
+
+  const fetchEnrolledStudentsList = async (courseId) => {
+    const cId = courseId || selectedCourseForStudents;
+    if (!cId) return;
+    setEnrolledStudentsLoading(true);
+    try {
+      const data = await getEnrolledStudents(cId);
+      setEnrolledStudents(data || []);
+    } catch (error) {
+      console.error('Kayıtlı öğrenciler yüklenirken hata:', error);
+      setEnrolledStudents([]);
+    } finally {
+      setEnrolledStudentsLoading(false);
+    }
+  };
+
+  // ==================== DOSYA İNDİRME ====================
+
+  const handleDownloadCourseFile = async (fileUrl, fileName) => {
+    try {
+      const response = await downloadCourseFile(fileUrl);
+      const blob = new Blob([response.data]);
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = fileName || 'dosya';
+      link.click();
+      window.URL.revokeObjectURL(link.href);
+    } catch (err) {
+      alert('Dosya indirilirken hata: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleDownloadAssignmentFile = async (fileUrl, fileName) => {
+    try {
+      const response = await downloadAssignmentFile(fileUrl);
+      const blob = new Blob([response.data]);
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = fileName || 'dosya';
+      link.click();
+      window.URL.revokeObjectURL(link.href);
+    } catch (err) {
+      alert('Dosya indirilirken hata: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
   const fetchSubmissions = async () => {
     if (!selectedCourse) return;
 
@@ -247,6 +443,59 @@ function InstructorDashboard() {
   const handleLogout = () => {
     dispatch(logout());
     navigate('/login');
+  };
+
+  // ==================== DERS OLUŞTURMA ====================
+
+  const handleCourseImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setCourseImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setCourseImagePreview(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveCourseImage = () => {
+    setCourseImage(null);
+    setCourseImagePreview(null);
+  };
+
+  const handleCreateCourse = async (e) => {
+    e.preventDefault();
+    if (!courseForm.title.trim() || !courseForm.code.trim()) return;
+    if (!userId) {
+      setCreateCourseError('Kullanıcı kimliği bulunamadı. Lütfen tekrar giriş yapın.');
+      return;
+    }
+
+    setCreatingCourse(true);
+    setCreateCourseError(null);
+
+    try {
+      const courseData = {
+        title: courseForm.title.trim(),
+        code: courseForm.code.trim(),
+        description: courseForm.description.trim(),
+        credit: Number(courseForm.credit),
+        semester: courseForm.semester.trim(),
+        instructorId: userId,
+        capacity: Number(courseForm.capacity),
+      };
+
+      await createCourse(courseData, courseImage);
+      setSuccessMessage('Ders başarıyla oluşturuldu!');
+      setCourseForm({ title: '', code: '', description: '', credit: 3, semester: '', capacity: 30 });
+      setCourseImage(null);
+      setCourseImagePreview(null);
+      fetchCourses(); // Ders listesini güncelle
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data || 'Ders oluşturulamadı';
+      setCreateCourseError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setCreatingCourse(false);
+    }
   };
 
   const parseDate = (item) => {
@@ -387,6 +636,42 @@ function InstructorDashboard() {
                 {roleChangeRequests.length}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => setActiveTab('applications')}
+            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${activeTab === 'applications'
+              ? 'bg-linear-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30'
+              : 'bg-white/10 text-slate-200 hover:bg-white/20 border border-white/10'}`}
+          >
+            <Send className="w-4 h-4" />
+            <span>Ders Başvuruları</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('announcements')}
+            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${activeTab === 'announcements'
+              ? 'bg-linear-to-r from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-500/30'
+              : 'bg-white/10 text-slate-200 hover:bg-white/20 border border-white/10'}`}
+          >
+            <Megaphone className="w-4 h-4" />
+            <span>Duyurular</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('enrolledStudents')}
+            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${activeTab === 'enrolledStudents'
+              ? 'bg-linear-to-r from-teal-500 to-green-600 text-white shadow-lg shadow-teal-500/30'
+              : 'bg-white/10 text-slate-200 hover:bg-white/20 border border-white/10'}`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Kayıtlı Öğrenciler</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('createCourse')}
+            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${activeTab === 'createCourse'
+              ? 'bg-linear-to-r from-lime-500 to-emerald-600 text-white shadow-lg shadow-lime-500/30'
+              : 'bg-white/10 text-slate-200 hover:bg-white/20 border border-white/10'}`}
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>Ders Oluştur</span>
           </button>
         </div>
 
@@ -805,7 +1090,303 @@ function InstructorDashboard() {
           </div>
         )}
 
-        {/* Reject Reason Modal */}
+        {/* ===================== DERS BAŞVURULARI ===================== */}
+        {activeTab === 'applications' && (
+          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-white/10 bg-white/5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-xl bg-linear-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/30">
+                  <Send className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-white">Bekleyen Ders Başvuruları</h2>
+                  <p className="text-sm text-emerald-200/60 mt-0.5">Öğrencilerin ders başvurularını yönetin (FCFS sıralı)</p>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <select
+                  value={selectedCourseForApps}
+                  onChange={(e) => setSelectedCourseForApps(e.target.value)}
+                  className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:outline-none focus:border-cyan-500/50 transition-all"
+                >
+                  {courses.map((course) => (
+                    <option key={course.id} value={course.id} className="bg-slate-800">{course.name || course.title}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => fetchPendingApplications()}
+                  disabled={applicationsLoading}
+                  className="px-6 py-3 rounded-xl bg-linear-to-r from-cyan-500 to-blue-600 text-white font-medium transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/30 hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {applicationsLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                  {applicationsLoading ? 'Yükleniyor...' : 'Başvuruları Getir'}
+                </button>
+              </div>
+            </div>
+
+            {applicationsLoading ? (
+              <CardLoader />
+            ) : pendingApplications.length === 0 ? (
+              <EmptyState message="Bekleyen başvuru bulunmuyor. Yukarıdan bir ders seçip 'Başvuruları Getir' butonuna tıklayın." />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-linear-to-r from-cyan-600 to-blue-600">
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Öğrenci</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Email</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Başvuru Tarihi</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Durum</th>
+                      <th className="px-6 py-4 text-right text-xs font-bold text-white uppercase tracking-wider">İşlemler</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/10">
+                    {pendingApplications.map((app, index) => (
+                      <tr key={app.id || index} className="hover:bg-white/5 transition-all duration-300">
+                        <td className="px-6 py-4">
+                          <p className="font-medium text-white">{app.studentName || app.student?.name || 'Öğrenci'}</p>
+                          <p className="text-xs text-gray-400">{app.studentNumber || app.student?.studentNumber || ''}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-emerald-300 text-sm">{app.studentEmail || app.student?.email || ''}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-slate-200 text-sm">
+                            {app.applicationDate || app.createdAt ? new Date(app.applicationDate || app.createdAt).toLocaleDateString('tr-TR') : '—'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-block px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-300">
+                            BEKLİYOR
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleApproveApplication(app.id)}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-sm transition-all flex items-center gap-1 hover:scale-105"
+                            >
+                              <Check className="w-4 h-4" /> Onayla
+                            </button>
+                            <button
+                              onClick={() => openAppRejectModal(app.id)}
+                              className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm transition-all flex items-center gap-1 hover:scale-105"
+                            >
+                              <X className="w-4 h-4" /> Reddet
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ===================== DUYURULAR ===================== */}
+        {activeTab === 'announcements' && (
+          <div className="space-y-6">
+            {/* Duyuru Oluşturma */}
+            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="p-3 rounded-xl bg-linear-to-br from-pink-500 to-rose-600 shadow-lg shadow-pink-500/30">
+                  <Megaphone className="w-6 h-6 text-white" />
+                </div>
+                <h2 className="text-xl font-semibold text-white">Duyuru Paylaş</h2>
+              </div>
+              <form onSubmit={handleCreateAnnouncement} className="space-y-4">
+                <div>
+                  <label className="block text-sm text-emerald-200/70 mb-2">Ders Seçin</label>
+                  <select
+                    value={selectedCourseForAnnouncements}
+                    onChange={(e) => setSelectedCourseForAnnouncements(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:outline-none focus:border-pink-500/50 transition-all"
+                  >
+                    {courses.map((course) => (
+                      <option key={course.id} value={course.id} className="bg-slate-800">{course.name || course.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-emerald-200/70 mb-2">Duyuru Başlığı</label>
+                  <input
+                    type="text"
+                    placeholder="Duyuru başlığı girin..."
+                    value={newAnnouncement.title}
+                    onChange={(e) => setNewAnnouncement(prev => ({ ...prev, title: e.target.value }))}
+                    required
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-pink-500/50 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-emerald-200/70 mb-2">Duyuru İçeriği</label>
+                  <textarea
+                    placeholder="Duyuru içeriğini girin..."
+                    value={newAnnouncement.content}
+                    onChange={(e) => setNewAnnouncement(prev => ({ ...prev, content: e.target.value }))}
+                    required
+                    rows={4}
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-pink-500/50 transition-all resize-none"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={creatingAnnouncement}
+                  className="w-full py-3 rounded-xl bg-linear-to-r from-pink-500 to-rose-600 text-white font-medium transition-all duration-300 hover:shadow-lg hover:shadow-pink-500/30 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {creatingAnnouncement ? <Loader2 className="w-5 h-5 animate-spin" /> : <Megaphone className="w-5 h-5" />}
+                  {creatingAnnouncement ? 'Paylaşılıyor...' : 'Duyuru Paylaş'}
+                </button>
+              </form>
+            </div>
+
+            {/* Duyuru Listesi */}
+            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl overflow-hidden shadow-2xl">
+              <div className="p-6 border-b border-white/10 bg-white/5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-3 rounded-xl bg-linear-to-br from-pink-500 to-rose-600 shadow-lg shadow-pink-500/30">
+                    <Bell className="w-6 h-6 text-white" />
+                  </div>
+                  <h2 className="text-xl font-semibold text-white">Mevcut Duyurular</h2>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <select
+                    value={selectedCourseForAnnouncements}
+                    onChange={(e) => setSelectedCourseForAnnouncements(e.target.value)}
+                    className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:outline-none focus:border-pink-500/50 transition-all"
+                  >
+                    {courses.map((course) => (
+                      <option key={course.id} value={course.id} className="bg-slate-800">{course.name || course.title}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => fetchAnnouncementsForCourse()}
+                    disabled={announcementsLoading}
+                    className="px-6 py-3 rounded-xl bg-linear-to-r from-pink-500 to-rose-600 text-white font-medium transition-all duration-300 hover:shadow-lg hover:shadow-pink-500/30 hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {announcementsLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                    {announcementsLoading ? 'Yükleniyor...' : 'Duyuruları Getir'}
+                  </button>
+                </div>
+              </div>
+
+              {announcementsLoading ? (
+                <CardLoader />
+              ) : announcements.length === 0 ? (
+                <EmptyState message="Duyuru bulunmuyor. Yukarıdan bir ders seçip 'Duyuruları Getir' butonuna tıklayın." />
+              ) : (
+                <div className="p-6 space-y-4">
+                  {announcements.map((ann, index) => (
+                    <div key={ann.id || index} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-white text-lg">{ann.title}</h3>
+                          <p className="text-sm text-emerald-200/60 mt-2 whitespace-pre-wrap">{ann.content}</p>
+                          <div className="flex items-center gap-3 mt-3">
+                            <span className="text-xs text-gray-400">
+                              {ann.createdAt ? new Date(ann.createdAt).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteAnnouncement(ann.id)}
+                          className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 transition-all duration-300 hover:scale-110"
+                          title="Duyuruyu Sil"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ===================== KAYITLI ÖĞRENCİLER ===================== */}
+        {activeTab === 'enrolledStudents' && (
+          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-white/10 bg-white/5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-xl bg-linear-to-br from-teal-500 to-green-600 shadow-lg shadow-teal-500/30">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-white">Kayıtlı Öğrenciler</h2>
+                  <p className="text-sm text-emerald-200/60 mt-0.5">Derse kayıtlı öğrencilerin detaylı listesi</p>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <select
+                  value={selectedCourseForStudents}
+                  onChange={(e) => setSelectedCourseForStudents(e.target.value)}
+                  className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:outline-none focus:border-teal-500/50 transition-all"
+                >
+                  {courses.map((course) => (
+                    <option key={course.id} value={course.id} className="bg-slate-800">{course.name || course.title}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => fetchEnrolledStudentsList()}
+                  disabled={enrolledStudentsLoading}
+                  className="px-6 py-3 rounded-xl bg-linear-to-r from-teal-500 to-green-600 text-white font-medium transition-all duration-300 hover:shadow-lg hover:shadow-teal-500/30 hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {enrolledStudentsLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                  {enrolledStudentsLoading ? 'Yükleniyor...' : 'Öğrencileri Getir'}
+                </button>
+              </div>
+            </div>
+
+            {enrolledStudentsLoading ? (
+              <CardLoader />
+            ) : enrolledStudents.length === 0 ? (
+              <EmptyState message="Kayıtlı öğrenci bulunmuyor. Yukarıdan bir ders seçip 'Öğrencileri Getir' butonuna tıklayın." />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-linear-to-r from-teal-600 to-green-600">
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">#</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Öğrenci Adı</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Email</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Öğrenci No</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Kayıt Tarihi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/10">
+                    {enrolledStudents.map((student, index) => (
+                      <tr key={student.id || index} className="hover:bg-white/5 transition-all duration-300">
+                        <td className="px-6 py-4 text-white text-sm">{index + 1}</td>
+                        <td className="px-6 py-4">
+                          <p className="font-medium text-white">{student.name || student.fullName || student.studentName || 'Öğrenci'}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-emerald-300 text-sm">{student.email || ''}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-slate-200 text-sm">{student.studentNumber || student.student_number || '—'}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-slate-300 text-sm">
+                            {student.enrollmentDate || student.enrolledAt ? new Date(student.enrollmentDate || student.enrolledAt).toLocaleDateString('tr-TR') : '—'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="p-4 border-t border-white/10 bg-white/5">
+                  <p className="text-sm text-emerald-200/60">Toplam {enrolledStudents.length} öğrenci kayıtlı</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Reject Reason Modal - Role Change */}
         {showRejectReasonModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowRejectReasonModal(false)}>
             <div className="bg-slate-800 border border-white/20 rounded-2xl p-6 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -835,6 +1416,199 @@ function InstructorDashboard() {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Reject Reason Modal - Application */}
+        {showAppRejectModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowAppRejectModal(false)}>
+            <div className="bg-slate-800 border border-white/20 rounded-2xl p-6 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-lg font-semibold text-white mb-4">Başvuruyu Reddet</h3>
+              <div className="mb-4">
+                <label className="block text-sm text-emerald-200/70 mb-2">Red Sebebi</label>
+                <textarea
+                  value={appRejectionReason}
+                  onChange={(e) => setAppRejectionReason(e.target.value)}
+                  placeholder="Red sebebini yazınız..."
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-red-500/50 transition-all resize-none"
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowAppRejectModal(false)}
+                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 transition-all"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={handleRejectApplication}
+                  className="px-4 py-2 rounded-xl bg-red-500/30 hover:bg-red-500/40 border border-red-500/40 text-red-300 transition-all"
+                >
+                  Reddet
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===================== DERS OLUŞTUR ===================== */}
+        {activeTab === 'createCourse' && (
+          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-white/10 bg-white/5">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-linear-to-br from-lime-500 to-emerald-600 shadow-lg shadow-lime-500/30">
+                  <PlusCircle className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-white">Yeni Ders Oluştur</h2>
+                  <p className="text-sm text-emerald-200/60 mt-0.5">Ders bilgilerini doldurun ve oluşturun</p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateCourse} className="p-6">
+              {createCourseError && (
+                <div className="mb-6 p-4 rounded-xl bg-red-500/20 border border-red-500/30 flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+                  <span className="text-red-300 text-sm">{createCourseError}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Ders Başlığı */}
+                <div>
+                  <label className="block text-sm font-medium text-emerald-200/70 mb-2">Ders Başlığı *</label>
+                  <input
+                    type="text"
+                    value={courseForm.title}
+                    onChange={(e) => setCourseForm(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Örn: Veri Yapıları ve Algoritmalar"
+                    required
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all"
+                  />
+                </div>
+
+                {/* Ders Kodu */}
+                <div>
+                  <label className="block text-sm font-medium text-emerald-200/70 mb-2">Ders Kodu *</label>
+                  <input
+                    type="text"
+                    value={courseForm.code}
+                    onChange={(e) => setCourseForm(prev => ({ ...prev, code: e.target.value }))}
+                    placeholder="Örn: CSE301"
+                    required
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all"
+                  />
+                </div>
+
+                {/* Kredi */}
+                <div>
+                  <label className="block text-sm font-medium text-emerald-200/70 mb-2">Kredi *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={courseForm.credit}
+                    onChange={(e) => setCourseForm(prev => ({ ...prev, credit: e.target.value }))}
+                    required
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all"
+                  />
+                </div>
+
+                {/* Kapasite */}
+                <div>
+                  <label className="block text-sm font-medium text-emerald-200/70 mb-2">Kontenjan *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="500"
+                    value={courseForm.capacity}
+                    onChange={(e) => setCourseForm(prev => ({ ...prev, capacity: e.target.value }))}
+                    required
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all"
+                  />
+                </div>
+
+                {/* Dönem */}
+                <div>
+                  <label className="block text-sm font-medium text-emerald-200/70 mb-2">Dönem</label>
+                  <input
+                    type="text"
+                    value={courseForm.semester}
+                    onChange={(e) => setCourseForm(prev => ({ ...prev, semester: e.target.value }))}
+                    placeholder="Örn: 2025-2026 Bahar"
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all"
+                  />
+                </div>
+
+                {/* Ders Görseli */}
+                <div>
+                  <label className="block text-sm font-medium text-emerald-200/70 mb-2">Ders Görseli</label>
+                  {courseImagePreview ? (
+                    <div className="relative group">
+                      <img
+                        src={courseImagePreview}
+                        alt="Ders görseli önizleme"
+                        className="w-full h-32 object-cover rounded-xl border border-white/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveCourseImage}
+                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-500/80 hover:bg-red-500 text-white transition-all opacity-0 group-hover:opacity-100"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-32 rounded-xl border-2 border-dashed border-white/20 hover:border-emerald-500/40 bg-white/5 hover:bg-white/10 cursor-pointer transition-all duration-300">
+                      <Upload className="w-8 h-8 text-emerald-300/50 mb-2" />
+                      <span className="text-sm text-emerald-200/50">Görsel yüklemek için tıklayın</span>
+                      <span className="text-xs text-gray-500 mt-1">PNG, JPG (Opsiyonel)</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleCourseImageChange}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              {/* Açıklama - tam genişlik */}
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-emerald-200/70 mb-2">Açıklama</label>
+                <textarea
+                  value={courseForm.description}
+                  onChange={(e) => setCourseForm(prev => ({ ...prev, description: e.target.value }))}
+                  rows={4}
+                  placeholder="Ders hakkında kısa bir açıklama yazın..."
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all resize-none"
+                />
+              </div>
+
+              {/* Gönder Butonu */}
+              <div className="mt-8 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={creatingCourse}
+                  className="flex items-center gap-3 px-8 py-3.5 rounded-xl bg-linear-to-r from-lime-500 to-emerald-600 text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/30 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  {creatingCourse ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Oluşturuluyor...
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircle className="w-5 h-5" />
+                      Ders Oluştur
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         )}
       </div>
