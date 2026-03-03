@@ -14,9 +14,10 @@ import {
   getClubRoleChangeRequests,
   removeMemberRole
 } from '../../api/clubService';
-import { getMyEvents, getEventRegistrations, createEvent, verifyQrCode, getMyRegistrations, getAllMyPendingRequests, approveParticipationRequest, rejectParticipationRequest } from '../../api/eventService';
-import { getMyCourses } from '../../api/courseService';
-import { getMyAssignments } from '../../api/assignmentService';
+import { getMyEvents, getEventRegistrations, createEvent, verifyQrCode, getMyRegistrations, getAllMyPendingRequests, approveParticipationRequest, rejectParticipationRequest, getMyParticipationRequests, sendParticipationRequest, getClubEvents } from '../../api/eventService';
+import { getMyMembershipRequests, cancelMembershipRequest } from '../../api/clubService';
+import { getMyCourses, getAllCourses, applyToCourse, getMyApplications, getAnnouncements, downloadCourseFile } from '../../api/courseService';
+import { getMyAssignments, downloadAssignmentFile } from '../../api/assignmentService';
 
 import {
   Users,
@@ -36,7 +37,14 @@ import {
   UserPlus,
   Shield,
   Trash2,
-  ArrowUpDown
+  ArrowUpDown,
+  Send,
+  Image,
+  Megaphone,
+  Bell,
+  GraduationCap,
+  CalendarPlus,
+  FileDown
 } from 'lucide-react';
 
 import './ClubOfficialDashboard.css';
@@ -65,9 +73,22 @@ function ClubOfficialDashboard() {
 
   const [courses, setCourses] = useState([]);
   const [assignments, setAssignments] = useState([]);
-  const [allAssignments, setAllAssignments] = useState([]); // Tüm ödevler
+  const [allAssignments, setAllAssignments] = useState([]);
   const [clubs, setClubs] = useState([]);
   const [events, setEvents] = useState([]);
+
+  // Öğrenci paneli ek state'ler
+  const [membershipRequests, setMembershipRequests] = useState([]);
+  const [participationRequests, setParticipationRequests] = useState([]);
+  const [clubEventsForStudent, setClubEventsForStudent] = useState([]);
+  const [myApplications, setMyApplications] = useState([]);
+  const [applicationsLoading, setApplicationsLoading] = useState(true);
+  const [availableCourses, setAvailableCourses] = useState([]);
+  const [availableCoursesLoading, setAvailableCoursesLoading] = useState(true);
+  const [courseAnnouncements, setCourseAnnouncements] = useState([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(false);
+  const [selectedCourseForAnnouncements, setSelectedCourseForAnnouncements] = useState('');
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
@@ -98,6 +119,9 @@ function ClubOfficialDashboard() {
     roleChangeRequests: false,
     creatingRoleChange: false,
     removingRole: false,
+    membershipRequests: true,
+    participationRequests: true,
+    clubEventsForStudent: true,
   });
 
   const [errors, setErrors] = useState({
@@ -128,7 +152,22 @@ function ClubOfficialDashboard() {
     fetchClubs();
     fetchEvents();
     fetchEventParticipationRequests();
+    fetchStudentMembershipRequests();
+    fetchStudentParticipationRequests();
+    fetchStudentMyApplications();
+    fetchStudentAvailableCourses();
   }, []);
+
+  // Kulüpler yüklendikten sonra kulüp etkinliklerini getir
+  useEffect(() => {
+    if (!loading.clubs) {
+      if (clubs.length > 0) {
+        fetchStudentClubEvents();
+      } else {
+        setLoading(prev => ({ ...prev, clubEventsForStudent: false }));
+      }
+    }
+  }, [clubs, loading.clubs]);
 
   useEffect(() => {
     if (selectedClubId) {
@@ -565,6 +604,156 @@ function ClubOfficialDashboard() {
   const handleLogout = () => {
     dispatch(logout());
     navigate('/login');
+  };
+
+  // ==================== ÖĞRENCİ PANELİ EK FONKSİYONLAR ====================
+
+  const fetchStudentMembershipRequests = async () => {
+    try {
+      const data = await getMyMembershipRequests();
+      setMembershipRequests(data || []);
+    } catch (error) {
+      console.error('Üyelik istekleri yüklenirken hata:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, membershipRequests: false }));
+    }
+  };
+
+  const handleCancelMembershipRequest = async (clubId) => {
+    try {
+      await cancelMembershipRequest(clubId);
+      setSuccessMessage('Üyelik isteği başarıyla iptal edildi');
+      fetchStudentMembershipRequests();
+    } catch (error) {
+      alert('İstek iptal edilemedi: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const fetchStudentParticipationRequests = async () => {
+    try {
+      const data = await getMyParticipationRequests();
+      setParticipationRequests(data || []);
+    } catch (error) {
+      console.error('Katılım istekleri yüklenirken hata:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, participationRequests: false }));
+    }
+  };
+
+  const handleSendParticipationRequest = async (eventId) => {
+    try {
+      await sendParticipationRequest(eventId);
+      setSuccessMessage('Katılım isteği gönderildi!');
+      fetchStudentParticipationRequests();
+      fetchStudentClubEvents();
+    } catch (error) {
+      alert('Katılım isteği gönderilemedi: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const fetchStudentClubEvents = async () => {
+    setLoading(prev => ({ ...prev, clubEventsForStudent: true }));
+    try {
+      const clubEventPromises = clubs.map(async (membership) => {
+        const clubData = membership.club || membership;
+        const clubId = clubData.id || membership.clubId;
+        if (!clubId) return [];
+        try {
+          const evts = await getClubEvents(clubId);
+          return (evts || []).map(e => ({ ...e, clubName: clubData.name || membership.clubName }));
+        } catch { return []; }
+      });
+      const allClubEventsArrays = await Promise.all(clubEventPromises);
+      const allClubEvents = allClubEventsArrays.flat();
+      const requestedEventIds = participationRequests.map(req => req.event?.id || req.eventId);
+      const registeredEventIds = events.map(ev => ev.event?.id || ev.eventId || ev.id);
+      const excludedEventIds = [...requestedEventIds, ...registeredEventIds];
+      setClubEventsForStudent(allClubEvents.filter(event => !excludedEventIds.includes(event.id)));
+    } catch (error) {
+      console.error('Kulüp etkinlikleri yüklenirken hata:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, clubEventsForStudent: false }));
+    }
+  };
+
+  const fetchStudentMyApplications = async () => {
+    setApplicationsLoading(true);
+    try {
+      const data = await getMyApplications();
+      setMyApplications(data || []);
+    } catch (error) {
+      console.error('Başvurular yüklenirken hata:', error);
+    } finally {
+      setApplicationsLoading(false);
+    }
+  };
+
+  const handleApplyToCourse = async (courseId) => {
+    try {
+      await applyToCourse(courseId);
+      setSuccessMessage('Derse başvuru başarıyla gönderildi!');
+      fetchStudentMyApplications();
+      fetchStudentAvailableCourses();
+    } catch (error) {
+      const msg = error.response?.data?.message || error.response?.data || 'Başvuru gönderilemedi';
+      alert('Başvuru hatası: ' + msg);
+    }
+  };
+
+  const fetchStudentAvailableCourses = async () => {
+    setAvailableCoursesLoading(true);
+    try {
+      const allCourses = await getAllCourses();
+      setAvailableCourses(allCourses || []);
+    } catch (error) {
+      console.error('Dersler yüklenirken hata:', error);
+      setAvailableCourses([]);
+    } finally {
+      setAvailableCoursesLoading(false);
+    }
+  };
+
+  const fetchStudentCourseAnnouncements = async (courseId) => {
+    const cId = courseId || selectedCourseForAnnouncements;
+    if (!cId) return;
+    setAnnouncementsLoading(true);
+    try {
+      const data = await getAnnouncements(cId);
+      setCourseAnnouncements(data || []);
+    } catch (error) {
+      console.error('Duyurular yüklenirken hata:', error);
+      setCourseAnnouncements([]);
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  };
+
+  const handleDownloadCourseFile = async (fileUrl, fileName) => {
+    try {
+      const response = await downloadCourseFile(fileUrl);
+      const blob = new Blob([response.data]);
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = fileName || 'dosya';
+      link.click();
+      window.URL.revokeObjectURL(link.href);
+    } catch (err) {
+      alert('Dosya indirilirken hata: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleDownloadAssignmentFile = async (fileUrl, fileName) => {
+    try {
+      const response = await downloadAssignmentFile(fileUrl);
+      const blob = new Blob([response.data]);
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = fileName || 'dosya';
+      link.click();
+      window.URL.revokeObjectURL(link.href);
+    } catch (err) {
+      alert('Dosya indirilirken hata: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   const CardLoader = () => (
@@ -1055,142 +1244,427 @@ function ClubOfficialDashboard() {
         )}
 
         {activeTab === 'student' && (
-          <div className="dashboard-grid">
-            <div className="dashboard-card">
-              <div className="card-header">
-                <div className="icon-container indigo"><BookOpen className="w-6 h-6 text-white" /></div>
-                <h2 className="card-title">Kurslarım</h2>
-                <span className="count-badge indigo">{courses.length}</span>
+          <>
+            <div className="dashboard-grid">
+              {/* Kurslarım */}
+              <div className="dashboard-card">
+                <div className="card-header">
+                  <div className="icon-container indigo"><BookOpen className="w-6 h-6 text-white" /></div>
+                  <h2 className="card-title">Kurslarım</h2>
+                  <span className="count-badge indigo">{courses.length}</span>
+                </div>
+                <div className="card-content">
+                  {loading.courses ? <CardLoader /> :
+                    errors.courses ? <ErrorState message={errors.courses} /> :
+                      courses.length === 0 ? <EmptyState message="Kayıtlı kurs yok" /> : (
+                        <div className="scrollable-list">
+                          {courses.map((course, index) => (
+                            <div key={course.id || index} className="list-item">
+                              <h3 className="item-title">{course.name || course.title}</h3>
+                              <p className="item-subtitle">{course.instructor || course.instructorName}</p>
+                              <span className="status-badge success">Aktif</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                </div>
               </div>
-              <div className="card-content">
-                {loading.courses ? <CardLoader /> :
-                  errors.courses ? <ErrorState message={errors.courses} /> :
-                    courses.length === 0 ? <EmptyState message="Kayıtlı kurs yok" /> : (
-                      <div className="scrollable-list">
-                        {courses.map((course, index) => (
-                          <div key={course.id || index} className="list-item">
-                            <h3 className="item-title">{course.name || course.title}</h3>
-                            <p className="item-subtitle">{course.instructor || course.instructorName}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-              </div>
-            </div>
 
-            <div className="dashboard-card">
-              <div className="card-header">
-                <div className="icon-container rose"><FileText className="w-6 h-6 text-white" /></div>
-                <h2 className="card-title">Ödevlerim</h2>
-                <span className="count-badge rose">{assignments.length}</span>
+              {/* Ödevlerim */}
+              <div className="dashboard-card">
+                <div className="card-header">
+                  <div className="icon-container rose"><ClipboardList className="w-6 h-6 text-white" /></div>
+                  <h2 className="card-title">Ödevlerim</h2>
+                  <span className="count-badge rose">{assignments.length}</span>
+                </div>
+                <div className="card-content">
+                  {loading.assignments ? <CardLoader /> :
+                    errors.assignments ? <ErrorState message={errors.assignments} /> :
+                      assignments.length === 0 ? <EmptyState message="Ödev yok" /> : (
+                        <div className="scrollable-list">
+                          {assignments.map((assignment, index) => (
+                            <div key={assignment.id || index} className="list-item">
+                              <h3 className="item-title">{assignment.title}</h3>
+                              <p className="item-subtitle">Son Tarih: {new Date(assignment.dueDate).toLocaleDateString('tr-TR')}</p>
+                              <span className={`status-badge ${assignment.submitted ? 'success' : 'danger'}`}>{assignment.submitted ? 'Teslim Edildi' : 'Bekliyor'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                </div>
               </div>
-              <div className="card-content">
-                {loading.assignments ? <CardLoader /> :
-                  errors.assignments ? <ErrorState message={errors.assignments} /> :
-                    assignments.length === 0 ? <EmptyState message="Ödev yok" /> : (
-                      <div className="scrollable-list">
-                        {assignments.map((assignment, index) => (
-                          <div key={assignment.id || index} className="list-item">
-                            <h3 className="item-title">{assignment.title}</h3>
-                            <p className="item-subtitle">Son Tarih: {new Date(assignment.dueDate).toLocaleDateString('tr-TR')}</p>
-                            <span className={`status-badge ${assignment.submitted ? 'success' : 'danger'}`}>{assignment.submitted ? 'Teslim Edildi' : 'Bekliyor'}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-              </div>
-            </div>
 
-            <div className="dashboard-card">
-              <div className="card-header">
-                <div className="icon-container violet"><Users className="w-6 h-6 text-white" /></div>
-                <h2 className="card-title">Kulüplerim</h2>
-                <span className="count-badge violet">{clubs.length}</span>
+              {/* Kulüplerim */}
+              <div className="dashboard-card">
+                <div className="card-header">
+                  <div className="icon-container violet"><Users className="w-6 h-6 text-white" /></div>
+                  <h2 className="card-title">Kulüplerim</h2>
+                  <span className="count-badge violet">{clubs.length}</span>
+                </div>
+                <div className="card-content">
+                  {loading.clubs ? <CardLoader /> :
+                    errors.clubs ? <ErrorState message={errors.clubs} /> :
+                      clubs.length === 0 ? <EmptyState message="Üye olduğunuz kulüp yok" /> : (
+                        <div className="scrollable-list">
+                          {clubs.map((club, index) => {
+                            const clubData = club.club || club;
+                            const advisorName = clubData.advisorName || club.advisorName;
+                            const memberCount = clubData.memberCount || club.memberCount;
+                            return (
+                              <div key={clubData.id || index} className="list-item">
+                                <h3 className="item-title">{clubData.name || club.clubName}</h3>
+                                <p className="item-subtitle">{clubData.description || ''}</p>
+                                {advisorName && (
+                                  <p className="item-subtitle text-xs mt-1" style={{ color: '#a5b4fc' }}>
+                                    👨‍🏫 Danışman: {advisorName}
+                                  </p>
+                                )}
+                                {memberCount !== undefined && (
+                                  <span className="status-badge success text-xs mt-1">👥 {memberCount} üye</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                </div>
               </div>
-              <div className="card-content">
-                {loading.clubs ? <CardLoader /> :
-                  errors.clubs ? <ErrorState message={errors.clubs} /> :
-                    clubs.length === 0 ? <EmptyState message="Üye olduğunuz kulüp yok" /> : (
-                      <div className="scrollable-list">
-                        {clubs.map((club, index) => {
-                          const clubData = club.club || club;
-                          const advisorName = clubData.advisorName || club.advisorName;
-                          const memberCount = clubData.memberCount || club.memberCount;
 
-                          return (
-                            <div key={clubData.id || index} className="list-item">
-                              <h3 className="item-title">{clubData.name || club.clubName}</h3>
-                              <p className="item-subtitle">{clubData.description || ''}</p>
-                              {advisorName && (
-                                <p className="item-subtitle text-xs mt-1" style={{ color: '#a5b4fc' }}>
-                                  👨‍🏫 Danışman: {advisorName}
-                                </p>
-                              )}
-                              {memberCount !== undefined && (
-                                <span className="status-badge success text-xs mt-1">
-                                  👥 {memberCount} üye
+              {/* Etkinliklerim */}
+              <div className="dashboard-card">
+                <div className="card-header">
+                  <div className="icon-container teal"><Calendar className="w-6 h-6 text-white" /></div>
+                  <h2 className="card-title">Etkinliklerim</h2>
+                  <span className="count-badge teal">{events.length}</span>
+                </div>
+                <div className="card-content">
+                  {loading.events ? <CardLoader /> :
+                    errors.events ? <ErrorState message={errors.events} /> :
+                      events.length === 0 ? <EmptyState message="Kayıtlı etkinlik yok" /> : (
+                        <div className="scrollable-list">
+                          {events.map((event, index) => {
+                            const eventData = event.event || event;
+                            const eventDate = eventData.eventTime || eventData.eventDate || eventData.date;
+                            let formattedDate = 'Tarih belirtilmemiş';
+                            let eventStatus = 'upcoming';
+                            if (eventDate) {
+                              try {
+                                const dateObj = new Date(eventDate);
+                                if (!isNaN(dateObj.getTime())) {
+                                  formattedDate = dateObj.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                  eventStatus = dateObj < new Date() ? 'past' : 'upcoming';
+                                }
+                              } catch (e) { console.error('Tarih parse hatası:', e); }
+                            }
+                            return (
+                              <div key={eventData.id || index} className="list-item">
+                                <h3 className="item-title">{eventData.title || eventData.name}</h3>
+                                <p className="item-subtitle">{formattedDate}</p>
+                                <span className={`status-badge ${eventStatus === 'upcoming' ? 'success' : 'warning'}`}>
+                                  {eventStatus === 'upcoming' ? '🟢 Yaklaşan' : '⏰ Geçmiş'}
                                 </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                </div>
+              </div>
+
+              {/* Üyelik İsteklerim */}
+              <div className="dashboard-card">
+                <div className="card-header">
+                  <div className="icon-container amber"><Send className="w-6 h-6 text-white" /></div>
+                  <h2 className="card-title">Üyelik İsteklerim</h2>
+                  <span className="count-badge amber">{membershipRequests.length}</span>
+                </div>
+                <div className="card-content">
+                  {loading.membershipRequests ? <CardLoader /> :
+                    membershipRequests.length === 0 ? <EmptyState message="Bekleyen üyelik isteği yok" /> : (
+                      <div className="scrollable-list">
+                        {membershipRequests.map((request, index) => (
+                          <div key={request.id || index} className="list-item">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h3 className="item-title">{request.clubName || request.club?.name || 'Kulüp'}</h3>
+                                <p className="item-subtitle">
+                                  {new Date(request.requestDate || request.createdAt).toLocaleDateString('tr-TR')}
+                                </p>
+                                <span className={`status-badge ${request.status === 'PENDING' ? 'warning' : request.status === 'APPROVED' ? 'success' : 'danger'}`}>
+                                  {request.status === 'PENDING' ? 'Bekliyor' : request.status === 'APPROVED' ? 'Onaylandı' : 'Reddedildi'}
+                                </span>
+                              </div>
+                              {request.status === 'PENDING' && (
+                                <button
+                                  onClick={() => handleCancelMembershipRequest(request.clubId || request.club?.id)}
+                                  className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 transition-all duration-300 ml-2"
+                                  title="İsteği İptal Et"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
                               )}
                             </div>
-                          );
-                        })}
+                          </div>
+                        ))}
                       </div>
                     )}
+                </div>
               </div>
-            </div>
 
-            <div className="dashboard-card">
-              <div className="card-header">
-                <div className="icon-container teal"><Calendar className="w-6 h-6 text-white" /></div>
-                <h2 className="card-title">Etkinliklerim</h2>
-                <span className="count-badge teal">{events.length}</span>
-              </div>
-              <div className="card-content">
-                {loading.events ? <CardLoader /> :
-                  errors.events ? <ErrorState message={errors.events} /> :
-                    events.length === 0 ? <EmptyState message="Kayıtlı etkinlik yok" /> : (
+              {/* Kulüp Etkinlikleri (Katılım İsteği Gönderme) */}
+              <div className="dashboard-card">
+                <div className="card-header">
+                  <div className="icon-container purple"><CalendarPlus className="w-6 h-6 text-white" /></div>
+                  <h2 className="card-title">Kulüp Etkinlikleri</h2>
+                  <span className="count-badge purple">{clubEventsForStudent.length}</span>
+                </div>
+                <div className="card-content">
+                  {loading.clubEventsForStudent ? <CardLoader /> :
+                    clubEventsForStudent.length === 0 ? <EmptyState message="Kulüp etkinliği bulunamadı" /> : (
                       <div className="scrollable-list">
-                        {events.map((event, index) => {
-                          const eventData = event.event || event;
-                          const eventDate = eventData.eventTime || eventData.eventDate || eventData.date;
+                        {clubEventsForStudent.map((event, index) => {
+                          const eventDate = event.eventTime || event.eventDate;
                           let formattedDate = 'Tarih belirtilmemiş';
                           let eventStatus = 'upcoming';
-
                           if (eventDate) {
                             try {
                               const dateObj = new Date(eventDate);
                               if (!isNaN(dateObj.getTime())) {
-                                formattedDate = dateObj.toLocaleDateString('tr-TR', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                });
-
-                                const now = new Date();
-                                eventStatus = dateObj < now ? 'past' : 'upcoming';
+                                formattedDate = dateObj.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                eventStatus = dateObj < new Date() ? 'past' : 'upcoming';
                               }
-                            } catch (e) {
-                              console.error('Tarih parse hatası:', e);
-                            }
+                            } catch (e) { console.error('Tarih parse hatası:', e); }
                           }
-
+                          const canRequest = eventStatus === 'upcoming';
                           return (
-                            <div key={eventData.id || index} className="list-item">
-                              <h3 className="item-title">{eventData.title || eventData.name}</h3>
-                              <p className="item-subtitle">{formattedDate}</p>
-                              <span className={`status-badge ${eventStatus === 'upcoming' ? 'success' : 'warning'}`}>
-                                {eventStatus === 'upcoming' ? 'Yaklaşan' : 'Geçmiş'}
-                              </span>
+                            <div key={event.id || index} className="list-item">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1">
+                                  <h3 className="item-title">{event.title || event.name}</h3>
+                                  <p className="item-subtitle">🏫 {event.clubName || 'Kulüp'}</p>
+                                  <p className="item-subtitle">📅 {formattedDate}</p>
+                                  <p className="item-subtitle text-xs">📍 {event.location || 'Konum belirtilmemiş'}</p>
+                                  <span className={`status-badge ${eventStatus === 'upcoming' ? 'success' : 'warning'}`}>
+                                    {eventStatus === 'upcoming' ? '🟢 Yaklaşan' : '⏰ Geçmiş'}
+                                  </span>
+                                </div>
+                                {canRequest && (
+                                  <button
+                                    onClick={() => handleSendParticipationRequest(event.id)}
+                                    className="p-2 rounded-lg bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/30 text-violet-300 transition-all duration-300 hover:scale-110"
+                                    title="Katılım İsteği Gönder"
+                                  >
+                                    <Send className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
                       </div>
                     )}
+                </div>
+              </div>
+
+              {/* Katılım İsteklerim */}
+              <div className="dashboard-card">
+                <div className="card-header">
+                  <div className="icon-container emerald"><UserCheck className="w-6 h-6 text-white" /></div>
+                  <h2 className="card-title">Katılım İsteklerim</h2>
+                  <span className="count-badge emerald">{participationRequests.length}</span>
+                </div>
+                <div className="card-content">
+                  {loading.participationRequests ? <CardLoader /> :
+                    participationRequests.length === 0 ? <EmptyState message="Henüz katılım isteği yok" /> : (
+                      <div className="scrollable-list">
+                        {participationRequests.map((request, index) => {
+                          const eventData = request.event || request.eventDto || {};
+                          const eventTitle = request.eventTitle || request.title || eventData.title || eventData.name || 'Etkinlik';
+                          const eventDate = request.eventTime || request.eventDate || eventData.eventTime || eventData.eventDate;
+                          let formattedDate = 'Tarih belirtilmemiş';
+                          if (eventDate) {
+                            try {
+                              const dateObj = new Date(eventDate);
+                              if (!isNaN(dateObj.getTime())) {
+                                formattedDate = dateObj.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                              }
+                            } catch (e) { console.error('Tarih parse hatası:', e); }
+                          }
+                          return (
+                            <div key={request.id || index} className="list-item">
+                              <h3 className="item-title">{eventTitle}</h3>
+                              <p className="item-subtitle">📅 {formattedDate}</p>
+                              <div className="flex items-center justify-between mt-2">
+                                <span className={`status-badge ${request.status === 'PENDING' ? 'warning' : request.status === 'APPROVED' ? 'success' : 'danger'}`}>
+                                  {request.status === 'PENDING' ? '⏳ Bekliyor' : request.status === 'APPROVED' ? '✅ Onaylandı' : '❌ Reddedildi'}
+                                </span>
+                                {(request.requestDate || request.createdAt) && (
+                                  <span className="item-subtitle text-xs">
+                                    {new Date(request.requestDate || request.createdAt).toLocaleDateString('tr-TR')}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                </div>
+              </div>
+
+              {/* Ders Başvurularım */}
+              <div className="dashboard-card">
+                <div className="card-header">
+                  <div className="icon-container teal"><Send className="w-6 h-6 text-white" /></div>
+                  <h2 className="card-title">Ders Başvurularım</h2>
+                  <span className="count-badge teal">{myApplications.length}</span>
+                </div>
+                <div className="card-content">
+                  {applicationsLoading ? <CardLoader /> :
+                    myApplications.length === 0 ? <EmptyState message="Henüz ders başvurusu yok" /> : (
+                      <div className="scrollable-list">
+                        {myApplications.map((app, index) => (
+                          <div key={app.id || index} className="list-item">
+                            <h3 className="item-title">{app.courseName || app.course?.name || 'Ders'}</h3>
+                            <p className="item-subtitle">
+                              {app.applicationDate || app.createdAt
+                                ? new Date(app.applicationDate || app.createdAt).toLocaleDateString('tr-TR')
+                                : ''}
+                            </p>
+                            <span className={`status-badge ${app.status === 'PENDING' ? 'warning' : app.status === 'APPROVED' ? 'success' : 'danger'}`}>
+                              {app.status === 'PENDING' ? '⏳ Bekliyor' : app.status === 'APPROVED' ? '✅ Onaylandı' : '❌ Reddedildi'}
+                            </span>
+                            {app.status === 'REJECTED' && app.reason && (
+                              <p className="item-subtitle text-xs mt-1" style={{ color: '#fca5a5' }}>Sebep: {app.reason}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                </div>
               </div>
             </div>
-          </div>
+
+            {/* Başvurulabilir Dersler */}
+            <div className="dashboard-card mt-6">
+              <div className="card-header">
+                <div className="icon-container indigo"><GraduationCap className="w-6 h-6 text-white" /></div>
+                <h2 className="card-title">Başvurulabilir Dersler</h2>
+                <span className="count-badge indigo">{availableCourses.length}</span>
+              </div>
+              <div className="card-content" style={{ maxHeight: '400px' }}>
+                {availableCoursesLoading ? <CardLoader /> :
+                  availableCourses.length === 0 ? <EmptyState message="Başvurulabilir ders bulunamadı" /> : (
+                    <div className="scrollable-list">
+                      {availableCourses.map((course, index) => {
+                        const alreadyApplied = myApplications.some(app =>
+                          (app.courseId === course.id || app.course?.id === course.id) && app.status === 'PENDING'
+                        );
+                        const alreadyEnrolled = courses.some(c => c.id === course.id);
+                        return (
+                          <div key={course.id || index} className="list-item">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h3 className="item-title">{course.title || course.name}</h3>
+                                  {course.code && (
+                                    <span style={{ padding: '2px 8px', borderRadius: '6px', background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', fontSize: '11px', fontFamily: 'monospace' }}>
+                                      {course.code}
+                                    </span>
+                                  )}
+                                </div>
+                                {course.description && <p className="item-subtitle" style={{ marginTop: '4px' }}>{course.description}</p>}
+                                <div className="flex flex-wrap items-center gap-3 mt-1">
+                                  {course.credit && <span className="item-subtitle text-xs">📚 {course.credit} Kredi</span>}
+                                  {course.capacity && <span className="item-subtitle text-xs">👥 Kontenjan: {course.capacity}</span>}
+                                  {course.semester && <span className="item-subtitle text-xs">📅 {course.semester}</span>}
+                                  {(course.instructorName || course.instructor) && <span className="item-subtitle text-xs">👨‍🏫 {course.instructorName || course.instructor}</span>}
+                                </div>
+                              </div>
+                              <div style={{ flexShrink: 0 }}>
+                                {alreadyEnrolled ? (
+                                  <span className="status-badge success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <Check className="w-3.5 h-3.5" /> Kayıtlı
+                                  </span>
+                                ) : alreadyApplied ? (
+                                  <span className="status-badge warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    ⏳ Başvuruldu
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={() => handleApplyToCourse(course.id)}
+                                    className="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 transition-all duration-300 hover:scale-105"
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '13px' }}
+                                  >
+                                    <Send className="w-3.5 h-3.5" />
+                                    Başvur
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+              </div>
+            </div>
+
+            {/* Ders Duyuruları */}
+            <div className="dashboard-card mt-6">
+              <div className="card-header">
+                <div className="icon-container rose"><Megaphone className="w-6 h-6 text-white" /></div>
+                <h2 className="card-title">Ders Duyuruları</h2>
+              </div>
+              <div className="card-content">
+                {courses.length === 0 ? (
+                  <EmptyState message="Duyuruları görmek için önce bir derse kayıt olun" />
+                ) : (
+                  <>
+                    <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                      <select
+                        value={selectedCourseForAnnouncements}
+                        onChange={(e) => setSelectedCourseForAnnouncements(e.target.value)}
+                        className="form-input flex-1"
+                      >
+                        <option value="">Ders Seçin</option>
+                        {courses.map((course) => (
+                          <option key={course.id} value={course.id}>{course.name || course.title}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => fetchStudentCourseAnnouncements()}
+                        disabled={announcementsLoading || !selectedCourseForAnnouncements}
+                        className="btn btn-primary"
+                        style={{ minWidth: '100px' }}
+                      >
+                        {announcementsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+                        Getir
+                      </button>
+                    </div>
+                    <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                      {announcementsLoading ? <CardLoader /> :
+                        courseAnnouncements.length === 0 ? (
+                          <EmptyState message="Duyuru bulunmuyor. Bir ders seçip 'Getir' butonuna tıklayın." />
+                        ) : (
+                          <div className="scrollable-list">
+                            {courseAnnouncements.map((ann, index) => (
+                              <div key={ann.id || index} className="list-item">
+                                <h3 className="item-title">{ann.title}</h3>
+                                <p className="item-subtitle" style={{ whiteSpace: 'pre-wrap', marginTop: '4px' }}>{ann.content}</p>
+                                <span className="item-subtitle text-xs" style={{ marginTop: '8px', display: 'inline-block' }}>
+                                  {ann.createdAt ? new Date(ann.createdAt).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </>
         )}
       </div>
 

@@ -2,6 +2,12 @@ import api from './axiosConfig';
 
 // ==================== KURSLAR ====================
 
+// Tüm dersler (öğrenci başvurusu için)
+export const getAllCourses = async () => {
+  const response = await api.get('/courses');
+  return response.data;
+};
+
 // Öğrenci - Kurslarım
 export const getMyCourses = async () => {
   const response = await api.get('/courses/my-courses');

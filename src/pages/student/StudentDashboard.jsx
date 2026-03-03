@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../store/slices/authSlice';
-import { getMyCourses, applyToCourse, getMyApplications, getAnnouncements, downloadCourseFile } from '../../api/courseService';
+import { getMyCourses, getAllCourses, applyToCourse, getMyApplications, getAnnouncements, downloadCourseFile } from '../../api/courseService';
 import { getMyAssignments, downloadAssignmentFile } from '../../api/assignmentService';
 import { getMyMemberships, getMyMembershipRequests, cancelMembershipRequest } from '../../api/clubService';
 import { getMyRegistrations, getMyParticipationRequests, sendParticipationRequest, getClubEvents } from '../../api/eventService';
-import { BookOpen, ClipboardList, Users, Calendar, LogOut, Loader2, Send, X, Check, UserCheck, CalendarPlus, Image, Bell, FileDown, Megaphone } from 'lucide-react';
+import { BookOpen, ClipboardList, Users, Calendar, LogOut, Loader2, Send, X, Check, UserCheck, CalendarPlus, Image, Bell, FileDown, Megaphone, GraduationCap } from 'lucide-react';
 
 function StudentDashboard() {
   const dispatch = useDispatch();
@@ -26,6 +26,10 @@ function StudentDashboard() {
   // Ders başvuruları state
   const [myApplications, setMyApplications] = useState([]);
   const [applicationsLoading, setApplicationsLoading] = useState(true);
+
+  // Başvurulabilir dersler state
+  const [availableCourses, setAvailableCourses] = useState([]);
+  const [availableCoursesLoading, setAvailableCoursesLoading] = useState(true);
 
   // Ders duyuruları state
   const [courseAnnouncements, setCourseAnnouncements] = useState([]);
@@ -63,6 +67,7 @@ function StudentDashboard() {
     fetchMembershipRequests();
     fetchParticipationRequests();
     fetchMyApplications();
+    fetchAvailableCourses();
   }, []);
 
   // Kulüpler yüklendikten sonra etkinlikleri getir
@@ -318,9 +323,23 @@ function StudentDashboard() {
       setSuccessMessage('Derse başvuru başarıyla gönderildi!');
       setTimeout(() => setSuccessMessage(''), 3000);
       fetchMyApplications();
+      fetchAvailableCourses();
     } catch (error) {
       const msg = error.response?.data?.message || error.response?.data || 'Başvuru gönderilemedi';
       alert('Başvuru hatası: ' + msg);
+    }
+  };
+
+  const fetchAvailableCourses = async () => {
+    setAvailableCoursesLoading(true);
+    try {
+      const allCourses = await getAllCourses();
+      setAvailableCourses(allCourses || []);
+    } catch (error) {
+      console.error('Dersler yüklenirken hata:', error);
+      setAvailableCourses([]);
+    } finally {
+      setAvailableCoursesLoading(false);
     }
   };
 
@@ -958,6 +977,96 @@ function StudentDashboard() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+          </div>
+        </div>
+
+        {/* ==================== BAŞVURULABİLİR DERSLER ==================== */}
+        <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02] mt-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="p-3 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
+              <GraduationCap className="w-6 h-6 text-white" />
+            </div>
+            <h2 className="text-xl font-semibold text-white">Başvurulabilir Dersler</h2>
+            <span className="ml-auto px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-sm font-medium">
+              {availableCourses.length}
+            </span>
+          </div>
+          <div className="max-h-96 overflow-y-auto">
+            {availableCoursesLoading ? <CardLoader /> :
+              availableCourses.length === 0 ? <EmptyState message="Başvurulabilir ders bulunamadı" /> : (
+                <div className="space-y-3">
+                  {availableCourses.map((course, index) => {
+                    const alreadyApplied = myApplications.some(app =>
+                      (app.courseId === course.id || app.course?.id === course.id) && app.status === 'PENDING'
+                    );
+                    const alreadyEnrolled = courses.some(c => c.id === course.id);
+
+                    return (
+                      <div
+                        key={course.id || index}
+                        className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-medium text-white">{course.title || course.name}</h3>
+                              {course.code && (
+                                <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-xs font-mono">
+                                  {course.code}
+                                </span>
+                              )}
+                            </div>
+                            {course.description && (
+                              <p className="text-sm text-purple-200/60 mt-1 line-clamp-2">{course.description}</p>
+                            )}
+                            <div className="flex flex-wrap items-center gap-3 mt-2">
+                              {course.credit && (
+                                <span className="text-xs text-purple-200/50">
+                                  📚 {course.credit} Kredi
+                                </span>
+                              )}
+                              {course.capacity && (
+                                <span className="text-xs text-purple-200/50">
+                                  👥 Kontenjan: {course.capacity}
+                                </span>
+                              )}
+                              {course.semester && (
+                                <span className="text-xs text-purple-200/50">
+                                  📅 {course.semester}
+                                </span>
+                              )}
+                              {(course.instructorName || course.instructor) && (
+                                <span className="text-xs text-purple-200/50">
+                                  👨‍🏫 {course.instructorName || course.instructor}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="shrink-0">
+                            {alreadyEnrolled ? (
+                              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-medium">
+                                <Check className="w-3.5 h-3.5" /> Kayıtlı
+                              </span>
+                            ) : alreadyApplied ? (
+                              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-medium">
+                                ⏳ Başvuruldu
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleApplyToCourse(course.id)}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 text-sm font-medium transition-all duration-300 hover:scale-105"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                                Başvur
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
           </div>
