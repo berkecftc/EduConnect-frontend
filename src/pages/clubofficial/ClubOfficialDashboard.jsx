@@ -801,6 +801,14 @@ function ClubOfficialDashboard() {
                 <QrCode className="w-4 h-4" />
                 <span>QR Doğrula</span>
               </button>
+              <button
+                onClick={() => navigate('/posts')}
+                className="btn btn-indigo"
+                style={{ backgroundColor: 'rgba(139, 92, 246, 0.2)', borderColor: 'rgba(139, 92, 246, 0.3)', color: 'rgb(196, 181, 253)' }}
+              >
+                <FileText className="w-4 h-4" />
+                <span>Postlar</span>
+              </button>
               <button className="btn btn-danger" onClick={handleLogout}>
                 <LogOut className="w-4 h-4" />
                 <span>Çıkış Yap</span>

@@ -6,7 +6,7 @@ import { getMyCourses, getAllCourses, applyToCourse, getMyApplications, getAnnou
 import { getMyAssignments, downloadAssignmentFile } from '../../api/assignmentService';
 import { getMyMemberships, getMyMembershipRequests, cancelMembershipRequest } from '../../api/clubService';
 import { getMyRegistrations, getMyParticipationRequests, sendParticipationRequest, getClubEvents } from '../../api/eventService';
-import { BookOpen, ClipboardList, Users, Calendar, LogOut, Loader2, Send, X, Check, UserCheck, CalendarPlus, Image, Bell, FileDown, Megaphone, GraduationCap } from 'lucide-react';
+import { BookOpen, ClipboardList, Users, Calendar, LogOut, Loader2, Send, X, Check, UserCheck, CalendarPlus, Image, Bell, FileDown, Megaphone, GraduationCap, FileText } from 'lucide-react';
 
 function StudentDashboard() {
   const dispatch = useDispatch();
@@ -436,6 +436,13 @@ function StudentDashboard() {
               >
                 <Users className="w-4 h-4" />
                 <span>Tüm Kulüpler</span>
+              </button>
+              <button
+                onClick={() => navigate('/posts')}
+                className="group flex items-center gap-2 px-5 py-2.5 bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/30 rounded-xl text-violet-300 transition-all duration-300 hover:scale-105"
+              >
+                <FileText className="w-4 h-4" />
+                <span>Postlar</span>
               </button>
               <button
                 onClick={handleLogout}

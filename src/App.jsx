@@ -8,6 +8,10 @@ import StudentDashboard from './pages/student/StudentDashboard';
 import InstructorDashboard from './pages/instructor/InstructorDashboard';
 import ClubOfficialDashboard from './pages/clubofficial/ClubOfficialDashboard';
 import ClubList from './pages/club/ClubList';
+import PostList from './pages/post/PostList';
+import PostDetail from './pages/post/PostDetail';
+import PostCreate from './pages/post/PostCreate';
+import PostEdit from './pages/post/PostEdit';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -45,6 +49,40 @@ function App() {
         element={
           <ProtectedRoute allowedRoles={['ROLE_STUDENT']}>
             <ClubList />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Post / Blog Rotaları (Öğrenci + Kulüp Yetkilisi) */}
+      <Route
+        path="/posts"
+        element={
+          <ProtectedRoute allowedRoles={['ROLE_STUDENT', 'ROLE_CLUB_OFFICIAL']}>
+            <PostList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/posts/new"
+        element={
+          <ProtectedRoute allowedRoles={['ROLE_STUDENT', 'ROLE_CLUB_OFFICIAL']}>
+            <PostCreate />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/posts/:id"
+        element={
+          <ProtectedRoute allowedRoles={['ROLE_STUDENT', 'ROLE_CLUB_OFFICIAL']}>
+            <PostDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/posts/:id/edit"
+        element={
+          <ProtectedRoute allowedRoles={['ROLE_STUDENT', 'ROLE_CLUB_OFFICIAL']}>
+            <PostEdit />
           </ProtectedRoute>
         }
       />
