@@ -1,7 +1,9 @@
 .instructor-dashboard {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  background-color: #f8fafc;
+  /* slate-50 */
   padding: 2rem;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 .dashboard-header {
@@ -9,17 +11,20 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
-  background: rgba(30, 41, 59, 0.6);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  /* slate-200 */
   padding: 1.5rem 2rem;
   border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  /* shadow-sm */
 }
 
 .dashboard-header h1 {
-  color: #f1f5f9;
+  color: #0f172a;
+  /* slate-900 */
   font-size: 1.8rem;
+  font-weight: 700;
   margin: 0;
 }
 
@@ -30,23 +35,29 @@
 }
 
 .user-info span {
-  color: #94a3b8;
+  color: #475569;
+  /* slate-600 */
   font-weight: 500;
 }
 
 .logout-btn {
-  background: #ef4444;
-  color: white;
-  border: none;
+  background-color: #ffffff;
+  color: #ef4444;
+  /* red-500 */
+  border: 1px solid #fee2e2;
+  /* red-200 */
   padding: 0.5rem 1rem;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
-  transition: background 0.3s;
+  transition: all 0.2s;
 }
 
 .logout-btn:hover {
-  background: #dc2626;
+  background-color: #fef2f2;
+  /* red-50 */
+  border-color: #fca5a5;
+  /* red-300 */
 }
 
 .dashboard-content {
@@ -62,19 +73,21 @@
 }
 
 .dashboard-card {
-  background: rgba(30, 41, 59, 0.6);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  /* slate-200 */
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-  transition: transform 0.3s, box-shadow 0.3s;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  /* shadow-sm */
+  transition: box-shadow 0.2s, border-color 0.2s;
 }
 
 .dashboard-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(59, 130, 246, 0.3);
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
+  border-color: #cbd5e1;
+  /* slate-300 */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  /* shadow-md */
 }
 
 .dashboard-card.full-width {
@@ -87,7 +100,8 @@
   justify-content: space-between;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid #f1f5f9;
+  /* slate-100 */
 }
 
 .card-header-left {
@@ -102,8 +116,10 @@
 
 .card-header h2 {
   margin: 0;
-  color: #f1f5f9;
+  color: #0f172a;
+  /* slate-900 */
   font-size: 1.25rem;
+  font-weight: 600;
 }
 
 .card-content {
@@ -117,21 +133,23 @@
   justify-content: center;
   align-items: center;
   height: 100px;
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .error-message {
   color: #ef4444;
   text-align: center;
   padding: 1rem;
+  background-color: #fef2f2;
+  border-radius: 8px;
 }
 
 .success-message {
-  color: #34d399;
+  color: #059669;
   text-align: center;
   padding: 1rem;
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
   border-radius: 8px;
   margin-bottom: 1rem;
 }
@@ -150,7 +168,7 @@
 
 .item-list li {
   padding: 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid #f1f5f9;
   transition: background 0.2s;
 }
 
@@ -159,43 +177,55 @@
 }
 
 .item-list li:hover {
-  background: rgba(59, 130, 246, 0.1);
+  background-color: #f8fafc;
   border-radius: 8px;
 }
 
 .item-title {
   font-weight: 600;
-  color: #f1f5f9;
+  color: #1e293b;
   margin-bottom: 0.25rem;
 }
 
 .item-subtitle {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .item-badge {
   display: inline-block;
   padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
   margin-top: 0.25rem;
 }
 
 .badge-active {
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  background-color: #eff6ff;
+  /* blue-50 */
+  color: #2563eb;
+  /* blue-600 */
+  border: 1px solid #bfdbfe;
+  /* blue-200 */
 }
 
 .badge-pending {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
+  background-color: #fffbeb;
+  /* amber-50 */
+  color: #d97706;
+  /* amber-600 */
+  border: 1px solid #fde68a;
+  /* amber-200 */
 }
 
 .badge-graded {
-  background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
+  background-color: #ecfdf5;
+  /* emerald-50 */
+  color: #059669;
+  /* emerald-600 */
+  border: 1px solid #a7f3d0;
+  /* emerald-200 */
 }
 
 /* Course Selection */
@@ -208,26 +238,32 @@
 .course-selector select {
   flex: 1;
   padding: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-size: 1rem;
-  background: rgba(15, 23, 42, 0.8);
-  color: #f1f5f9;
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+.course-selector select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .course-selector button {
   padding: 0.75rem 1.5rem;
-  background: #2563eb;
+  background-color: #2563eb;
   color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
-  transition: background 0.3s;
+  transition: background 0.2s;
 }
 
 .course-selector button:hover {
-  background: #1d4ed8;
+  background-color: #1d4ed8;
 }
 
 /* Enroll Form */
@@ -245,36 +281,43 @@
 
 .form-group label {
   font-weight: 500;
-  color: #e2e8f0;
+  color: #334155;
 }
 
 .form-group select,
 .form-group input {
   padding: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-size: 1rem;
-  background: rgba(15, 23, 42, 0.8);
-  color: #f1f5f9;
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .enroll-btn {
   padding: 0.75rem;
-  background: #059669;
+  background-color: #059669;
   color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
-  transition: background 0.3s;
+  transition: background 0.2s;
 }
 
 .enroll-btn:hover {
-  background: #047857;
+  background-color: #047857;
 }
 
 .enroll-btn:disabled {
-  background: #475569;
+  background-color: #cbd5e1;
   cursor: not-allowed;
 }
 
@@ -289,17 +332,17 @@
 .submissions-table td {
   padding: 0.75rem;
   text-align: left;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .submissions-table th {
-  background: rgba(59, 130, 246, 0.15);
+  background-color: #f8fafc;
   font-weight: 600;
-  color: #93c5fd;
+  color: #475569;
 }
 
 .submissions-table tr:hover {
-  background: rgba(59, 130, 246, 0.1);
+  background-color: #f1f5f9;
 }
 
 /* Grade Form */
@@ -312,47 +355,49 @@
 .grade-input {
   width: 60px;
   padding: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid #cbd5e1;
   border-radius: 4px;
   text-align: center;
-  background: rgba(15, 23, 42, 0.8);
-  color: #f1f5f9;
+  background-color: #ffffff;
+  color: #0f172a;
 }
 
 .grade-btn {
   padding: 0.5rem 0.75rem;
-  background: #059669;
+  background-color: #059669;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.85rem;
-  transition: background 0.3s;
+  transition: background 0.2s;
 }
 
 .grade-btn:hover {
-  background: #047857;
+  background-color: #047857;
 }
 
 .grade-btn:disabled {
-  background: #475569;
+  background-color: #cbd5e1;
   cursor: not-allowed;
 }
 
 /* Action Buttons */
 .action-btn {
   padding: 0.5rem 1rem;
-  background: #2563eb;
-  color: white;
-  border: none;
+  background-color: #f1f5f9;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.85rem;
-  transition: background 0.3s;
+  font-weight: 500;
+  transition: all 0.2s;
 }
 
 .action-btn:hover {
-  background: #1d4ed8;
+  background-color: #eff6ff;
+  border-color: #93c5fd;
 }
 
 /* Responsive */
@@ -375,4 +420,23 @@
   .submissions-table td {
     padding: 0.5rem;
   }
+}
+
+/* Scrollbar Styles */
+.card-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.card-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.card-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.card-content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }

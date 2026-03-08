@@ -98,17 +98,17 @@ function PostEdit() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <Loader2 className="w-10 h-10 text-blue-400 animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="min-h-screen bg-slate-50">
             {/* Success Toast */}
             {showSuccess && (
-                <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-5 py-3 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-emerald-300 backdrop-blur-xl shadow-lg">
+                <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-5 py-3 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-emerald-300  shadow-lg">
                     <Check className="w-5 h-5" />
                     <span>Gönderi güncellendi! Tekrar moderasyona gönderildi.</span>
                 </div>
@@ -119,25 +119,25 @@ function PostEdit() {
                 <div className="flex items-center gap-3 mb-6">
                     <button
                         onClick={() => navigate(getDashboardPath())}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all duration-300"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-white/20 border border-slate-200 text-slate-900 transition-all duration-300"
                     >
                         <Home className="w-4 h-4" />
                         Panele Dön
                     </button>
                     <button
                         onClick={() => navigate(`/posts/${id}`)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all duration-300"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-white/20 border border-slate-200 text-slate-900 transition-all duration-300"
                     >
                         <ChevronLeft className="w-4 h-4" />
                         Gönderiye Dön
                     </button>
                 </div>
 
-                <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-2xl overflow-hidden">
+                <div className=" bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
                     <div className="h-2 bg-linear-to-r from-blue-500 to-cyan-600" />
 
                     <div className="p-6 md:p-8">
-                        <h1 className="text-2xl font-bold text-white mb-6">Gönderiyi Düzenle</h1>
+                        <h1 className="text-2xl font-bold text-slate-900 mb-6">Gönderiyi Düzenle</h1>
 
                         {apiError && (
                             <div className="flex items-center gap-3 mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
@@ -149,7 +149,7 @@ function PostEdit() {
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {/* Category Selection */}
                             <div>
-                                <label className="block text-sm font-medium text-blue-200/80 mb-3">Kategori</label>
+                                <label className="block text-sm font-medium text-blue-600/80 mb-3">Kategori</label>
                                 <div className="grid grid-cols-3 gap-3">
                                     {CATEGORIES.map((cat) => {
                                         const isActive = form.category === cat.value;
@@ -160,8 +160,8 @@ function PostEdit() {
                                                 type="button"
                                                 onClick={() => handleChange('category', cat.value)}
                                                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all duration-300 ${isActive
-                                                    ? `bg-linear-to-br ${cat.color} border-transparent text-white shadow-lg`
-                                                    : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
+                                                    ? `bg-linear-to-br ${cat.color} border-transparent text-slate-900 shadow-lg`
+                                                    : 'bg-white border-slate-200 text-slate-900/60 hover:bg-white hover:text-slate-900'
                                                     }`}
                                             >
                                                 <Icon className="w-5 h-5" />
@@ -175,15 +175,15 @@ function PostEdit() {
 
                             {/* Title */}
                             <div>
-                                <label className="block text-sm font-medium text-blue-200/80 mb-2">Başlık</label>
+                                <label className="block text-sm font-medium text-blue-600/80 mb-2">Başlık</label>
                                 <input
                                     type="text"
                                     value={form.title}
                                     onChange={(e) => handleChange('title', e.target.value)}
                                     maxLength={255}
                                     placeholder="Gönderi başlığını yazın..."
-                                    className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${errors.title ? 'border-red-500/50' : 'border-white/10'
-                                        } text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all`}
+                                    className={`w-full px-4 py-3 rounded-xl bg-white border ${errors.title ? 'border-red-500/50' : 'border-slate-200'
+                                        } text-slate-900 placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all`}
                                 />
                                 <div className="flex justify-between mt-1">
                                     {errors.title && <p className="text-red-400 text-xs">{errors.title}</p>}
@@ -193,14 +193,14 @@ function PostEdit() {
 
                             {/* Content */}
                             <div>
-                                <label className="block text-sm font-medium text-blue-200/80 mb-2">İçerik</label>
+                                <label className="block text-sm font-medium text-blue-600/80 mb-2">İçerik</label>
                                 <textarea
                                     value={form.content}
                                     onChange={(e) => handleChange('content', e.target.value)}
                                     rows={10}
                                     placeholder="Gönderi içeriğini yazın..."
-                                    className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${errors.content ? 'border-red-500/50' : 'border-white/10'
-                                        } text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all resize-y min-h-[200px]`}
+                                    className={`w-full px-4 py-3 rounded-xl bg-white border ${errors.content ? 'border-red-500/50' : 'border-slate-200'
+                                        } text-slate-900 placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all resize-y min-h-[200px]`}
                                 />
                                 {errors.content && <p className="text-red-400 text-xs mt-1">{errors.content}</p>}
                             </div>
@@ -218,14 +218,14 @@ function PostEdit() {
                                 <button
                                     type="button"
                                     onClick={() => navigate(`/posts/${id}`)}
-                                    className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all"
+                                    className="px-5 py-2.5 rounded-xl bg-white hover:bg-white/20 border border-slate-200 text-slate-900 transition-all"
                                 >
                                     İptal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={submitting}
-                                    className="flex items-center gap-2 px-6 py-2.5 bg-linear-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 rounded-xl text-white font-medium transition-all duration-300 hover:scale-105 shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:hover:scale-100"
+                                    className="flex items-center gap-2 px-6 py-2.5 bg-linear-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 rounded-xl text-slate-900 font-medium transition-all duration-300 hover:scale-105 shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:hover:scale-100"
                                 >
                                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                     {submitting ? 'Kaydediliyor...' : 'Kaydet'}

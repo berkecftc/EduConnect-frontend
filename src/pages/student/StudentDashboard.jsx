@@ -2,39 +2,35 @@ import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../store/slices/authSlice';
+import { useTheme } from '../../context/ThemeContext';
 import { getMyCourses, getAllCourses, applyToCourse, getMyApplications, getAnnouncements, downloadCourseFile } from '../../api/courseService';
 import { getMyAssignments, downloadAssignmentFile } from '../../api/assignmentService';
 import { getMyMemberships, getMyMembershipRequests, cancelMembershipRequest } from '../../api/clubService';
 import { getMyRegistrations, getMyParticipationRequests, sendParticipationRequest, getClubEvents } from '../../api/eventService';
-import { BookOpen, ClipboardList, Users, Calendar, LogOut, Loader2, Send, X, Check, UserCheck, CalendarPlus, Image, Bell, FileDown, Megaphone, GraduationCap, FileText } from 'lucide-react';
+import {
+  BookOpen, ClipboardList, Users, Calendar, LogOut, Loader2, Send, X, Check,
+  CalendarPlus, Image, Bell, FileDown, Megaphone, User, Menu, Moon, Sun, ChevronRight
+} from 'lucide-react';
 
 function StudentDashboard() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { user, role } = useSelector((state) => state.auth);
-  console.log("User Role:", role);
+  const { user, role, email, studentNumber, department } = useSelector((state) => state.auth);
+  const { isDarkMode, toggleTheme } = useTheme();
 
+  // Sidebar State
+  const [activeTab, setActiveTab] = useState('profile');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Data States
   const [courses, setCourses] = useState([]);
   const [assignments, setAssignments] = useState([]);
-  const [allAssignments, setAllAssignments] = useState([]); // Tüm ödevler
+  const [allAssignments, setAllAssignments] = useState([]);
   const [clubs, setClubs] = useState([]);
   const [events, setEvents] = useState([]);
   const [membershipRequests, setMembershipRequests] = useState([]);
   const [participationRequests, setParticipationRequests] = useState([]);
-  const [clubEvents, setClubEvents] = useState([]); // Kulüp etkinlikleri
-
-  // Ders başvuruları state
-  const [myApplications, setMyApplications] = useState([]);
-  const [applicationsLoading, setApplicationsLoading] = useState(true);
-
-  // Başvurulabilir dersler state
-  const [availableCourses, setAvailableCourses] = useState([]);
-  const [availableCoursesLoading, setAvailableCoursesLoading] = useState(true);
-
-  // Ders duyuruları state
-  const [courseAnnouncements, setCourseAnnouncements] = useState([]);
-  const [announcementsLoading, setAnnouncementsLoading] = useState(false);
-  const [selectedCourseForAnnouncements, setSelectedCourseForAnnouncements] = useState('');
+  const [clubEvents, setClubEvents] = useState([]);
 
   const [loading, setLoading] = useState({
     courses: true,
@@ -46,18 +42,8 @@ function StudentDashboard() {
     clubEvents: true,
   });
 
-  const [errors, setErrors] = useState({
-    courses: null,
-    assignments: null,
-    clubs: null,
-    events: null,
-    membershipRequests: null,
-    participationRequests: null,
-    clubEvents: null,
-  });
-
+  const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
-  const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => {
     fetchCourses();
@@ -66,235 +52,125 @@ function StudentDashboard() {
     fetchEvents();
     fetchMembershipRequests();
     fetchParticipationRequests();
-    fetchMyApplications();
-    fetchAvailableCourses();
   }, []);
 
-  // Kulüpler yüklendikten sonra etkinlikleri getir
   useEffect(() => {
-    if (!loading.clubs) {
-      if (clubs.length > 0) {
-        fetchClubEvents();
-      } else {
-        // Kulüp yoksa loading'i kapat
-        setLoading(prev => ({ ...prev, clubEvents: false }));
-      }
+    if (!loading.clubs && clubs.length > 0) {
+      fetchClubEvents();
+    } else if (!loading.clubs) {
+      setLoading(prev => ({ ...prev, clubEvents: false }));
     }
   }, [clubs, loading.clubs]);
 
+  // Data Fetching Logic (Same as before)
   const fetchCourses = async () => {
     try {
       const data = await getMyCourses();
-      console.log('Kayıtlı derslerim:', data);
       setCourses(data);
-      // Dersler yüklendikten sonra ödevleri filtrele
       filterAssignmentsByCourses(data);
     } catch (error) {
       setErrors(prev => ({ ...prev, courses: 'Kurslar yüklenemedi' }));
-    } finally {
-      setLoading(prev => ({ ...prev, courses: false }));
-    }
+    } finally { setLoading(prev => ({ ...prev, courses: false })); }
   };
 
   const fetchAssignments = async () => {
     try {
       const data = await getMyAssignments();
-      console.log('Tüm ödevler:', data);
       setAllAssignments(data);
-      // Dersler yüklendiyse ödevleri filtrele
-      if (courses.length > 0) {
-        filterAssignmentsByCourses(courses, data);
-      }
+      if (courses.length > 0) filterAssignmentsByCourses(courses, data);
     } catch (error) {
       setErrors(prev => ({ ...prev, assignments: 'Ödevler yüklenemedi' }));
-    } finally {
-      setLoading(prev => ({ ...prev, assignments: false }));
-    }
+    } finally { setLoading(prev => ({ ...prev, assignments: false })); }
   };
 
   const filterAssignmentsByCourses = (coursesData = courses, assignmentsData = allAssignments) => {
-    if (!coursesData || coursesData.length === 0 || !assignmentsData || assignmentsData.length === 0) {
-      return;
-    }
-
-    // Kayıtlı olunan ders ID'lerini al
-    const enrolledCourseIds = coursesData.map(course =>
-      course.id || course.courseId || course.course?.id
-    ).filter(id => id !== undefined);
-
-    console.log('Kayıtlı ders IDleri:', enrolledCourseIds);
-
-    // Sadece kayıtlı olunan derslerin ödevlerini filtrele
-    const filteredAssignments = assignmentsData.filter(assignment => {
-      const assignmentCourseId = assignment.courseId || assignment.course?.id;
-      const isEnrolled = enrolledCourseIds.includes(assignmentCourseId);
-
-      if (!isEnrolled) {
-        console.log('Filtrelenen ödev:', assignment.title, 'Ders ID:', assignmentCourseId);
-      }
-
-      return isEnrolled;
-    });
-
-    console.log('Filtrelenmiş ödevler:', filteredAssignments);
-    setAssignments(filteredAssignments);
+    if (!coursesData.length || !assignmentsData.length) return;
+    const enrolledCourseIds = coursesData.map(c => c.id || c.courseId || c.course?.id).filter(Boolean);
+    setAssignments(assignmentsData.filter(a => enrolledCourseIds.includes(a.courseId || a.course?.id)));
   };
 
   const fetchClubs = async () => {
     try {
       const data = await getMyMemberships();
-      console.log('Kulüplerim verisi:', data);
-      if (data && data.length > 0) {
-        console.log('İlk kulüp membership örneği:', data[0]);
-      }
-      setClubs(data);
+      setClubs(data || []);
     } catch (error) {
       setErrors(prev => ({ ...prev, clubs: 'Kulüpler yüklenemedi' }));
-    } finally {
-      setLoading(prev => ({ ...prev, clubs: false }));
-    }
+    } finally { setLoading(prev => ({ ...prev, clubs: false })); }
   };
 
   const fetchEvents = async () => {
     try {
       const data = await getMyRegistrations();
-      console.log('Kayıtlı etkinliklerim:', data);
-      console.log('Etkinlik sayısı:', Array.isArray(data) ? data.length : 0);
       setEvents(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Etkinlikler yüklenirken hata:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Etkinlikler yüklenemedi';
-      console.error('Hata mesajı:', errorMessage);
-      setErrors(prev => ({ ...prev, events: errorMessage }));
-      setEvents([]); // Hata durumunda boş dizi set et
-    } finally {
-      setLoading(prev => ({ ...prev, events: false }));
-    }
+      setErrors(prev => ({ ...prev, events: 'Etkinlikler yüklenemedi' }));
+      setEvents([]);
+    } finally { setLoading(prev => ({ ...prev, events: false })); }
   };
 
   const fetchMembershipRequests = async () => {
     try {
       const data = await getMyMembershipRequests();
-      setMembershipRequests(data);
+      setMembershipRequests(data || []);
     } catch (error) {
-      setErrors(prev => ({ ...prev, membershipRequests: 'Üyelik istekleri yüklenemedi' }));
-    } finally {
-      setLoading(prev => ({ ...prev, membershipRequests: false }));
-    }
+      setErrors(prev => ({ ...prev, membershipRequests: 'İstekler yüklenemedi' }));
+    } finally { setLoading(prev => ({ ...prev, membershipRequests: false })); }
   };
 
   const fetchParticipationRequests = async () => {
     try {
       const data = await getMyParticipationRequests();
-      console.log('Katılım isteklerim (raw):', data);
-      console.log('İlk istek örneği:', data?.[0]);
-      if (data?.[0]) {
-        console.log('İlk istek event bilgisi:', data[0].event);
-      }
-      setParticipationRequests(Array.isArray(data) ? data : []);
+      const reqs = Array.isArray(data) ? data : [];
+      setParticipationRequests(reqs);
 
-      // Kulüp etkinliklerini ayır (üye olduğum kulüplerin etkinlikleri)
       if (clubs.length > 0) {
         const myClubIds = clubs.map(membership => membership.club?.id || membership.clubId);
-        const myClubEvents = data.filter(request => {
-          const eventClubId = request.event?.clubId || request.clubId;
-          return myClubIds.includes(eventClubId);
-        });
-        setClubEvents(myClubEvents);
+        setClubEvents(reqs.filter(req => myClubIds.includes(req.event?.clubId || req.clubId)));
       }
     } catch (error) {
-      console.error('Katılım istekleri yüklenirken hata:', error);
-      setErrors(prev => ({ ...prev, participationRequests: 'Katılım istekleri yüklenemedi' }));
-    } finally {
-      setLoading(prev => ({ ...prev, participationRequests: false }));
-    }
+      setErrors(prev => ({ ...prev, participationRequests: 'İstekler yüklenemedi' }));
+    } finally { setLoading(prev => ({ ...prev, participationRequests: false })); }
+  };
+
+  const fetchClubEvents = async () => {
+    if (clubs.length === 0) return setLoading(prev => ({ ...prev, clubEvents: false }));
+    try {
+      const promises = clubs.map(async (membership) => {
+        const clubId = membership.club?.id || membership.clubId;
+        if (!clubId) return [];
+        try {
+          const events = await getClubEvents(clubId);
+          return events.map(e => ({ ...e, clubName: membership.club?.name || membership.clubName, clubId }));
+        } catch { return []; }
+      });
+      const allEvents = (await Promise.all(promises)).flat();
+      const requestedIds = participationRequests.map(r => r.event?.id || r.eventId);
+      const registeredIds = events.map(e => e.event?.id || e.eventId || e.id);
+      const excludedIds = [...requestedIds, ...registeredIds];
+      setClubEvents(allEvents.filter(e => !excludedIds.includes(e.id)));
+    } catch (error) {
+      setErrors(prev => ({ ...prev, clubEvents: 'Etkinlikler yüklenemedi' }));
+    } finally { setLoading(prev => ({ ...prev, clubEvents: false })); }
   };
 
   const handleSendParticipationRequest = async (eventId) => {
     try {
-      console.log('Katılım isteği gönderiliyor, eventId:', eventId);
       await sendParticipationRequest(eventId);
-      setSuccessMessage('Katılım isteği başarıyla gönderildi');
-      setTimeout(() => setSuccessMessage(''), 3000);
-
-      // Önce katılım isteklerini güncelle, sonra etkinlikleri yenile
+      showSuccess('Katılım isteği başarıyla gönderildi');
       await fetchParticipationRequests();
-
-      // Etkinliği manuel olarak listeden kaldır (state güncelleme beklemeden)
-      setClubEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
+      setClubEvents(prev => prev.filter(e => e.id !== eventId));
     } catch (error) {
-      console.error('Katılım isteği gönderilirken hata:', error);
-      const errorMessage = error.response?.data?.message ||
-        error.response?.data?.error ||
-        error.message ||
-        'Katılım isteği gönderilemedi';
-      console.error('Hata mesajı:', errorMessage);
-      setErrors(prev => ({
-        ...prev,
-        participationRequests: errorMessage
-      }));
-      setTimeout(() => setErrors(prev => ({ ...prev, participationRequests: null })), 5000);
-    }
-  };
-
-  const fetchClubEvents = async () => {
-    if (clubs.length === 0) {
-      setLoading(prev => ({ ...prev, clubEvents: false }));
-      return;
-    }
-
-    try {
-      // Her kulüp için etkinlikleri getir
-      const clubEventPromises = clubs.map(async (membership) => {
-        const clubId = membership.club?.id || membership.clubId;
-        if (!clubId) return [];
-
-        try {
-          const events = await getClubEvents(clubId);
-          return events.map(event => ({
-            ...event,
-            clubName: membership.club?.name || membership.clubName,
-            clubId: clubId
-          }));
-        } catch (error) {
-          console.error(`Kulüp ${clubId} etkinlikleri getirilemedi:`, error);
-          return [];
-        }
-      });
-
-      const allClubEventsArrays = await Promise.all(clubEventPromises);
-      const allClubEvents = allClubEventsArrays.flat();
-
-      console.log('Tüm kulüp etkinlikleri:', allClubEvents);
-
-      // Zaten katılım isteği gönderilen veya kayıtlı olunan etkinlikleri filtrele
-      const requestedEventIds = participationRequests.map(req => req.event?.id || req.eventId);
-      const registeredEventIds = events.map(ev => ev.event?.id || ev.eventId || ev.id);
-      const excludedEventIds = [...requestedEventIds, ...registeredEventIds];
-
-      const availableEvents = allClubEvents.filter(event => !excludedEventIds.includes(event.id));
-
-      console.log('Katılım isteği gönderilebilir etkinlikler:', availableEvents);
-      setClubEvents(availableEvents);
-    } catch (error) {
-      console.error('Kulüp etkinlikleri yüklenirken hata:', error);
-      setErrors(prev => ({
-        ...prev,
-        clubEvents: error.response?.data?.message || 'Kulüp etkinlikleri yüklenemedi'
-      }));
-    } finally {
-      setLoading(prev => ({ ...prev, clubEvents: false }));
+      alert('Hata: ' + (error.response?.data?.message || 'İstek gönderilemedi'));
     }
   };
 
   const handleCancelRequest = async (clubId) => {
     try {
       await cancelMembershipRequest(clubId);
-      setSuccessMessage('Üyelik isteği başarıyla iptal edildi');
-      setTimeout(() => setSuccessMessage(''), 3000);
+      showSuccess('Üyelik isteği iptal edildi');
       fetchMembershipRequests();
     } catch (error) {
-      setErrors(prev => ({ ...prev, membershipRequests: error.response?.data?.message || 'İstek iptal edilemedi' }));
+      alert('İptal edilemedi');
     }
   };
 
@@ -303,867 +179,325 @@ function StudentDashboard() {
     navigate('/login');
   };
 
-  // ==================== DERS BAŞVURULARI ====================
-
-  const fetchMyApplications = async () => {
-    setApplicationsLoading(true);
-    try {
-      const data = await getMyApplications();
-      setMyApplications(data || []);
-    } catch (error) {
-      console.error('Başvurular yüklenirken hata:', error);
-    } finally {
-      setApplicationsLoading(false);
-    }
+  const showSuccess = (msg) => {
+    setSuccessMessage(msg);
+    setTimeout(() => setSuccessMessage(''), 3000);
   };
 
-  const handleApplyToCourse = async (courseId) => {
-    try {
-      await applyToCourse(courseId);
-      setSuccessMessage('Derse başvuru başarıyla gönderildi!');
-      setTimeout(() => setSuccessMessage(''), 3000);
-      fetchMyApplications();
-      fetchAvailableCourses();
-    } catch (error) {
-      const msg = error.response?.data?.message || error.response?.data || 'Başvuru gönderilemedi';
-      alert('Başvuru hatası: ' + msg);
-    }
-  };
-
-  const fetchAvailableCourses = async () => {
-    setAvailableCoursesLoading(true);
-    try {
-      const allCourses = await getAllCourses();
-      setAvailableCourses(allCourses || []);
-    } catch (error) {
-      console.error('Dersler yüklenirken hata:', error);
-      setAvailableCourses([]);
-    } finally {
-      setAvailableCoursesLoading(false);
-    }
-  };
-
-  // ==================== DERS DUYURULARI ====================
-
-  const fetchCourseAnnouncements = async (courseId) => {
-    const cId = courseId || selectedCourseForAnnouncements;
-    if (!cId) return;
-    setAnnouncementsLoading(true);
-    try {
-      const data = await getAnnouncements(cId);
-      setCourseAnnouncements(data || []);
-    } catch (error) {
-      console.error('Duyurular yüklenirken hata:', error);
-      setCourseAnnouncements([]);
-    } finally {
-      setAnnouncementsLoading(false);
-    }
-  };
-
-  // ==================== DOSYA İNDİRME ====================
-
-  const handleDownloadCourseFile = async (fileUrl, fileName) => {
-    try {
-      const response = await downloadCourseFile(fileUrl);
-      const blob = new Blob([response.data]);
-      const link = document.createElement('a');
-      link.href = window.URL.createObjectURL(blob);
-      link.download = fileName || 'dosya';
-      link.click();
-      window.URL.revokeObjectURL(link.href);
-    } catch (err) {
-      alert('Dosya indirilirken hata: ' + (err.response?.data?.message || err.message));
-    }
-  };
-
-  const handleDownloadAssignmentFile = async (fileUrl, fileName) => {
-    try {
-      const response = await downloadAssignmentFile(fileUrl);
-      const blob = new Blob([response.data]);
-      const link = document.createElement('a');
-      link.href = window.URL.createObjectURL(blob);
-      link.download = fileName || 'dosya';
-      link.click();
-      window.URL.revokeObjectURL(link.href);
-    } catch (err) {
-      alert('Dosya indirilirken hata: ' + (err.response?.data?.message || err.message));
-    }
-  };
-
+  // UI Components
   const CardLoader = () => (
-    <div className="flex items-center justify-center py-8">
-      <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+    <div className="flex justify-center py-8">
+      <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
     </div>
   );
 
-  const EmptyState = ({ message }) => (
-    <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-      <div className="w-16 h-16 mb-3 rounded-full bg-white/10 flex items-center justify-center">
-        <span className="text-2xl">📭</span>
-      </div>
-      <p className="text-sm">{message}</p>
+  const EmptyState = ({ message, icon: Icon = BookOpen }) => (
+    <div className="flex flex-col items-center justify-center py-12 text-slate-500 dark:text-slate-400">
+      <Icon className="w-12 h-12 mb-4 opacity-50" />
+      <p>{message}</p>
     </div>
   );
 
-  const ErrorState = ({ message }) => (
-    <div className="flex items-center justify-center py-8 text-red-400">
-      <p className="text-sm">{message}</p>
-    </div>
-  );
+  // Layout Configuration
+  const menuItems = [
+    { id: 'profile', label: 'Profil Karşılama', icon: User },
+    { id: 'courses', label: 'Kurslarım', icon: BookOpen, count: courses.length },
+    { id: 'assignments', label: 'Ödevlerim', icon: ClipboardList, count: assignments.length },
+    { id: 'clubs', label: 'Kulüplerim', icon: Users, count: clubs.length },
+    { id: 'events', label: 'Etkinliklerim', icon: Calendar, count: events.length },
+    { id: 'clubEvents', label: 'Kulüp Etkinlikleri', icon: CalendarPlus, count: clubEvents.length },
+    { id: 'requests', label: 'Üyelik İsteklerim', icon: Send, count: membershipRequests.length },
+  ];
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200 flex flex-col md:flex-row">
+
+      {/* Toast */}
       {successMessage && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-emerald-300 backdrop-blur-xl shadow-lg">
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-700 dark:text-emerald-300 shadow-lg animate-in slide-in-from-top-2">
           <Check className="w-5 h-5" />
           <span>{successMessage}</span>
         </div>
       )}
 
-      <div className="relative z-10 p-4 md:p-8">
-        <header className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 mb-8 shadow-2xl">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold bg-linear-to-r from-white to-blue-200 bg-clip-text text-transparent">
-                Öğrenci Paneli
-              </h1>
-              <p className="text-slate-400 mt-1">Hoş geldin, {user}</p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => navigate('/clubs')}
-                className="group flex items-center gap-2 px-5 py-2.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-xl text-blue-300 transition-all duration-300 hover:scale-105"
-              >
-                <Users className="w-4 h-4" />
-                <span>Tüm Kulüpler</span>
-              </button>
-              <button
-                onClick={() => navigate('/posts')}
-                className="group flex items-center gap-2 px-5 py-2.5 bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/30 rounded-xl text-sky-300 transition-all duration-300 hover:scale-105"
-              >
-                <FileText className="w-4 h-4" />
-                <span>Postlar</span>
-              </button>
-              <button
-                onClick={handleLogout}
-                className="group flex items-center gap-2 px-5 py-2.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-xl text-red-300 transition-all duration-300 hover:scale-105"
-              >
-                <LogOut className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-                <span>Çıkış Yap</span>
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="p-3 rounded-xl bg-linear-to-br from-indigo-500 to-blue-600 shadow-lg shadow-blue-500/30">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
-              <h2 className="text-xl font-semibold text-white">Kurslarım</h2>
-              <span className="ml-auto px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-sm font-medium">
-                {courses.length}
-              </span>
-            </div>
-            <div className="max-h-64 overflow-y-auto">
-              {loading.courses ? <CardLoader /> :
-                errors.courses ? <ErrorState message={errors.courses} /> :
-                  courses.length === 0 ? <EmptyState message="Henüz kayıtlı kurs yok" /> : (
-                    <div className="space-y-3">
-                      {courses.map((course, index) => (
-                        <div
-                          key={course.id || index}
-                          className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300 cursor-pointer hover:translate-x-1"
-                        >
-                          <h3 className="font-medium text-white">{course.name || course.title}</h3>
-                          <p className="text-sm text-slate-400 mt-1">{course.instructor || course.description}</p>
-                          <span className="inline-block mt-2 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-xs">Aktif</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-            </div>
-          </div>
-
-          <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="p-3 rounded-xl bg-linear-to-br from-amber-500 to-orange-600 shadow-lg shadow-orange-500/30">
-                <ClipboardList className="w-6 h-6 text-white" />
-              </div>
-              <h2 className="text-xl font-semibold text-white">Ödevlerim</h2>
-              <span className="ml-auto px-3 py-1 rounded-full bg-orange-500/20 text-orange-300 text-sm font-medium">
-                {assignments.length}
-              </span>
-            </div>
-            <div className="max-h-64 overflow-y-auto">
-              {loading.assignments ? <CardLoader /> :
-                errors.assignments ? <ErrorState message={errors.assignments} /> :
-                  assignments.length === 0 ? <EmptyState message="Henüz ödev yok" /> : (
-                    <div className="space-y-3">
-                      {assignments.map((assignment, index) => (
-                        <div
-                          key={assignment.id || index}
-                          className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300 cursor-pointer hover:translate-x-1"
-                        >
-                          <h3 className="font-medium text-white">{assignment.title}</h3>
-                          <p className="text-sm text-slate-400 mt-1">Son Tarih: {new Date(assignment.dueDate).toLocaleDateString('tr-TR')}</p>
-                          <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs ${assignment.submitted ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
-                            {assignment.submitted ? 'Teslim Edildi' : 'Bekliyor'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-            </div>
-          </div>
-
-          <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="p-3 rounded-xl bg-linear-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/30">
-                <Users className="w-6 h-6 text-white" />
-              </div>
-              <h2 className="text-xl font-semibold text-white">Kulüplerim</h2>
-              <span className="ml-auto px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 text-sm font-medium">
-                {clubs.length}
-              </span>
-            </div>
-            <div className="max-h-64 overflow-y-auto">
-              {loading.clubs ? <CardLoader /> :
-                errors.clubs ? <ErrorState message={errors.clubs} /> :
-                  clubs.length === 0 ? <EmptyState message="Henüz üye olunan kulüp yok" /> : (
-                    <div className="space-y-3">
-                      {clubs.map((membership, index) => (
-                        <div
-                          key={membership.id || membership.club?.id || index}
-                          className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300 cursor-pointer hover:translate-x-1 flex items-center gap-4"
-                        >
-                          {(membership.club?.logoUrl || membership.logoUrl || membership.logo) && (
-                            <img
-                              src={membership.club?.logoUrl || membership.logoUrl || membership.logo}
-                              alt={membership.club?.name || membership.clubName || membership.name}
-                              className="w-12 h-12 rounded-xl object-cover border-2 border-white/20"
-                            />
-                          )}
-                          <div className="flex-1">
-                            <h3 className="font-medium text-white">{membership.club?.name || membership.clubName || membership.name || 'İsimsiz Kulüp'}</h3>
-                            <p className="text-sm text-slate-400 mt-1">{membership.club?.description || membership.clubDescription || membership.description || ''}</p>
-                            {(membership.club?.advisorName || membership.advisorName) && (
-                              <p className="text-xs text-blue-300/80 mt-1">
-                                👨‍🏫 Danışman: {membership.club?.advisorName || membership.advisorName}
-                              </p>
-                            )}
-                            <div className="flex items-center gap-2 mt-2">
-                              <span className="inline-block px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 text-xs">Üye</span>
-                              {(membership.club?.memberCount !== undefined || membership.memberCount !== undefined) && (
-                                <span className="text-xs text-slate-400">
-                                  👥 {membership.club?.memberCount || membership.memberCount || 0} üye
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-            </div>
-          </div>
-
-          <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="p-3 rounded-xl bg-linear-to-br from-rose-500 to-blue-600 shadow-lg shadow-teal-500/30">
-                <Calendar className="w-6 h-6 text-white" />
-              </div>
-              <h2 className="text-xl font-semibold text-white">Etkinliklerim</h2>
-              <span className="ml-auto px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-sm font-medium">
-                {events.length}
-              </span>
-            </div>
-            <div className="max-h-64 overflow-y-auto">
-              {loading.events ? <CardLoader /> :
-                errors.events ? <ErrorState message={errors.events} /> :
-                  events.length === 0 ? <EmptyState message="Henüz kayıtlı etkinlik yok" /> : (
-                    <div className="space-y-3">
-                      {events.map((event, index) => {
-                        // Tarih formatı düzeltmesi
-                        const eventData = event.event || event;
-                        const eventDate = eventData.eventTime || eventData.eventDate || eventData.date;
-                        let formattedDate = 'Tarih belirtilmemiş';
-                        let eventStatus = 'upcoming';
-
-                        if (eventDate) {
-                          try {
-                            const dateObj = new Date(eventDate);
-                            if (!isNaN(dateObj.getTime())) {
-                              formattedDate = dateObj.toLocaleDateString('tr-TR', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              });
-
-                              const now = new Date();
-                              eventStatus = dateObj < now ? 'past' : 'upcoming';
-                            }
-                          } catch (e) {
-                            console.error('Tarih parse hatası:', e);
-                          }
-                        }
-
-                        return (
-                          <div
-                            key={event.id || index}
-                            className="rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300 cursor-pointer hover:translate-x-1 overflow-hidden"
-                          >
-                            {(eventData.imageUrl || eventData.image_url || eventData.posterUrl) ? (
-                              <div
-                                className="relative w-full h-40 overflow-hidden cursor-pointer group"
-                                onClick={() => setSelectedImage(eventData.imageUrl || eventData.image_url || eventData.posterUrl)}
-                              >
-                                <img
-                                  src={eventData.imageUrl || eventData.image_url || eventData.posterUrl}
-                                  alt={eventData.title || eventData.name}
-                                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-2">
-                                  <span className="text-white/80 text-xs flex items-center gap-1"><Image className="w-3 h-3" /> Büyütmek için tıklayın</span>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="w-full h-24 bg-gradient-to-br from-rose-500/20 to-blue-600/20 flex items-center justify-center">
-                                <Image className="w-8 h-8 text-blue-400/40" />
-                              </div>
-                            )}
-                            <div className="p-4">
-                              <h3 className="font-medium text-white">{eventData.title || eventData.name}</h3>
-                              <p className="text-sm text-slate-400 mt-1">{formattedDate}</p>
-                              <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs ${eventStatus === 'upcoming' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
-                                }`}>
-                                {eventStatus === 'upcoming' ? '🟢 Yaklaşan' : '⏰ Geçmiş'}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-            </div>
-          </div>
-
-          <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="p-3 rounded-xl bg-linear-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/30">
-                <Send className="w-6 h-6 text-white" />
-              </div>
-              <h2 className="text-xl font-semibold text-white">Üyelik İsteklerim</h2>
-              <span className="ml-auto px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-sm font-medium">
-                {membershipRequests.length}
-              </span>
-            </div>
-            <div className="max-h-64 overflow-y-auto">
-              {loading.membershipRequests ? <CardLoader /> :
-                errors.membershipRequests ? <ErrorState message={errors.membershipRequests} /> :
-                  membershipRequests.length === 0 ? <EmptyState message="Bekleyen üyelik isteği yok" /> : (
-                    <div className="space-y-3">
-                      {membershipRequests.map((request, index) => (
-                        <div
-                          key={request.id || index}
-                          className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h3 className="font-medium text-white">{request.clubName || request.club?.name || 'Kulüp'}</h3>
-                              <p className="text-sm text-slate-400 mt-1">
-                                {new Date(request.requestDate || request.createdAt).toLocaleDateString('tr-TR')}
-                              </p>
-                              <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs ${request.status === 'PENDING' ? 'bg-amber-500/20 text-amber-300' :
-                                request.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' :
-                                  'bg-red-500/20 text-red-300'
-                                }`}>
-                                {request.status === 'PENDING' ? 'Bekliyor' :
-                                  request.status === 'APPROVED' ? 'Onaylandı' : 'Reddedildi'}
-                              </span>
-                            </div>
-                            {request.status === 'PENDING' && (
-                              <button
-                                onClick={() => handleCancelRequest(request.clubId || request.club?.id)}
-                                className="ml-2 p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 transition-all duration-300"
-                                title="İsteği İptal Et"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-            </div>
-          </div>
-
-          <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="p-3 rounded-xl bg-linear-to-br from-sky-500 to-blue-600 shadow-lg shadow-sky-500/30">
-                <CalendarPlus className="w-6 h-6 text-white" />
-              </div>
-              <h2 className="text-xl font-semibold text-white">Kulüp Etkinlikleri</h2>
-              <span className="ml-auto px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 text-sm font-medium">
-                {clubEvents.length}
-              </span>
-            </div>
-
-            {errors.participationRequests && (
-              <div className="mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 text-sm">
-                ⚠️ {errors.participationRequests}
-              </div>
-            )}
-
-            <div className="max-h-64 overflow-y-auto">
-              {loading.clubEvents ? <CardLoader /> :
-                errors.clubEvents ? <ErrorState message={errors.clubEvents} /> :
-                  clubEvents.length === 0 ? <EmptyState message="Kulüp etkinliği bulunamadı" /> : (
-                    <div className="space-y-3">
-                      {clubEvents.map((event, index) => {
-                        const eventDate = event.eventTime || event.eventDate;
-                        let formattedDate = 'Tarih belirtilmemiş';
-                        let eventStatus = 'upcoming';
-
-                        if (eventDate) {
-                          try {
-                            const dateObj = new Date(eventDate);
-                            if (!isNaN(dateObj.getTime())) {
-                              formattedDate = dateObj.toLocaleDateString('tr-TR', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              });
-
-                              const now = new Date();
-                              eventStatus = dateObj < now ? 'past' : 'upcoming';
-                            }
-                          } catch (e) {
-                            console.error('Tarih parse hatası:', e);
-                          }
-                        }
-
-                        // Geçmiş etkinliklere katılım isteği gönderilemez
-                        const canRequest = eventStatus === 'upcoming';
-
-                        return (
-                          <div
-                            key={event.id || index}
-                            className="rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden"
-                          >
-                            {(event.imageUrl || event.image_url || event.posterUrl) ? (
-                              <div
-                                className="relative w-full h-40 overflow-hidden cursor-pointer group"
-                                onClick={() => setSelectedImage(event.imageUrl || event.image_url || event.posterUrl)}
-                              >
-                                <img
-                                  src={event.imageUrl || event.image_url || event.posterUrl}
-                                  alt={event.title || event.name}
-                                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-2">
-                                  <span className="text-white/80 text-xs flex items-center gap-1"><Image className="w-3 h-3" /> Büyütmek için tıklayın</span>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="w-full h-24 bg-gradient-to-br from-sky-500/20 to-blue-600/20 flex items-center justify-center">
-                                <Image className="w-8 h-8 text-blue-400/40" />
-                              </div>
-                            )}
-                            <div className="p-4">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex-1">
-                                  <h3 className="font-medium text-white">{event.title || event.name}</h3>
-                                  <p className="text-sm text-slate-400 mt-1">
-                                    🏫 {event.clubName || 'Kulüp'}
-                                  </p>
-                                  <p className="text-sm text-slate-400 mt-1">
-                                    📅 {formattedDate}
-                                  </p>
-                                  <p className="text-xs text-slate-400/80 mt-1">
-                                    📍 {event.location || 'Konum belirtilmemiş'}
-                                  </p>
-                                  <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs ${eventStatus === 'upcoming' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-500/20 text-gray-300'
-                                    }`}>
-                                    {eventStatus === 'upcoming' ? '🟢 Yaklaşan' : '⏰ Geçmiş'}
-                                  </span>
-                                </div>
-                                {canRequest && (
-                                  <button
-                                    onClick={() => handleSendParticipationRequest(event.id)}
-                                    className="p-2 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/30 text-sky-300 transition-all duration-300 hover:scale-110"
-                                    title="Katılım İsteği Gönder"
-                                  >
-                                    <Send className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-            </div>
-          </div>
-
-          <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="p-3 rounded-xl bg-linear-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/30">
-                <UserCheck className="w-6 h-6 text-white" />
-              </div>
-              <h2 className="text-xl font-semibold text-white">Katılım İsteklerim</h2>
-              <span className="ml-auto px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-sm font-medium">
-                {participationRequests.length}
-              </span>
-            </div>
-            <div className="max-h-64 overflow-y-auto">
-              {loading.participationRequests ? <CardLoader /> :
-                errors.participationRequests ? <ErrorState message={errors.participationRequests} /> :
-                  participationRequests.length === 0 ? <EmptyState message="Henüz katılım isteği yok" /> : (
-                    <div className="space-y-3">
-                      {participationRequests.map((request, index) => {
-                        // Backend'den gelen farklı veri formatlarını destekle
-                        const eventData = request.event || request.eventDto || {};
-
-                        // Etkinlik adı - önce request'in kendisine bak, sonra nested event'e
-                        const eventTitle = request.eventTitle ||
-                          request.title ||
-                          eventData.title ||
-                          eventData.name ||
-                          eventData.eventTitle ||
-                          eventData.eventName ||
-                          'Etkinlik';
-
-                        // Etkinlik tarihi - önce request'in kendisine bak
-                        const eventDate = request.eventTime ||
-                          request.eventDate ||
-                          request.date ||
-                          eventData.eventTime ||
-                          eventData.eventDate ||
-                          eventData.date ||
-                          eventData.time;
-
-                        let formattedDate = 'Tarih belirtilmemiş';
-
-                        if (eventDate) {
-                          try {
-                            const dateObj = new Date(eventDate);
-                            if (!isNaN(dateObj.getTime())) {
-                              formattedDate = dateObj.toLocaleDateString('tr-TR', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              });
-                            }
-                          } catch (e) {
-                            console.error('Tarih parse hatası:', e);
-                          }
-                        }
-
-                        // Konum bilgisi - önce request'in kendisine bak
-                        const location = request.location ||
-                          request.eventLocation ||
-                          eventData.location ||
-                          eventData.venue ||
-                          eventData.place ||
-                          'Konum belirtilmemiş';
-
-                        // Debug log
-                        console.log('Katılım isteği detayı:', {
-                          request,
-                          parsed: { eventTitle, formattedDate, location, eventDate }
-                        });
-
-                        return (
-                          <div
-                            key={request.id || index}
-                            className="rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300 overflow-hidden"
-                          >
-                            {(eventData.imageUrl || eventData.image_url || eventData.posterUrl || request.imageUrl) ? (
-                              <div
-                                className="relative w-full h-32 overflow-hidden cursor-pointer group"
-                                onClick={() => setSelectedImage(eventData.imageUrl || eventData.image_url || eventData.posterUrl || request.imageUrl)}
-                              >
-                                <img
-                                  src={eventData.imageUrl || eventData.image_url || eventData.posterUrl || request.imageUrl}
-                                  alt={eventTitle}
-                                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-2">
-                                  <span className="text-white/80 text-xs flex items-center gap-1"><Image className="w-3 h-3" /> Büyütmek için tıklayın</span>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="w-full h-16 bg-gradient-to-br from-emerald-500/20 to-teal-600/20 flex items-center justify-center">
-                                <Image className="w-6 h-6 text-emerald-300/40" />
-                              </div>
-                            )}
-                            <div className="p-4">
-                              <h3 className="font-medium text-white">{eventTitle}</h3>
-                              <p className="text-sm text-slate-400 mt-1">📅 {formattedDate}</p>
-                              <p className="text-xs text-slate-400/80 mt-1">
-                                📍 {location}
-                              </p>
-                              {request.studentName && (
-                                <p className="text-xs text-blue-300/70 mt-1">
-                                  👤 {request.studentName}
-                                </p>
-                              )}
-                              <div className="flex items-center justify-between mt-2">
-                                <span className={`inline-block px-2 py-0.5 rounded-md text-xs ${request.status === 'PENDING' ? 'bg-amber-500/20 text-amber-300' :
-                                  request.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' :
-                                    'bg-red-500/20 text-red-300'
-                                  }`}>
-                                  {request.status === 'PENDING' ? '⏳ Bekliyor' :
-                                    request.status === 'APPROVED' ? '✅ Onaylandı' : '❌ Reddedildi'}
-                                </span>
-                                {(request.requestDate || request.createdAt || request.requestedAt) && (
-                                  <span className="text-xs text-slate-400/80">
-                                    {new Date(request.requestDate || request.createdAt || request.requestedAt).toLocaleDateString('tr-TR')}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-            </div>
-          </div>
-        </div>
-
-        {/* ==================== DERS BAŞVURULARIM ==================== */}
-        <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="p-3 rounded-xl bg-linear-to-br from-teal-500 to-emerald-600 shadow-lg shadow-teal-500/30">
-              <Send className="w-6 h-6 text-white" />
-            </div>
-            <h2 className="text-xl font-semibold text-white">Ders Başvurularım</h2>
-            <span className="ml-auto px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-sm font-medium">
-              {myApplications.length}
-            </span>
-          </div>
-          <div className="max-h-72 overflow-y-auto">
-            {applicationsLoading ? <CardLoader /> :
-              myApplications.length === 0 ? <EmptyState message="Henüz ders başvurusu yok" /> : (
-                <div className="space-y-3">
-                  {myApplications.map((app, index) => (
-                    <div
-                      key={app.id || index}
-                      className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-medium text-white">{app.courseName || app.course?.name || 'Ders'}</h3>
-                          <p className="text-sm text-slate-400 mt-1">
-                            {app.applicationDate || app.createdAt
-                              ? new Date(app.applicationDate || app.createdAt).toLocaleDateString('tr-TR')
-                              : ''}
-                          </p>
-                          <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs ${app.status === 'PENDING' ? 'bg-amber-500/20 text-amber-300' :
-                            app.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' :
-                              'bg-red-500/20 text-red-300'
-                            }`}>
-                            {app.status === 'PENDING' ? '⏳ Bekliyor' :
-                              app.status === 'APPROVED' ? '✅ Onaylandı' : '❌ Reddedildi'}
-                          </span>
-                          {app.status === 'REJECTED' && app.reason && (
-                            <p className="text-xs text-red-300/70 mt-1">Sebep: {app.reason}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-          </div>
-        </div>
-
-        {/* ==================== BAŞVURULABİLİR DERSLER ==================== */}
-        <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02] mt-6">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="p-3 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
-              <GraduationCap className="w-6 h-6 text-white" />
-            </div>
-            <h2 className="text-xl font-semibold text-white">Başvurulabilir Dersler</h2>
-            <span className="ml-auto px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-sm font-medium">
-              {availableCourses.length}
-            </span>
-          </div>
-          <div className="max-h-96 overflow-y-auto">
-            {availableCoursesLoading ? <CardLoader /> :
-              availableCourses.length === 0 ? <EmptyState message="Başvurulabilir ders bulunamadı" /> : (
-                <div className="space-y-3">
-                  {availableCourses.map((course, index) => {
-                    const alreadyApplied = myApplications.some(app =>
-                      (app.courseId === course.id || app.course?.id === course.id) && app.status === 'PENDING'
-                    );
-                    const alreadyEnrolled = courses.some(c => c.id === course.id);
-
-                    return (
-                      <div
-                        key={course.id || index}
-                        className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="font-medium text-white">{course.title || course.name}</h3>
-                              {course.code && (
-                                <span className="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 text-xs font-mono">
-                                  {course.code}
-                                </span>
-                              )}
-                            </div>
-                            {course.description && (
-                              <p className="text-sm text-slate-400 mt-1 line-clamp-2">{course.description}</p>
-                            )}
-                            <div className="flex flex-wrap items-center gap-3 mt-2">
-                              {course.credit && (
-                                <span className="text-xs text-slate-400/80">
-                                  📚 {course.credit} Kredi
-                                </span>
-                              )}
-                              {course.capacity && (
-                                <span className="text-xs text-slate-400/80">
-                                  👥 Kontenjan: {course.capacity}
-                                </span>
-                              )}
-                              {course.semester && (
-                                <span className="text-xs text-slate-400/80">
-                                  📅 {course.semester}
-                                </span>
-                              )}
-                              {(course.instructorName || course.instructor) && (
-                                <span className="text-xs text-slate-400/80">
-                                  👨‍🏫 {course.instructorName || course.instructor}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="shrink-0">
-                            {alreadyEnrolled ? (
-                              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-medium">
-                                <Check className="w-3.5 h-3.5" /> Kayıtlı
-                              </span>
-                            ) : alreadyApplied ? (
-                              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-medium">
-                                ⏳ Başvuruldu
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => handleApplyToCourse(course.id)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 text-sm font-medium transition-all duration-300 hover:scale-105"
-                              >
-                                <Send className="w-3.5 h-3.5" />
-                                Başvur
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-          </div>
-        </div>
-
-        {/* ==================== DERS DUYURULARI ==================== */}
-        <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="p-3 rounded-xl bg-linear-to-br from-teal-500 to-emerald-600 shadow-lg shadow-teal-500/30">
-              <Megaphone className="w-6 h-6 text-white" />
-            </div>
-            <h2 className="text-xl font-semibold text-white">Ders Duyuruları</h2>
-          </div>
-
-          {courses.length === 0 ? (
-            <EmptyState message="Duyuruları görmek için önce bir derse kayıt olun" />
-          ) : (
-            <>
-              <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                <select
-                  value={selectedCourseForAnnouncements}
-                  onChange={(e) => setSelectedCourseForAnnouncements(e.target.value)}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/20 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all"
-                >
-                  <option value="" className="bg-slate-800">Ders Seçin</option>
-                  {courses.map((course) => (
-                    <option key={course.id} value={course.id} className="bg-slate-800">{course.name || course.title}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => fetchCourseAnnouncements()}
-                  disabled={announcementsLoading || !selectedCourseForAnnouncements}
-                  className="px-4 py-2.5 rounded-xl bg-linear-to-r from-teal-500 to-emerald-600 text-white text-sm font-medium transition-all hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {announcementsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
-                  Getir
-                </button>
-              </div>
-
-              <div className="max-h-64 overflow-y-auto">
-                {announcementsLoading ? <CardLoader /> :
-                  courseAnnouncements.length === 0 ? (
-                    <EmptyState message="Duyuru bulunmuyor. Bir ders seçip 'Getir' butonuna tıklayın." />
-                  ) : (
-                    <div className="space-y-3">
-                      {courseAnnouncements.map((ann, index) => (
-                        <div
-                          key={ann.id || index}
-                          className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300"
-                        >
-                          <h3 className="font-medium text-white">{ann.title}</h3>
-                          <p className="text-sm text-slate-400 mt-1 whitespace-pre-wrap">{ann.content}</p>
-                          <span className="text-xs text-gray-400 mt-2 inline-block">
-                            {ann.createdAt ? new Date(ann.createdAt).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-              </div>
-            </>
-          )}
-        </div>
-
+      {/* Top Mobile Bar */}
+      <div className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-30 relative">
+        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 -ml-2 text-slate-600 dark:text-slate-300">
+          <Menu className="w-6 h-6" />
+        </button>
+        <span className="font-bold text-lg text-blue-600 dark:text-blue-400">EduConnect</span>
+        <button onClick={toggleTheme} className="p-2 text-slate-600 dark:text-slate-300">
+          {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
       </div>
 
-      {
-        selectedImage && (
-          <div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-8"
-            onClick={() => setSelectedImage(null)}
+      {/* Sidebar Overlay (Mobile) */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/50 z-40 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`
+        fixed md:sticky top-0 left-0 h-screen w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 
+        flex flex-col z-50 transition-transform duration-300 ease-in-out transform 
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        <div className="p-6 border-b border-slate-200 dark:border-slate-800 hidden md:flex items-center justify-between">
+          <span className="font-bold text-xl text-blue-600 dark:text-blue-400">EduConnect</span>
+          <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors">
+            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+          <div className="px-3 mb-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            Öğrenci Paneli
+          </div>
+          {menuItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
+              className={`
+                w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                ${activeTab === item.id
+                  ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'}
+              `}
+            >
+              <item.icon className="w-5 h-5" />
+              <span className="flex-1 text-left">{item.label}</span>
+              {item.count !== undefined && item.count > 0 && (
+                <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === item.id ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
+                  {item.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
           >
-            <div className="relative max-w-2xl w-full flex flex-col items-center">
-              <button
-                onClick={() => setSelectedImage(null)}
-                className="absolute -top-10 right-0 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all duration-300 hover:scale-110"
-              >
-                <X className="w-5 h-5" />
-              </button>
-              <img
-                src={selectedImage}
-                alt="Etkinlik Afisi"
-                className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              />
+            <LogOut className="w-5 h-5" />
+            <span>Çıkış Yap</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full">
+        {activeTab === 'profile' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Öğrenci Profili</h1>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm max-w-2xl">
+              <div className="flex flex-col md:flex-row gap-8 items-start md:items-center border-b border-slate-100 dark:border-slate-800 pb-8 mb-8">
+                <div className="w-24 h-24 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 text-3xl font-bold">
+                  {user?.[0]?.toUpperCase() || 'Ö'}
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{user}</h2>
+                  <p className="text-slate-500 dark:text-slate-400 mt-1">{email || 'ogrenci@university.edu'}</p>
+                  <span className="inline-block px-3 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 text-sm font-medium rounded-full mt-3">
+                    Öğrenci
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Öğrenci Numarası</p>
+                  <p className="font-medium text-slate-900 dark:text-slate-200">{studentNumber || '2023001234'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Bölüm / Departman</p>
+                  <p className="font-medium text-slate-900 dark:text-slate-200">{department || 'Bilgisayar Mühendisliği'}</p>
+                </div>
+                <div className="col-span-1 md:col-span-2 mt-4">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">Hızlı İşlemler</p>
+                  <div className="flex gap-3">
+                    <button onClick={() => navigate('/clubs')} className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                      Tüm Kulüpleri Keşfet
+                    </button>
+                    <button onClick={() => navigate('/posts')} className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                      Öğrenci Forumu
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        )
-      }
-    </div >
+        )}
+
+        {activeTab === 'courses' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Kayıtlı Kurslarım</h1>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+              {loading.courses ? <CardLoader /> :
+                courses.length === 0 ? <EmptyState message="Henüz kayıtlı kursunuz yok" icon={BookOpen} /> : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {courses.map((course, i) => (
+                      <div key={course.id || i} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex justify-between items-center group cursor-pointer">
+                        <div>
+                          <h3 className="font-medium text-slate-900 dark:text-slate-200">{course.name || course.title}</h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{course.instructor || course.description}</p>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'assignments' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Ödevlerim</h1>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+              {loading.assignments ? <CardLoader /> :
+                assignments.length === 0 ? <EmptyState message="Aktif ödev bulunmuyor" icon={ClipboardList} /> : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {assignments.map((assignment, i) => (
+                      <div key={assignment.id || i} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                          <h3 className="font-medium text-slate-900 dark:text-slate-200">{assignment.title}</h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                            Son Teslim: {new Date(assignment.dueDate).toLocaleDateString('tr-TR')}
+                          </p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${assignment.submitted
+                            ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50'
+                            : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50'
+                          }`}>
+                          {assignment.submitted ? 'Teslim Edildi' : 'Bekliyor'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'clubs' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Kulüplerim</h1>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+              {loading.clubs ? <CardLoader /> :
+                clubs.length === 0 ? <EmptyState message="Herhangi bir kulübe üye değilsiniz" icon={Users} /> : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {clubs.map((membership, i) => (
+                      <div key={membership.id || i} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex items-center gap-4">
+                        {membership.club?.logoUrl || membership.logoUrl ? (
+                          <img src={membership.club?.logoUrl || membership.logoUrl} alt="Logo" className="w-12 h-12 rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400"><Users className="w-6 h-6" /></div>
+                        )}
+                        <div>
+                          <h3 className="font-medium text-slate-900 dark:text-slate-200">{membership.club?.name || membership.clubName || 'Kulüp'}</h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{membership.club?.description || 'Açıklama yok'}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'events' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Kayıtlı Etkinliklerim</h1>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+              {loading.events ? <CardLoader /> :
+                events.length === 0 ? <EmptyState message="Kayıtlı etkinlik yok" icon={Calendar} /> : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {events.map((event, i) => {
+                      const evt = event.event || event;
+                      const date = new Date(evt.eventTime || evt.eventDate);
+                      return (
+                        <div key={event.id || i} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div>
+                            <h3 className="font-medium text-slate-900 dark:text-slate-200">{evt.title || evt.name}</h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                              📅 {date.toLocaleDateString('tr-TR')} 📍 {evt.location || 'Konum belirtilmedi'}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'clubEvents' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Açık Kulüp Etkinlikleri</h1>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+              {loading.clubEvents ? <CardLoader /> :
+                clubEvents.length === 0 ? <EmptyState message="Şu an açık kulüp etkinliği yok" icon={CalendarPlus} /> : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {clubEvents.map((event, i) => (
+                      <div key={event.id || i} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                          <h3 className="font-medium text-slate-900 dark:text-slate-200">{event.title || event.name}</h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                            🏫 {event.clubName} • 📅 {new Date(event.eventTime || event.eventDate).toLocaleDateString('tr-TR')}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleSendParticipationRequest(event.id)}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                          Katılmak İstiyorum
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'requests' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Üyelik İsteklerim</h1>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+              {loading.membershipRequests ? <CardLoader /> :
+                membershipRequests.length === 0 ? <EmptyState message="Bekleyen isteğiniz bulunmuyor" icon={Send} /> : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {membershipRequests.map((req, i) => (
+                      <div key={req.id || i} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex flex-col md:flex-row justify-between md:items-center gap-4">
+                        <div>
+                          <h3 className="font-medium text-slate-900 dark:text-slate-200">{req.clubName || req.club?.name}</h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                            Gönderim: {new Date(req.requestDate || req.createdAt).toLocaleDateString('tr-TR')}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50`}>
+                            Bekliyor
+                          </span>
+                          <button onClick={() => handleCancelRequest(req.clubId || req.club?.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors" title="İptal Et">
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
   );
 }
 

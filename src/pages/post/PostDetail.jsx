@@ -80,20 +80,20 @@ function PostDetail() {
     };
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="min-h-screen bg-slate-50">
             <div className="relative z-10 p-4 md:p-8 max-w-4xl mx-auto">
                 {/* Navigation buttons */}
                 <div className="flex items-center gap-3 mb-6">
                     <button
                         onClick={() => navigate(getDashboardPath())}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all duration-300"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-white/20 border border-slate-200 text-slate-900 transition-all duration-300"
                     >
                         <Home className="w-4 h-4" />
                         Panele Dön
                     </button>
                     <button
                         onClick={() => navigate('/posts')}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all duration-300"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-white/20 border border-slate-200 text-slate-900 transition-all duration-300"
                     >
                         <ChevronLeft className="w-4 h-4" />
                         Postlara Dön
@@ -105,18 +105,18 @@ function PostDetail() {
                         <Loader2 className="w-10 h-10 text-blue-400 animate-spin" />
                     </div>
                 ) : error ? (
-                    <div className="backdrop-blur-xl bg-red-500/10 border border-red-500/20 rounded-2xl p-8 text-center">
+                    <div className=" bg-red-500/10 border border-red-500/20 rounded-2xl p-8 text-center">
                         <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" />
                         <p className="text-red-300 text-lg">{error}</p>
                         <button
                             onClick={() => navigate('/posts')}
-                            className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-white border border-white/20 transition-all"
+                            className="mt-4 px-4 py-2 bg-white hover:bg-white/20 rounded-xl text-slate-900 border border-slate-200 transition-all"
                         >
                             Postlara Geri Dön
                         </button>
                     </div>
                 ) : post ? (
-                    <article className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-2xl overflow-hidden">
+                    <article className=" bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
                         {/* Category gradient bar */}
                         <div className={`h-2 bg-linear-to-r ${catInfo.color}`} />
 
@@ -154,12 +154,12 @@ function PostDetail() {
                             </div>
 
                             {/* Title */}
-                            <h1 className="text-2xl md:text-3xl font-bold text-white mb-4 leading-tight">
+                            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-4 leading-tight">
                                 {post.title}
                             </h1>
 
                             {/* Date info */}
-                            <div className="flex flex-wrap items-center gap-4 mb-6 text-sm text-slate-400/80">
+                            <div className="flex flex-wrap items-center gap-4 mb-6 text-sm text-slate-500/80">
                                 <span>📅 {formatDate(post.createdAt)}</span>
                                 {post.updatedAt && (
                                     <span>✏️ Güncellenme: {formatDate(post.updatedAt)}</span>
@@ -167,26 +167,26 @@ function PostDetail() {
                             </div>
 
                             {/* Author info */}
-                            <div className="flex items-center gap-3 mb-6 pb-6 border-b border-white/10">
-                                <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
+                            <div className="flex items-center gap-3 mb-6 pb-6 border-b border-slate-200">
+                                <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-slate-900 font-bold text-sm shadow-lg">
                                     {(post.authorName || 'A').charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                    <p className="text-white font-medium text-sm">{post.authorName || 'Anonim'}</p>
+                                    <p className="text-slate-900 font-medium text-sm">{post.authorName || 'Anonim'}</p>
                                     {post.authorDepartment && (
-                                        <p className="text-slate-400/80 text-xs">🎓 {post.authorDepartment}</p>
+                                        <p className="text-slate-500/80 text-xs">🎓 {post.authorDepartment}</p>
                                     )}
                                 </div>
                             </div>
 
                             {/* Content */}
-                            <div className="text-slate-200 leading-relaxed whitespace-pre-wrap text-base">
+                            <div className="text-slate-700 leading-relaxed whitespace-pre-wrap text-base">
                                 {post.content}
                             </div>
 
                             {/* Author actions */}
                             {isAuthor && (
-                                <div className="flex items-center gap-3 mt-8 pt-6 border-t border-white/10">
+                                <div className="flex items-center gap-3 mt-8 pt-6 border-t border-slate-200">
                                     <button
                                         onClick={() => navigate(`/posts/${post.id}/edit`)}
                                         className="flex items-center gap-2 px-5 py-2.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-xl text-blue-300 transition-all duration-300 hover:scale-105"
@@ -210,21 +210,21 @@ function PostDetail() {
                 {/* Delete Confirmation Modal */}
                 {showDeleteModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                        <div className="backdrop-blur-xl bg-slate-800/90 border border-white/20 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+                        <div className=" bg-white/90 border border-slate-200 rounded-2xl p-6 max-w-md w-full shadow-sm">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="p-3 rounded-xl bg-red-500/20">
                                     <Trash2 className="w-6 h-6 text-red-400" />
                                 </div>
-                                <h3 className="text-xl font-semibold text-white">Gönderiyi Sil</h3>
+                                <h3 className="text-xl font-semibold text-slate-900">Gönderiyi Sil</h3>
                             </div>
-                            <p className="text-slate-400 mb-6">
+                            <p className="text-slate-500 mb-6">
                                 Bu gönderiyi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
                             </p>
                             <div className="flex items-center justify-end gap-3">
                                 <button
                                     onClick={() => setShowDeleteModal(false)}
                                     disabled={deleting}
-                                    className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all"
+                                    className="px-4 py-2.5 rounded-xl bg-white hover:bg-white/20 border border-slate-200 text-slate-900 transition-all"
                                 >
                                     İptal
                                 </button>

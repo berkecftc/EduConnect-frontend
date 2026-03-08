@@ -5,9 +5,9 @@ import { getPosts, getPost } from '../../api/postService';
 import { Loader2, Plus, ArrowLeft, ArrowRight, Megaphone, BookOpen, HelpCircle, FileText, Home, AlertTriangle, Clock, X } from 'lucide-react';
 
 const CATEGORY_MAP = {
-    DUYURU: { label: 'Duyuru', color: 'from-rose-500 to-pink-600', bg: 'bg-rose-500/20', text: 'text-rose-300', border: 'border-rose-500/30' },
-    DERS_NOTU: { label: 'Ders Notu', color: 'from-blue-500 to-cyan-600', bg: 'bg-blue-500/20', text: 'text-blue-300', border: 'border-blue-500/30' },
-    SORU: { label: 'Soru', color: 'from-amber-500 to-orange-600', bg: 'bg-amber-500/20', text: 'text-amber-300', border: 'border-amber-500/30' },
+    DUYURU: { label: 'Duyuru', color: 'from-rose-500 to-pink-600', bg: 'bg-rose-100 dark:bg-rose-500/20', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-500/30' },
+    DERS_NOTU: { label: 'Ders Notu', color: 'from-blue-500 to-cyan-600', bg: 'bg-blue-100 dark:bg-blue-500/20', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-500/30' },
+    SORU: { label: 'Soru', color: 'from-amber-500 to-orange-600', bg: 'bg-amber-100 dark:bg-amber-500/20', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-500/30' },
 };
 
 const CATEGORIES = ['ALL', 'DUYURU', 'DERS_NOTU', 'SORU'];
@@ -18,8 +18,11 @@ function PostList() {
 
     const getDashboardPath = () => {
         if (role?.includes('ROLE_CLUB_OFFICIAL')) return '/clubofficial/dashboard';
+        if (role?.includes('ROLE_ADMIN')) return '/admin/dashboard';
+        if (role?.includes('ROLE_ACADEMICIAN')) return '/instructor/dashboard';
         return '/student/dashboard';
     };
+
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -28,7 +31,6 @@ function PostList() {
     const [totalElements, setTotalElements] = useState(0);
     const [selectedCategory, setSelectedCategory] = useState('ALL');
 
-    // Kullanıcının kendi postlarının durum takibi
     const [myPostStatuses, setMyPostStatuses] = useState([]);
     const [dismissedAlerts, setDismissedAlerts] = useState([]);
 
@@ -48,7 +50,7 @@ function PostList() {
             setTotalPages(data.totalPages || 0);
             setTotalElements(data.totalElements || 0);
         } catch (err) {
-            setError(err.response?.data?.message || 'Postlar yüklenirken bir hata oluştu');
+            setError(err.response?.data?.message || 'Gönderiler yüklenirken hata oluştu');
         } finally {
             setLoading(false);
         }
@@ -66,24 +68,14 @@ function PostList() {
                 try {
                     const post = await getPost(postId);
                     if (post.status === 'REJECTED' || post.status === 'PENDING') {
-                        statusResults.push({
-                            id: post.id,
-                            title: post.title,
-                            status: post.status,
-                        });
+                        statusResults.push({ id: post.id, title: post.title, status: post.status });
                     }
                     validIds.push(postId);
-                } catch {
-                    // Post silinmiş veya erişilemiyorsa listeden çıkar
-                }
+                } catch { }
             }
-
-            // Artık var olmayan postları localStorage'dan temizle
             localStorage.setItem('myPostIds', JSON.stringify(validIds));
             setMyPostStatuses(statusResults);
-        } catch {
-            // Sessizce geç
-        }
+        } catch { }
     };
 
     const handleDismissAlert = (postId) => {
@@ -94,9 +86,7 @@ function PostList() {
     const rejectedAlerts = visibleAlerts.filter(p => p.status === 'REJECTED');
     const pendingAlerts = visibleAlerts.filter(p => p.status === 'PENDING');
 
-    const filteredPosts = selectedCategory === 'ALL'
-        ? posts
-        : posts.filter(post => post.category === selectedCategory);
+    const filteredPosts = selectedCategory === 'ALL' ? posts : posts.filter(post => post.category === selectedCategory);
 
     const getCategoryIcon = (category) => {
         switch (category) {
@@ -109,51 +99,46 @@ function PostList() {
 
     const formatDate = (dateStr) => {
         if (!dateStr) return '';
-        try {
-            return new Date(dateStr).toLocaleDateString('tr-TR', {
-                year: 'numeric', month: 'long', day: 'numeric',
-            });
-        } catch { return ''; }
+        try { return new Date(dateStr).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }); } catch { return ''; }
     };
 
     const truncateContent = (content, maxLen = 120) => {
         if (!content) return '';
-        if (content.length <= maxLen) return content;
-        return content.substring(0, maxLen) + '...';
+        return content.length <= maxLen ? content : content.substring(0, maxLen) + '...';
     };
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
             <div className="relative z-10 p-4 md:p-8 max-w-7xl mx-auto">
                 {/* Header */}
-                <header className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 mb-8 shadow-2xl">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <header className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-8 shadow-sm transition-all duration-300">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
                             <button
                                 onClick={() => navigate(getDashboardPath())}
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all duration-300"
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 transition-colors"
                             >
                                 <Home className="w-4 h-4" />
-                                <span className="text-sm">Panele Dön</span>
+                                <span className="text-sm">Ana Sayfa</span>
                             </button>
                             <div>
-                                <h1 className="text-3xl font-bold bg-linear-to-r from-white to-blue-200 bg-clip-text text-transparent">
-                                    Postlar
+                                <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    Öğrenci Forumu
                                 </h1>
-                                <p className="text-slate-400 mt-1">{totalElements} gönderi bulundu</p>
+                                <p className="text-slate-500 dark:text-slate-400 mt-1">{totalElements} gönderi bulundu</p>
                             </div>
                         </div>
                         <button
                             onClick={() => navigate('/posts/new')}
-                            className="group flex items-center gap-2 px-5 py-2.5 bg-linear-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 rounded-xl text-white font-medium transition-all duration-300 hover:scale-105 shadow-lg shadow-blue-500/30"
+                            className="group flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-blue-500/25"
                         >
-                            <Plus className="w-5 h-5 transition-transform group-hover:rotate-90" />
-                            <span>Yeni Post</span>
+                            <Plus className="w-5 h-5 transition-transform group-hover:scale-110" />
+                            <span>Yeni Gönderi</span>
                         </button>
                     </div>
 
                     {/* Category Filters */}
-                    <div className="flex flex-wrap gap-2 mt-5">
+                    <div className="flex flex-wrap gap-2 mt-6">
                         {CATEGORIES.map((cat) => {
                             const isActive = selectedCategory === cat;
                             const catInfo = CATEGORY_MAP[cat];
@@ -161,11 +146,11 @@ function PostList() {
                                 <button
                                     key={cat}
                                     onClick={() => setSelectedCategory(cat)}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 border ${isActive
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${isActive
                                         ? cat === 'ALL'
-                                            ? 'bg-white/20 border-white/40 text-white'
+                                            ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent'
                                             : `${catInfo.bg} ${catInfo.border} ${catInfo.text}`
-                                        : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white/80'
+                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                                         }`}
                                 >
                                     {cat === 'ALL' ? <FileText className="w-4 h-4" /> : getCategoryIcon(cat)}
@@ -176,63 +161,32 @@ function PostList() {
                     </div>
                 </header>
 
-                {/* Reddedilen Post Uyarıları */}
+                {/* Alerts */}
                 {rejectedAlerts.length > 0 && (
                     <div className="space-y-3 mb-6">
                         {rejectedAlerts.map((post) => (
-                            <div
-                                key={post.id}
-                                className="flex items-center gap-3 p-4 rounded-2xl backdrop-blur-xl bg-red-500/10 border border-red-500/20 shadow-lg"
-                            >
-                                <div className="p-2 rounded-xl bg-red-500/20 shrink-0">
-                                    <AlertTriangle className="w-5 h-5 text-red-400" />
+                            <div key={post.id} className="flex items-center gap-4 p-4 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 shadow-sm">
+                                <AlertTriangle className="w-6 h-6 text-red-500" />
+                                <div className="flex-1">
+                                    <p className="text-red-700 dark:text-red-300 font-medium text-sm">Gönderiniz reddedildi</p>
+                                    <p className="text-red-600 dark:text-red-400/80 text-xs mt-0.5">&quot;{post.title}&quot; başlıklı gönderiniz moderasyon tarafından onaylanmadı.</p>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-red-300 font-medium text-sm">Gönderiniz reddedildi</p>
-                                    <p className="text-red-300/70 text-xs mt-0.5 truncate">
-                                        &quot;{post.title}&quot; başlıklı gönderiniz moderasyon tarafından reddedildi.
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => navigate(`/posts/${post.id}`)}
-                                    className="shrink-0 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 text-xs transition-all"
-                                >
-                                    Detay
-                                </button>
-                                <button
-                                    onClick={() => handleDismissAlert(post.id)}
-                                    className="shrink-0 p-1.5 rounded-lg hover:bg-white/10 text-red-300/60 hover:text-red-300 transition-all"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
+                                <button onClick={() => navigate(`/posts/${post.id}`)} className="px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-500/20 hover:bg-red-200 dark:hover:bg-red-500/30 text-red-700 dark:text-red-300 text-xs transition-colors">Detay</button>
+                                <button onClick={() => handleDismissAlert(post.id)} className="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg"><X className="w-4 h-4" /></button>
                             </div>
                         ))}
                     </div>
                 )}
-
-                {/* Bekleyen Post Bilgilendirmesi */}
                 {pendingAlerts.length > 0 && (
                     <div className="space-y-3 mb-6">
                         {pendingAlerts.map((post) => (
-                            <div
-                                key={post.id}
-                                className="flex items-center gap-3 p-4 rounded-2xl backdrop-blur-xl bg-amber-500/10 border border-amber-500/20 shadow-lg"
-                            >
-                                <div className="p-2 rounded-xl bg-amber-500/20 shrink-0">
-                                    <Clock className="w-5 h-5 text-amber-400" />
+                            <div key={post.id} className="flex items-center gap-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 shadow-sm">
+                                <Clock className="w-6 h-6 text-amber-500" />
+                                <div className="flex-1">
+                                    <p className="text-amber-700 dark:text-amber-300 font-medium text-sm">Gönderiniz inceleniyor</p>
+                                    <p className="text-amber-600 dark:text-amber-400/80 text-xs mt-0.5">&quot;{post.title}&quot; sürecinden geçiyor.</p>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-amber-300 font-medium text-sm">Gönderiniz inceleniyor</p>
-                                    <p className="text-amber-300/70 text-xs mt-0.5 truncate">
-                                        &quot;{post.title}&quot; başlıklı gönderiniz moderasyon sürecinde. Onaylandıktan sonra yayınlanacak.
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => handleDismissAlert(post.id)}
-                                    className="shrink-0 p-1.5 rounded-lg hover:bg-white/10 text-amber-300/60 hover:text-amber-300 transition-all"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
+                                <button onClick={() => handleDismissAlert(post.id)} className="p-1.5 text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-500/20 rounded-lg"><X className="w-4 h-4" /></button>
                             </div>
                         ))}
                     </div>
@@ -240,23 +194,17 @@ function PostList() {
 
                 {/* Content */}
                 {loading ? (
-                    <div className="flex items-center justify-center py-20">
-                        <Loader2 className="w-10 h-10 text-blue-400 animate-spin" />
-                    </div>
+                    <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 text-blue-500 animate-spin" /></div>
                 ) : error ? (
-                    <div className="backdrop-blur-xl bg-red-500/10 border border-red-500/20 rounded-2xl p-8 text-center">
-                        <p className="text-red-300">{error}</p>
-                        <button onClick={fetchPosts} className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-xl text-red-300 border border-red-500/30 transition-all">
-                            Tekrar Dene
-                        </button>
+                    <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-2xl p-8 text-center">
+                        <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
+                        <button onClick={fetchPosts} className="px-4 py-2 bg-red-100 lg:hover:bg-red-200 dark:bg-red-500/20 dark:hover:bg-red-500/30 rounded-xl text-red-700 dark:text-red-300 transition-colors">Tekrar Dene</button>
                     </div>
                 ) : filteredPosts.length === 0 ? (
-                    <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
-                        <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/10 flex items-center justify-center">
-                            <FileText className="w-10 h-10 text-blue-300/50" />
-                        </div>
-                        <p className="text-slate-400 text-lg">Henüz gönderi yok</p>
-                        <p className="text-slate-500 mt-2">İlk gönderiyi oluşturmak için &quot;Yeni Post&quot; butonuna tıklayın.</p>
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center shadow-sm">
+                        <FileText className="w-16 h-16 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+                        <p className="text-slate-600 dark:text-slate-400 text-lg font-medium">Bu kategoride henüz gönderi yok</p>
+                        <p className="text-slate-500 dark:text-slate-500 mt-2 text-sm">İlk gönderiyi oluşturmak için "Yeni Gönderi" butonuna tıklayabilirsiniz.</p>
                     </div>
                 ) : (
                     <>
@@ -267,48 +215,29 @@ function PostList() {
                                     <div
                                         key={post.id}
                                         onClick={() => navigate(`/posts/${post.id}`)}
-                                        className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl overflow-hidden shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02] hover:-translate-y-1 cursor-pointer"
+                                        className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer flex flex-col"
                                     >
-                                        {/* Category gradient bar */}
                                         <div className={`h-1.5 bg-linear-to-r ${catInfo.color}`} />
-
-                                        <div className="p-5">
-                                            {/* Category badge + date */}
-                                            <div className="flex items-center justify-between mb-3">
-                                                <span className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium ${catInfo.bg} ${catInfo.text} border ${catInfo.border}`}>
+                                        <div className="p-6 flex-1 flex flex-col">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${catInfo.bg} ${catInfo.text}`}>
                                                     {getCategoryIcon(post.category)}
                                                     {catInfo.label}
                                                 </span>
-                                                <span className="text-xs text-slate-400/80">
-                                                    {formatDate(post.createdAt)}
-                                                </span>
+                                                <span className="text-xs text-slate-500 dark:text-slate-400">{formatDate(post.createdAt)}</span>
                                             </div>
-
-                                            {/* Title */}
-                                            <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2 group-hover:text-blue-200 transition-colors">
+                                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                                                 {post.title}
                                             </h3>
-
-                                            {/* Content preview */}
-                                            <p className="text-sm text-slate-400 leading-relaxed">
+                                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-6 flex-1 line-clamp-3">
                                                 {truncateContent(post.content)}
                                             </p>
-
-                                            {/* Footer */}
-                                            <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10">
+                                            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800 mt-auto">
                                                 <div className="flex flex-col">
-                                                    <span className="text-xs text-slate-400">
-                                                        ✍️ {post.authorName || 'Anonim'}
-                                                    </span>
-                                                    {post.authorDepartment && (
-                                                        <span className="text-xs text-slate-500">
-                                                            🎓 {post.authorDepartment}
-                                                        </span>
-                                                    )}
+                                                    <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{post.authorName || 'Öğrenci'}</span>
+                                                    {post.authorDepartment && <span className="text-xs text-slate-500 dark:text-slate-500">{post.authorDepartment}</span>}
                                                 </div>
-                                                <span className="text-xs text-blue-300 group-hover:text-blue-200 transition-colors">
-                                                    Devamını oku →
-                                                </span>
+                                                <span className="text-xs font-medium text-blue-600 dark:text-blue-400 group-hover:underline">Devamı →</span>
                                             </div>
                                         </div>
                                     </div>
@@ -318,38 +247,19 @@ function PostList() {
 
                         {/* Pagination */}
                         {totalPages > 1 && (
-                            <div className="flex items-center justify-center gap-3 mt-8">
-                                <button
-                                    onClick={() => setPage(p => Math.max(0, p - 1))}
-                                    disabled={page === 0}
-                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/20 transition-all duration-300"
-                                >
-                                    <ArrowLeft className="w-4 h-4" />
-                                    Önceki
+                            <div className="flex justify-center items-center gap-2 mt-8">
+                                <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 disabled:opacity-50 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2">
+                                    <ArrowLeft className="w-4 h-4" /> Önceki
                                 </button>
-
-                                <div className="flex items-center gap-1">
+                                <div className="flex gap-1">
                                     {Array.from({ length: totalPages }, (_, i) => (
-                                        <button
-                                            key={i}
-                                            onClick={() => setPage(i)}
-                                            className={`w-10 h-10 rounded-xl text-sm font-medium transition-all duration-300 ${i === page
-                                                ? 'bg-linear-to-r from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-500/30'
-                                                : 'bg-white/5 text-white/60 hover:bg-white/15 hover:text-white'
-                                                }`}
-                                        >
+                                        <button key={i} onClick={() => setPage(i)} className={`w-10 h-10 rounded-xl text-sm font-medium transition-colors ${i === page ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
                                             {i + 1}
                                         </button>
                                     ))}
                                 </div>
-
-                                <button
-                                    onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                                    disabled={page >= totalPages - 1}
-                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/20 transition-all duration-300"
-                                >
-                                    Sonraki
-                                    <ArrowRight className="w-4 h-4" />
+                                <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1} className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 disabled:opacity-50 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2">
+                                    Sonraki <ArrowRight className="w-4 h-4" />
                                 </button>
                             </div>
                         )}
