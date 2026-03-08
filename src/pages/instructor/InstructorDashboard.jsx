@@ -626,7 +626,7 @@ function InstructorDashboard() {
           <button
             onClick={() => setActiveTab('roleRequests')}
             className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${activeTab === 'roleRequests'
-              ? 'bg-linear-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30'
+              ? 'bg-linear-to-r from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-500/30'
               : 'bg-white/10 text-slate-200 hover:bg-white/20 border border-white/10'}`}
           >
             <Shield className="w-4 h-4" />
@@ -688,7 +688,7 @@ function InstructorDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15">
                 <div className="flex items-center gap-3 mb-5">
-                  <div className="p-3 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30">
+                  <div className="p-3 rounded-xl bg-linear-to-br from-blue-500 to-cyan-600 shadow-lg shadow-blue-500/30">
                     <BookOpen className="w-6 h-6 text-white" />
                   </div>
                   <h2 className="text-xl font-semibold text-white">Derslerim</h2>
@@ -791,7 +791,7 @@ function InstructorDashboard() {
                     <button
                       onClick={fetchSubmissions}
                       disabled={loading.submissions}
-                      className="px-6 py-3 rounded-xl bg-linear-to-r from-indigo-500 to-purple-600 text-white font-medium transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/30 hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="px-6 py-3 rounded-xl bg-linear-to-r from-blue-500 to-cyan-600 text-white font-medium transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/30 hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {loading.submissions ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
                       {loading.submissions ? 'Yükleniyor...' : 'Teslimleri Getir'}
@@ -1008,7 +1008,7 @@ function InstructorDashboard() {
             {/* Header */}
             <div className="p-6 border-b border-white/10 bg-white/5">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-linear-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30">
+                <div className="p-3 rounded-xl bg-linear-to-br from-blue-500 to-cyan-600 shadow-lg shadow-blue-500/30">
                   <Shield className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -1027,7 +1027,7 @@ function InstructorDashboard() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-linear-to-r from-violet-600 to-purple-600">
+                    <tr className="bg-linear-to-r from-blue-600 to-cyan-600">
                       <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Öğrenci</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Kulüp</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Talep Edilen Görev</th>
@@ -1054,7 +1054,7 @@ function InstructorDashboard() {
                             <span className="text-emerald-300 text-sm font-medium">{request.clubName || request.club?.name || 'Bilinmiyor'}</span>
                           </td>
                           <td className="px-6 py-4">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-500/20 text-violet-300 text-xs font-medium">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-500/20 text-sky-300 text-xs font-medium">
                               <Shield className="w-3 h-3" />
                               {roleName}
                             </span>

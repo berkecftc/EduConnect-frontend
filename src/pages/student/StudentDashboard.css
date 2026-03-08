@@ -1,6 +1,6 @@
 .student-dashboard {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
   padding: 2rem;
 }
 
@@ -9,14 +9,16 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
-  background: white;
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(16px);
   padding: 1.5rem 2rem;
   border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
 .dashboard-header h1 {
-  color: #333;
+  color: #f1f5f9;
   font-size: 1.8rem;
   margin: 0;
 }
@@ -28,7 +30,7 @@
 }
 
 .user-info span {
-  color: #666;
+  color: #94a3b8;
   font-weight: 500;
 }
 
@@ -54,16 +56,19 @@
 }
 
 .dashboard-card {
-  background: white;
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
   transition: transform 0.3s, box-shadow 0.3s;
 }
 
 .dashboard-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
 }
 
 .card-header {
@@ -72,7 +77,7 @@
   gap: 0.75rem;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 2px solid #f0f0f0;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.05);
 }
 
 .card-icon {
@@ -81,7 +86,7 @@
 
 .card-header h2 {
   margin: 0;
-  color: #333;
+  color: #f1f5f9;
   font-size: 1.25rem;
 }
 
@@ -96,7 +101,7 @@
   justify-content: center;
   align-items: center;
   height: 100px;
-  color: #666;
+  color: #94a3b8;
 }
 
 .error-message {
@@ -107,7 +112,7 @@
 
 .empty-state {
   text-align: center;
-  color: #999;
+  color: #64748b;
   padding: 2rem;
 }
 
@@ -119,7 +124,7 @@
 
 .item-list li {
   padding: 0.75rem;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   transition: background 0.2s;
 }
 
@@ -128,19 +133,19 @@
 }
 
 .item-list li:hover {
-  background: #f8f9fa;
+  background: rgba(59, 130, 246, 0.1);
   border-radius: 8px;
 }
 
 .item-title {
   font-weight: 600;
-  color: #333;
+  color: #f1f5f9;
   margin-bottom: 0.25rem;
 }
 
 .item-subtitle {
   font-size: 0.85rem;
-  color: #666;
+  color: #94a3b8;
 }
 
 .item-badge {
@@ -153,23 +158,23 @@
 }
 
 .badge-pending {
-  background: #fef3c7;
-  color: #d97706;
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
 }
 
 .badge-submitted {
-  background: #d1fae5;
-  color: #059669;
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
 }
 
 .badge-active {
-  background: #dbeafe;
-  color: #2563eb;
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
 }
 
 .badge-upcoming {
-  background: #e0e7ff;
-  color: #4f46e5;
+  background: rgba(20, 184, 166, 0.2);
+  color: #2dd4bf;
 }
 
 /* Kulüp logosu stilleri */
@@ -185,7 +190,7 @@
   border-radius: 8px;
   object-fit: cover;
   flex-shrink: 0;
-  border: 2px solid #e5e7eb;
+  border: 2px solid rgba(255, 255, 255, 0.1);
 }
 
 .club-info {

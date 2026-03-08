@@ -81,7 +81,7 @@ function ClubList() {
       <div className="club-list-container">
         <div className="loading-center">
           <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
-          <p className="mt-4 text-purple-200">Kulüpler yükleniyor...</p>
+          <p className="mt-4 text-blue-200">Kulüpler yükleniyor...</p>
         </div>
       </div>
     );
@@ -133,8 +133,8 @@ function ClubList() {
         <div className="clubs-grid">
           {filteredClubs.length === 0 ? (
             <div className="empty-state">
-              <Users className="w-16 h-16 text-purple-300 mb-4" />
-              <p className="text-lg text-purple-200">
+              <Users className="w-16 h-16 text-blue-300 mb-4" />
+              <p className="text-lg text-blue-200">
                 {searchTerm ? 'Arama sonucu bulunamadı' : 'Henüz kulüp bulunmuyor'}
               </p>
             </div>

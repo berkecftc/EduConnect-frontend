@@ -392,7 +392,7 @@ function StudentDashboard() {
 
   const CardLoader = () => (
     <div className="flex items-center justify-center py-8">
-      <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+      <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
     </div>
   );
 
@@ -412,7 +412,7 @@ function StudentDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
       {successMessage && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-emerald-300 backdrop-blur-xl shadow-lg">
           <Check className="w-5 h-5" />
@@ -424,22 +424,22 @@ function StudentDashboard() {
         <header className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 mb-8 shadow-2xl">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold bg-linear-to-r from-white to-purple-200 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-linear-to-r from-white to-blue-200 bg-clip-text text-transparent">
                 Öğrenci Paneli
               </h1>
-              <p className="text-purple-200/70 mt-1">Hoş geldin, {user}</p>
+              <p className="text-slate-400 mt-1">Hoş geldin, {user}</p>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => navigate('/clubs')}
-                className="group flex items-center gap-2 px-5 py-2.5 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 rounded-xl text-indigo-300 transition-all duration-300 hover:scale-105"
+                className="group flex items-center gap-2 px-5 py-2.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-xl text-blue-300 transition-all duration-300 hover:scale-105"
               >
                 <Users className="w-4 h-4" />
                 <span>Tüm Kulüpler</span>
               </button>
               <button
                 onClick={() => navigate('/posts')}
-                className="group flex items-center gap-2 px-5 py-2.5 bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/30 rounded-xl text-violet-300 transition-all duration-300 hover:scale-105"
+                className="group flex items-center gap-2 px-5 py-2.5 bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/30 rounded-xl text-sky-300 transition-all duration-300 hover:scale-105"
               >
                 <FileText className="w-4 h-4" />
                 <span>Postlar</span>
@@ -458,11 +458,11 @@ function StudentDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
             <div className="flex items-center gap-3 mb-5">
-              <div className="p-3 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30">
+              <div className="p-3 rounded-xl bg-linear-to-br from-indigo-500 to-blue-600 shadow-lg shadow-blue-500/30">
                 <BookOpen className="w-6 h-6 text-white" />
               </div>
               <h2 className="text-xl font-semibold text-white">Kurslarım</h2>
-              <span className="ml-auto px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-sm font-medium">
+              <span className="ml-auto px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-sm font-medium">
                 {courses.length}
               </span>
             </div>
@@ -477,7 +477,7 @@ function StudentDashboard() {
                           className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300 cursor-pointer hover:translate-x-1"
                         >
                           <h3 className="font-medium text-white">{course.name || course.title}</h3>
-                          <p className="text-sm text-purple-200/60 mt-1">{course.instructor || course.description}</p>
+                          <p className="text-sm text-slate-400 mt-1">{course.instructor || course.description}</p>
                           <span className="inline-block mt-2 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-xs">Aktif</span>
                         </div>
                       ))}
@@ -488,7 +488,7 @@ function StudentDashboard() {
 
           <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
             <div className="flex items-center gap-3 mb-5">
-              <div className="p-3 rounded-xl bg-linear-to-br from-orange-500 to-pink-600 shadow-lg shadow-orange-500/30">
+              <div className="p-3 rounded-xl bg-linear-to-br from-amber-500 to-orange-600 shadow-lg shadow-orange-500/30">
                 <ClipboardList className="w-6 h-6 text-white" />
               </div>
               <h2 className="text-xl font-semibold text-white">Ödevlerim</h2>
@@ -507,7 +507,7 @@ function StudentDashboard() {
                           className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300 cursor-pointer hover:translate-x-1"
                         >
                           <h3 className="font-medium text-white">{assignment.title}</h3>
-                          <p className="text-sm text-purple-200/60 mt-1">Son Tarih: {new Date(assignment.dueDate).toLocaleDateString('tr-TR')}</p>
+                          <p className="text-sm text-slate-400 mt-1">Son Tarih: {new Date(assignment.dueDate).toLocaleDateString('tr-TR')}</p>
                           <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs ${assignment.submitted ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
                             {assignment.submitted ? 'Teslim Edildi' : 'Bekliyor'}
                           </span>
@@ -547,16 +547,16 @@ function StudentDashboard() {
                           )}
                           <div className="flex-1">
                             <h3 className="font-medium text-white">{membership.club?.name || membership.clubName || membership.name || 'İsimsiz Kulüp'}</h3>
-                            <p className="text-sm text-purple-200/60 mt-1">{membership.club?.description || membership.clubDescription || membership.description || ''}</p>
+                            <p className="text-sm text-slate-400 mt-1">{membership.club?.description || membership.clubDescription || membership.description || ''}</p>
                             {(membership.club?.advisorName || membership.advisorName) && (
-                              <p className="text-xs text-indigo-300/80 mt-1">
+                              <p className="text-xs text-blue-300/80 mt-1">
                                 👨‍🏫 Danışman: {membership.club?.advisorName || membership.advisorName}
                               </p>
                             )}
                             <div className="flex items-center gap-2 mt-2">
                               <span className="inline-block px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 text-xs">Üye</span>
                               {(membership.club?.memberCount !== undefined || membership.memberCount !== undefined) && (
-                                <span className="text-xs text-purple-200/60">
+                                <span className="text-xs text-slate-400">
                                   👥 {membership.club?.memberCount || membership.memberCount || 0} üye
                                 </span>
                               )}
@@ -571,11 +571,11 @@ function StudentDashboard() {
 
           <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
             <div className="flex items-center gap-3 mb-5">
-              <div className="p-3 rounded-xl bg-linear-to-br from-rose-500 to-purple-600 shadow-lg shadow-rose-500/30">
+              <div className="p-3 rounded-xl bg-linear-to-br from-rose-500 to-blue-600 shadow-lg shadow-teal-500/30">
                 <Calendar className="w-6 h-6 text-white" />
               </div>
               <h2 className="text-xl font-semibold text-white">Etkinliklerim</h2>
-              <span className="ml-auto px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 text-sm font-medium">
+              <span className="ml-auto px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-sm font-medium">
                 {events.length}
               </span>
             </div>
@@ -631,13 +631,13 @@ function StudentDashboard() {
                                 </div>
                               </div>
                             ) : (
-                              <div className="w-full h-24 bg-gradient-to-br from-rose-500/20 to-purple-600/20 flex items-center justify-center">
-                                <Image className="w-8 h-8 text-purple-300/40" />
+                              <div className="w-full h-24 bg-gradient-to-br from-rose-500/20 to-blue-600/20 flex items-center justify-center">
+                                <Image className="w-8 h-8 text-blue-400/40" />
                               </div>
                             )}
                             <div className="p-4">
                               <h3 className="font-medium text-white">{eventData.title || eventData.name}</h3>
-                              <p className="text-sm text-purple-200/60 mt-1">{formattedDate}</p>
+                              <p className="text-sm text-slate-400 mt-1">{formattedDate}</p>
                               <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs ${eventStatus === 'upcoming' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
                                 }`}>
                                 {eventStatus === 'upcoming' ? '🟢 Yaklaşan' : '⏰ Geçmiş'}
@@ -674,7 +674,7 @@ function StudentDashboard() {
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <h3 className="font-medium text-white">{request.clubName || request.club?.name || 'Kulüp'}</h3>
-                              <p className="text-sm text-purple-200/60 mt-1">
+                              <p className="text-sm text-slate-400 mt-1">
                                 {new Date(request.requestDate || request.createdAt).toLocaleDateString('tr-TR')}
                               </p>
                               <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs ${request.status === 'PENDING' ? 'bg-amber-500/20 text-amber-300' :
@@ -704,11 +704,11 @@ function StudentDashboard() {
 
           <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
             <div className="flex items-center gap-3 mb-5">
-              <div className="p-3 rounded-xl bg-linear-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30">
+              <div className="p-3 rounded-xl bg-linear-to-br from-sky-500 to-blue-600 shadow-lg shadow-sky-500/30">
                 <CalendarPlus className="w-6 h-6 text-white" />
               </div>
               <h2 className="text-xl font-semibold text-white">Kulüp Etkinlikleri</h2>
-              <span className="ml-auto px-3 py-1 rounded-full bg-violet-500/20 text-violet-300 text-sm font-medium">
+              <span className="ml-auto px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 text-sm font-medium">
                 {clubEvents.length}
               </span>
             </div>
@@ -772,21 +772,21 @@ function StudentDashboard() {
                                 </div>
                               </div>
                             ) : (
-                              <div className="w-full h-24 bg-gradient-to-br from-violet-500/20 to-purple-600/20 flex items-center justify-center">
-                                <Image className="w-8 h-8 text-purple-300/40" />
+                              <div className="w-full h-24 bg-gradient-to-br from-sky-500/20 to-blue-600/20 flex items-center justify-center">
+                                <Image className="w-8 h-8 text-blue-400/40" />
                               </div>
                             )}
                             <div className="p-4">
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1">
                                   <h3 className="font-medium text-white">{event.title || event.name}</h3>
-                                  <p className="text-sm text-purple-200/60 mt-1">
+                                  <p className="text-sm text-slate-400 mt-1">
                                     🏫 {event.clubName || 'Kulüp'}
                                   </p>
-                                  <p className="text-sm text-purple-200/60 mt-1">
+                                  <p className="text-sm text-slate-400 mt-1">
                                     📅 {formattedDate}
                                   </p>
-                                  <p className="text-xs text-purple-200/50 mt-1">
+                                  <p className="text-xs text-slate-400/80 mt-1">
                                     📍 {event.location || 'Konum belirtilmemiş'}
                                   </p>
                                   <span className={`inline-block mt-2 px-2 py-0.5 rounded-md text-xs ${eventStatus === 'upcoming' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-500/20 text-gray-300'
@@ -797,7 +797,7 @@ function StudentDashboard() {
                                 {canRequest && (
                                   <button
                                     onClick={() => handleSendParticipationRequest(event.id)}
-                                    className="p-2 rounded-lg bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/30 text-violet-300 transition-all duration-300 hover:scale-110"
+                                    className="p-2 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/30 text-sky-300 transition-all duration-300 hover:scale-110"
                                     title="Katılım İsteği Gönder"
                                   >
                                     <Send className="w-4 h-4" />
@@ -909,12 +909,12 @@ function StudentDashboard() {
                             )}
                             <div className="p-4">
                               <h3 className="font-medium text-white">{eventTitle}</h3>
-                              <p className="text-sm text-purple-200/60 mt-1">📅 {formattedDate}</p>
-                              <p className="text-xs text-purple-200/50 mt-1">
+                              <p className="text-sm text-slate-400 mt-1">📅 {formattedDate}</p>
+                              <p className="text-xs text-slate-400/80 mt-1">
                                 📍 {location}
                               </p>
                               {request.studentName && (
-                                <p className="text-xs text-indigo-300/70 mt-1">
+                                <p className="text-xs text-blue-300/70 mt-1">
                                   👤 {request.studentName}
                                 </p>
                               )}
@@ -927,7 +927,7 @@ function StudentDashboard() {
                                     request.status === 'APPROVED' ? '✅ Onaylandı' : '❌ Reddedildi'}
                                 </span>
                                 {(request.requestDate || request.createdAt || request.requestedAt) && (
-                                  <span className="text-xs text-purple-200/50">
+                                  <span className="text-xs text-slate-400/80">
                                     {new Date(request.requestDate || request.createdAt || request.requestedAt).toLocaleDateString('tr-TR')}
                                   </span>
                                 )}
@@ -965,7 +965,7 @@ function StudentDashboard() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <h3 className="font-medium text-white">{app.courseName || app.course?.name || 'Ders'}</h3>
-                          <p className="text-sm text-purple-200/60 mt-1">
+                          <p className="text-sm text-slate-400 mt-1">
                             {app.applicationDate || app.createdAt
                               ? new Date(app.applicationDate || app.createdAt).toLocaleDateString('tr-TR')
                               : ''}
@@ -1020,32 +1020,32 @@ function StudentDashboard() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="font-medium text-white">{course.title || course.name}</h3>
                               {course.code && (
-                                <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-xs font-mono">
+                                <span className="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 text-xs font-mono">
                                   {course.code}
                                 </span>
                               )}
                             </div>
                             {course.description && (
-                              <p className="text-sm text-purple-200/60 mt-1 line-clamp-2">{course.description}</p>
+                              <p className="text-sm text-slate-400 mt-1 line-clamp-2">{course.description}</p>
                             )}
                             <div className="flex flex-wrap items-center gap-3 mt-2">
                               {course.credit && (
-                                <span className="text-xs text-purple-200/50">
+                                <span className="text-xs text-slate-400/80">
                                   📚 {course.credit} Kredi
                                 </span>
                               )}
                               {course.capacity && (
-                                <span className="text-xs text-purple-200/50">
+                                <span className="text-xs text-slate-400/80">
                                   👥 Kontenjan: {course.capacity}
                                 </span>
                               )}
                               {course.semester && (
-                                <span className="text-xs text-purple-200/50">
+                                <span className="text-xs text-slate-400/80">
                                   📅 {course.semester}
                                 </span>
                               )}
                               {(course.instructorName || course.instructor) && (
-                                <span className="text-xs text-purple-200/50">
+                                <span className="text-xs text-slate-400/80">
                                   👨‍🏫 {course.instructorName || course.instructor}
                                 </span>
                               )}
@@ -1082,7 +1082,7 @@ function StudentDashboard() {
         {/* ==================== DERS DUYURULARI ==================== */}
         <div className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl transition-all duration-500 hover:bg-white/15 hover:scale-[1.02]">
           <div className="flex items-center gap-3 mb-5">
-            <div className="p-3 rounded-xl bg-linear-to-br from-pink-500 to-rose-600 shadow-lg shadow-pink-500/30">
+            <div className="p-3 rounded-xl bg-linear-to-br from-teal-500 to-emerald-600 shadow-lg shadow-teal-500/30">
               <Megaphone className="w-6 h-6 text-white" />
             </div>
             <h2 className="text-xl font-semibold text-white">Ders Duyuruları</h2>
@@ -1096,7 +1096,7 @@ function StudentDashboard() {
                 <select
                   value={selectedCourseForAnnouncements}
                   onChange={(e) => setSelectedCourseForAnnouncements(e.target.value)}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/20 text-white text-sm focus:outline-none focus:border-pink-500/50 transition-all"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/20 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all"
                 >
                   <option value="" className="bg-slate-800">Ders Seçin</option>
                   {courses.map((course) => (
@@ -1106,7 +1106,7 @@ function StudentDashboard() {
                 <button
                   onClick={() => fetchCourseAnnouncements()}
                   disabled={announcementsLoading || !selectedCourseForAnnouncements}
-                  className="px-4 py-2.5 rounded-xl bg-linear-to-r from-pink-500 to-rose-600 text-white text-sm font-medium transition-all hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="px-4 py-2.5 rounded-xl bg-linear-to-r from-teal-500 to-emerald-600 text-white text-sm font-medium transition-all hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {announcementsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
                   Getir
@@ -1125,7 +1125,7 @@ function StudentDashboard() {
                           className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300"
                         >
                           <h3 className="font-medium text-white">{ann.title}</h3>
-                          <p className="text-sm text-purple-200/60 mt-1 whitespace-pre-wrap">{ann.content}</p>
+                          <p className="text-sm text-slate-400 mt-1 whitespace-pre-wrap">{ann.content}</p>
                           <span className="text-xs text-gray-400 mt-2 inline-block">
                             {ann.createdAt ? new Date(ann.createdAt).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
                           </span>

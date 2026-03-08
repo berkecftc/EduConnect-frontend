@@ -123,7 +123,7 @@ function PostList() {
     };
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-slate-900 via-purple-900 to-slate-900">
+        <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
             <div className="relative z-10 p-4 md:p-8 max-w-7xl mx-auto">
                 {/* Header */}
                 <header className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 mb-8 shadow-2xl">
@@ -137,15 +137,15 @@ function PostList() {
                                 <span className="text-sm">Panele Dön</span>
                             </button>
                             <div>
-                                <h1 className="text-3xl font-bold bg-linear-to-r from-white to-purple-200 bg-clip-text text-transparent">
+                                <h1 className="text-3xl font-bold bg-linear-to-r from-white to-blue-200 bg-clip-text text-transparent">
                                     Postlar
                                 </h1>
-                                <p className="text-purple-200/70 mt-1">{totalElements} gönderi bulundu</p>
+                                <p className="text-slate-400 mt-1">{totalElements} gönderi bulundu</p>
                             </div>
                         </div>
                         <button
                             onClick={() => navigate('/posts/new')}
-                            className="group flex items-center gap-2 px-5 py-2.5 bg-linear-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 rounded-xl text-white font-medium transition-all duration-300 hover:scale-105 shadow-lg shadow-indigo-500/30"
+                            className="group flex items-center gap-2 px-5 py-2.5 bg-linear-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 rounded-xl text-white font-medium transition-all duration-300 hover:scale-105 shadow-lg shadow-blue-500/30"
                         >
                             <Plus className="w-5 h-5 transition-transform group-hover:rotate-90" />
                             <span>Yeni Post</span>
@@ -241,7 +241,7 @@ function PostList() {
                 {/* Content */}
                 {loading ? (
                     <div className="flex items-center justify-center py-20">
-                        <Loader2 className="w-10 h-10 text-indigo-400 animate-spin" />
+                        <Loader2 className="w-10 h-10 text-blue-400 animate-spin" />
                     </div>
                 ) : error ? (
                     <div className="backdrop-blur-xl bg-red-500/10 border border-red-500/20 rounded-2xl p-8 text-center">
@@ -253,10 +253,10 @@ function PostList() {
                 ) : filteredPosts.length === 0 ? (
                     <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
                         <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/10 flex items-center justify-center">
-                            <FileText className="w-10 h-10 text-purple-300/50" />
+                            <FileText className="w-10 h-10 text-blue-300/50" />
                         </div>
-                        <p className="text-purple-200/60 text-lg">Henüz gönderi yok</p>
-                        <p className="text-purple-200/40 mt-2">İlk gönderiyi oluşturmak için &quot;Yeni Post&quot; butonuna tıklayın.</p>
+                        <p className="text-slate-400 text-lg">Henüz gönderi yok</p>
+                        <p className="text-slate-500 mt-2">İlk gönderiyi oluşturmak için &quot;Yeni Post&quot; butonuna tıklayın.</p>
                     </div>
                 ) : (
                     <>
@@ -279,34 +279,34 @@ function PostList() {
                                                     {getCategoryIcon(post.category)}
                                                     {catInfo.label}
                                                 </span>
-                                                <span className="text-xs text-purple-200/50">
+                                                <span className="text-xs text-slate-400/80">
                                                     {formatDate(post.createdAt)}
                                                 </span>
                                             </div>
 
                                             {/* Title */}
-                                            <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2 group-hover:text-purple-200 transition-colors">
+                                            <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2 group-hover:text-blue-200 transition-colors">
                                                 {post.title}
                                             </h3>
 
                                             {/* Content preview */}
-                                            <p className="text-sm text-purple-200/60 leading-relaxed">
+                                            <p className="text-sm text-slate-400 leading-relaxed">
                                                 {truncateContent(post.content)}
                                             </p>
 
                                             {/* Footer */}
                                             <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10">
                                                 <div className="flex flex-col">
-                                                    <span className="text-xs text-purple-200/60">
+                                                    <span className="text-xs text-slate-400">
                                                         ✍️ {post.authorName || 'Anonim'}
                                                     </span>
                                                     {post.authorDepartment && (
-                                                        <span className="text-xs text-purple-200/40">
+                                                        <span className="text-xs text-slate-500">
                                                             🎓 {post.authorDepartment}
                                                         </span>
                                                     )}
                                                 </div>
-                                                <span className="text-xs text-indigo-300 group-hover:text-indigo-200 transition-colors">
+                                                <span className="text-xs text-blue-300 group-hover:text-blue-200 transition-colors">
                                                     Devamını oku →
                                                 </span>
                                             </div>
@@ -334,7 +334,7 @@ function PostList() {
                                             key={i}
                                             onClick={() => setPage(i)}
                                             className={`w-10 h-10 rounded-xl text-sm font-medium transition-all duration-300 ${i === page
-                                                ? 'bg-linear-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30'
+                                                ? 'bg-linear-to-r from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-500/30'
                                                 : 'bg-white/5 text-white/60 hover:bg-white/15 hover:text-white'
                                                 }`}
                                         >

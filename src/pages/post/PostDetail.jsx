@@ -80,7 +80,7 @@ function PostDetail() {
     };
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-slate-900 via-purple-900 to-slate-900">
+        <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
             <div className="relative z-10 p-4 md:p-8 max-w-4xl mx-auto">
                 {/* Navigation buttons */}
                 <div className="flex items-center gap-3 mb-6">
@@ -102,7 +102,7 @@ function PostDetail() {
 
                 {loading ? (
                     <div className="flex items-center justify-center py-20">
-                        <Loader2 className="w-10 h-10 text-indigo-400 animate-spin" />
+                        <Loader2 className="w-10 h-10 text-blue-400 animate-spin" />
                     </div>
                 ) : error ? (
                     <div className="backdrop-blur-xl bg-red-500/10 border border-red-500/20 rounded-2xl p-8 text-center">
@@ -159,7 +159,7 @@ function PostDetail() {
                             </h1>
 
                             {/* Date info */}
-                            <div className="flex flex-wrap items-center gap-4 mb-6 text-sm text-purple-200/50">
+                            <div className="flex flex-wrap items-center gap-4 mb-6 text-sm text-slate-400/80">
                                 <span>📅 {formatDate(post.createdAt)}</span>
                                 {post.updatedAt && (
                                     <span>✏️ Güncellenme: {formatDate(post.updatedAt)}</span>
@@ -168,19 +168,19 @@ function PostDetail() {
 
                             {/* Author info */}
                             <div className="flex items-center gap-3 mb-6 pb-6 border-b border-white/10">
-                                <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
+                                <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
                                     {(post.authorName || 'A').charAt(0).toUpperCase()}
                                 </div>
                                 <div>
                                     <p className="text-white font-medium text-sm">{post.authorName || 'Anonim'}</p>
                                     {post.authorDepartment && (
-                                        <p className="text-purple-200/50 text-xs">🎓 {post.authorDepartment}</p>
+                                        <p className="text-slate-400/80 text-xs">🎓 {post.authorDepartment}</p>
                                     )}
                                 </div>
                             </div>
 
                             {/* Content */}
-                            <div className="text-purple-100/80 leading-relaxed whitespace-pre-wrap text-base">
+                            <div className="text-slate-200 leading-relaxed whitespace-pre-wrap text-base">
                                 {post.content}
                             </div>
 
@@ -189,7 +189,7 @@ function PostDetail() {
                                 <div className="flex items-center gap-3 mt-8 pt-6 border-t border-white/10">
                                     <button
                                         onClick={() => navigate(`/posts/${post.id}/edit`)}
-                                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 rounded-xl text-indigo-300 transition-all duration-300 hover:scale-105"
+                                        className="flex items-center gap-2 px-5 py-2.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-xl text-blue-300 transition-all duration-300 hover:scale-105"
                                     >
                                         <Edit3 className="w-4 h-4" />
                                         Düzenle
@@ -217,7 +217,7 @@ function PostDetail() {
                                 </div>
                                 <h3 className="text-xl font-semibold text-white">Gönderiyi Sil</h3>
                             </div>
-                            <p className="text-purple-200/70 mb-6">
+                            <p className="text-slate-400 mb-6">
                                 Bu gönderiyi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
                             </p>
                             <div className="flex items-center justify-end gap-3">

@@ -1218,7 +1218,7 @@ function ClubOfficialDashboard() {
                                   <p className="item-subtitle text-xs">
                                     📍 {eventData.location || 'Konum belirtilmemiş'}
                                   </p>
-                                  <p className="item-subtitle text-xs text-purple-300/50">
+                                  <p className="item-subtitle text-xs text-slate-400/80">
                                     {new Date(request.requestDate || request.createdAt).toLocaleDateString('tr-TR')} tarihinde istendi
                                   </p>
                                 </div>
@@ -1459,7 +1459,7 @@ function ClubOfficialDashboard() {
                                 {canRequest && (
                                   <button
                                     onClick={() => handleSendParticipationRequest(event.id)}
-                                    className="p-2 rounded-lg bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/30 text-violet-300 transition-all duration-300 hover:scale-110"
+                                    className="p-2 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/30 text-sky-300 transition-all duration-300 hover:scale-110"
                                     title="Katılım İsteği Gönder"
                                   >
                                     <Send className="w-4 h-4" />
