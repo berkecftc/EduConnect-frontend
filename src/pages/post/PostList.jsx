@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { getPosts, getPost } from '../../api/postService';
-import { Loader2, Plus, ArrowLeft, ArrowRight, Megaphone, BookOpen, HelpCircle, FileText, Home, AlertTriangle, Clock, X } from 'lucide-react';
+import { getPosts, getPost, toggleLike, toggleSave, getSavedPosts } from '../../api/postService';
+import { Loader2, Plus, ArrowLeft, ArrowRight, Megaphone, BookOpen, HelpCircle, FileText, Home, AlertTriangle, Clock, X, Heart, MessageCircle, Bookmark } from 'lucide-react';
 
 const CATEGORY_MAP = {
     DUYURU: { label: 'Duyuru', color: 'from-rose-500 to-pink-600', bg: 'bg-rose-100 dark:bg-rose-500/20', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-500/30' },
@@ -30,6 +30,7 @@ function PostList() {
     const [totalPages, setTotalPages] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
     const [selectedCategory, setSelectedCategory] = useState('ALL');
+    const [showSavedOnly, setShowSavedOnly] = useState(false);
 
     const [myPostStatuses, setMyPostStatuses] = useState([]);
     const [dismissedAlerts, setDismissedAlerts] = useState([]);
@@ -37,15 +38,19 @@ function PostList() {
     const PAGE_SIZE = 9;
 
     useEffect(() => {
+        setPage(0);
+    }, [showSavedOnly]);
+
+    useEffect(() => {
         fetchPosts();
         checkMyPostStatuses();
-    }, [page]);
+    }, [page, showSavedOnly]); // Changed dependency
 
     const fetchPosts = async () => {
         setLoading(true);
         setError(null);
         try {
-            const data = await getPosts(page, PAGE_SIZE);
+            const data = showSavedOnly ? await getSavedPosts(page, PAGE_SIZE) : await getPosts(page, PAGE_SIZE);
             setPosts(data.content || []);
             setTotalPages(data.totalPages || 0);
             setTotalElements(data.totalElements || 0);
@@ -107,6 +112,37 @@ function PostList() {
         return content.length <= maxLen ? content : content.substring(0, maxLen) + '...';
     };
 
+    const handleLike = async (e, postId) => {
+        e.stopPropagation();
+        try {
+            await toggleLike(postId);
+            setPosts(posts.map(post => {
+                if (post.id === postId) {
+                    const isLiked = !post.isLiked;
+                    return { ...post, isLiked, likeCount: (post.likeCount || 0) + (isLiked ? 1 : -1) };
+                }
+                return post;
+            }));
+        } catch (err) {
+            console.error('Like toggle failed', err);
+        }
+    };
+
+    const handleSave = async (e, postId) => {
+        e.stopPropagation();
+        try {
+            await toggleSave(postId);
+            setPosts(posts.map(post => {
+                if (post.id === postId) {
+                    return { ...post, isSaved: !post.isSaved };
+                }
+                return post;
+            }));
+        } catch (err) {
+            console.error('Save toggle failed', err);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
             <div className="relative z-10 p-4 md:p-8 max-w-7xl mx-auto">
@@ -158,6 +194,19 @@ function PostList() {
                                 </button>
                             );
                         })}
+
+                        {/* Saved Posts Toggle */}
+                        <div className="md:ml-auto flex items-center pt-2 md:pt-0">
+                            <button
+                                onClick={() => setShowSavedOnly(!showSavedOnly)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${showSavedOnly
+                                    ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                            >
+                                <Bookmark className={`w-4 h-4 ${showSavedOnly ? 'fill-current' : ''}`} />
+                                Kaydedilenler
+                            </button>
+                        </div>
                     </div>
                 </header>
 
@@ -232,12 +281,36 @@ function PostList() {
                                             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-6 flex-1 line-clamp-3">
                                                 {truncateContent(post.content)}
                                             </p>
-                                            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800 mt-auto">
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{post.authorName || 'Öğrenci'}</span>
-                                                    {post.authorDepartment && <span className="text-xs text-slate-500 dark:text-slate-500">{post.authorDepartment}</span>}
+                                            <div className="flex flex-col gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 mt-auto">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{post.authorName || 'Öğrenci'}</span>
+                                                        {post.authorDepartment && <span className="text-xs text-slate-500 dark:text-slate-500">{post.authorDepartment}</span>}
+                                                    </div>
+                                                    <span className="text-xs font-medium text-blue-600 dark:text-blue-400 group-hover:underline">Devamı →</span>
                                                 </div>
-                                                <span className="text-xs font-medium text-blue-600 dark:text-blue-400 group-hover:underline">Devamı →</span>
+
+                                                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                                                    <div className="flex items-center gap-4">
+                                                        <button
+                                                            onClick={(e) => handleLike(e, post.id)}
+                                                            className={`flex items-center gap-1.5 transition-colors ${post.isLiked ? 'text-red-500 hover:text-red-600' : 'hover:text-red-500 dark:hover:text-red-400'}`}
+                                                        >
+                                                            <Heart className={`w-4 h-4 ${post.isLiked ? 'fill-current text-red-500' : ''}`} />
+                                                            <span className="text-xs font-medium">{post.likeCount || 0}</span>
+                                                        </button>
+                                                        <div className="flex items-center gap-1.5 hover:text-blue-500 transition-colors">
+                                                            <MessageCircle className="w-4 h-4" />
+                                                            <span className="text-xs font-medium">{post.commentCount || 0}</span>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => handleSave(e, post.id)}
+                                                        className={`transition-colors flex items-center gap-1 ${post.isSaved ? 'text-blue-500 hover:text-blue-600' : 'hover:text-blue-500 dark:hover:text-blue-400'}`}
+                                                    >
+                                                        <Bookmark className={`w-4 h-4 ${post.isSaved ? 'fill-current text-blue-500' : ''}`} />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
