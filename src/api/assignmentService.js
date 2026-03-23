@@ -67,6 +67,17 @@ export const submitAssignment = async (assignmentId, file) => {
   return response.data;
 };
 
+// Öğrenci - Teslimi sil
+export const deleteAssignmentSubmission = async (assignmentId) => {
+  const userId = localStorage.getItem('userId');
+  const response = await api.delete(`/assignments/${assignmentId}/submit`, {
+    headers: {
+      ...(userId ? { 'X-Authenticated-User-Id': userId } : {}),
+    },
+  });
+  return response.data;
+};
+
 // ==================== DOSYA İŞLEMLERİ ====================
 
 // Ödev dokümanı / teslim dosyası indirme

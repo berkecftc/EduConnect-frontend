@@ -15,7 +15,7 @@ import {
   getMyParticipationRequests, sendParticipationRequest, getClubEvents
 } from '../../api/eventService';
 import { getMyCourses, getAllCourses, applyToCourse, getMyApplications, getAnnouncements, downloadCourseFile } from '../../api/courseService';
-import { getMyAssignments, downloadAssignmentFile, submitAssignment } from '../../api/assignmentService';
+import { getMyAssignments, downloadAssignmentFile, submitAssignment, deleteAssignmentSubmission } from '../../api/assignmentService';
 
 import {
   Users, Calendar, LogOut, Loader2, Plus, QrCode, UserCheck, Crown, BookOpen,
@@ -331,11 +331,26 @@ function ClubOfficialDashboard() {
     try {
       await submitAssignment(assignmentId, file);
       showSuccess('Ödev başarıyla teslim edildi');
-      setSubmitFiles(prev => ({ ...prev, [assignmentId]: null }));
+      setSubmitFiles(prev => ({ ...prev, [assignmentId]: null, [assignmentId + '_editing']: false }));
       fetchAssignments();
     } catch (e) {
       const msg = e?.response?.data?.message || e?.response?.data || 'Ödev teslim edilemedi';
       alert(typeof msg === 'string' ? msg : 'Ödev teslim edilemedi');
+    } finally {
+      setSubmitting(prev => ({ ...prev, [assignmentId]: false }));
+    }
+  };
+
+  const handleDeleteSubmission = async (assignmentId) => {
+    if (!window.confirm('Ödev teslimini silmek istediğinize emin misiniz?')) return;
+    setSubmitting(prev => ({ ...prev, [assignmentId]: true }));
+    try {
+      await deleteAssignmentSubmission(assignmentId);
+      showSuccess('Ödev teslimi başarıyla silindi');
+      fetchAssignments();
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.response?.data || 'Ödev teslimi silinemedi';
+      alert(typeof msg === 'string' ? msg : 'Ödev teslimi silinemedi');
     } finally {
       setSubmitting(prev => ({ ...prev, [assignmentId]: false }));
     }
@@ -777,6 +792,8 @@ function ClubOfficialDashboard() {
                   <div className="divide-y divide-slate-100 dark:divide-slate-800">
                     {assignments.map((assignment, i) => {
                       const isOverdue = assignment.dueDate && new Date(assignment.dueDate) < new Date();
+                      const isSubmitted = Boolean(assignment.submitted || assignment.submission || assignment.submissionFileUrl || assignment.submittedFileUrl || assignment.status === 'SUBMITTED');
+                      
                       return (
                         <div key={assignment.id || i} className="p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -784,13 +801,13 @@ function ClubOfficialDashboard() {
                               <div className="flex items-center gap-3 flex-wrap">
                                 <h3 className="font-semibold text-slate-900 dark:text-slate-200 text-lg">{assignment.title}</h3>
                                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                  assignment.submitted
+                                  isSubmitted
                                     ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50'
                                     : isOverdue
                                       ? 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50'
                                       : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50'
                                 }`}>
-                                  {assignment.submitted ? 'Teslim Edildi' : isOverdue ? 'Süresi Geçti' : 'Bekliyor'}
+                                  {isSubmitted ? 'Teslim Edildi' : isOverdue ? 'Süresi Geçti' : 'Bekliyor'}
                                 </span>
                               </div>
                               {assignment.description && (
@@ -811,7 +828,7 @@ function ClubOfficialDashboard() {
                               </div>
 
                               {/* Grade Display */}
-                              {assignment.submitted && assignment.grade !== null && assignment.grade !== undefined && (
+                              {isSubmitted && assignment.grade !== null && assignment.grade !== undefined && (
                                 <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg">
                                   <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Not: {assignment.grade}</span>
                                 </div>
@@ -828,7 +845,7 @@ function ClubOfficialDashboard() {
                               )}
 
                               {/* First submission */}
-                              {!assignment.submitted && (
+                              {!isSubmitted && !isOverdue && (
                                 <div className="flex items-center gap-2">
                                   <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm">
                                     <Upload className="w-4 h-4 text-slate-500" />
@@ -849,7 +866,7 @@ function ClubOfficialDashboard() {
                               )}
 
                               {/* After submission: download + edit */}
-                              {assignment.submitted && (
+                              {isSubmitted && (
                                 <>
                                   {/* Download submitted file */}
                                   {(() => {
@@ -861,40 +878,54 @@ function ClubOfficialDashboard() {
                                     ) : null;
                                   })()}
 
-                                  {/* Edit toggle */}
-                                  {!submitFiles[assignment.id + '_editing'] ? (
-                                    <button
-                                      onClick={() => setSubmitFiles(prev => ({ ...prev, [assignment.id + '_editing']: true }))}
-                                      className="flex items-center gap-1.5 px-3 py-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors"
-                                    >
-                                      <Upload className="w-4 h-4" /> Gönderiyi Düzenle
-                                    </button>
-                                  ) : (
-                                    <div className="flex flex-col gap-2">
-                                      <div className="flex items-center gap-2">
-                                        <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm">
-                                          <Upload className="w-4 h-4 text-slate-500" />
-                                          <span className="text-slate-600 dark:text-slate-300 max-w-[150px] truncate">
-                                            {submitFiles[assignment.id]?.name || 'Yeni dosya seç'}
-                                          </span>
-                                          <input type="file" className="hidden" onChange={e => setSubmitFiles(prev => ({ ...prev, [assignment.id]: e.target.files[0] }))} />
-                                        </label>
-                                        <button
-                                          onClick={() => handleSubmitAssignment(assignment.id)}
-                                          disabled={!submitFiles[assignment.id] || submitting[assignment.id]}
-                                          className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors"
-                                        >
-                                          {submitting[assignment.id] ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                          Güncelle
-                                        </button>
-                                      </div>
-                                      <button
-                                        onClick={() => setSubmitFiles(prev => ({ ...prev, [assignment.id + '_editing']: false, [assignment.id]: null }))}
-                                        className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 self-end"
-                                      >
-                                        İptal
-                                      </button>
-                                    </div>
+                                  {/* Edit / Delete toggle */}
+                                  {!isOverdue && (
+                                    <>
+                                      {!submitFiles[assignment.id + '_editing'] ? (
+                                        <div className="flex gap-2">
+                                          <button
+                                            onClick={() => setSubmitFiles(prev => ({ ...prev, [assignment.id + '_editing']: true }))}
+                                            className="flex items-center gap-1.5 px-3 py-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors"
+                                          >
+                                            <Upload className="w-4 h-4" /> Düzenle
+                                          </button>
+                                          <button
+                                            onClick={() => handleDeleteSubmission(assignment.id)}
+                                            disabled={submitting[assignment.id]}
+                                            className="flex items-center gap-1.5 px-3 py-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 rounded-lg hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
+                                          >
+                                            {submitting[assignment.id] ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                            Sil
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex flex-col gap-2">
+                                          <div className="flex items-center gap-2">
+                                            <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm">
+                                              <Upload className="w-4 h-4 text-slate-500" />
+                                              <span className="text-slate-600 dark:text-slate-300 max-w-[150px] truncate">
+                                                {submitFiles[assignment.id]?.name || 'Yeni dosya seç'}
+                                              </span>
+                                              <input type="file" className="hidden" onChange={e => setSubmitFiles(prev => ({ ...prev, [assignment.id]: e.target.files[0] }))} />
+                                            </label>
+                                            <button
+                                              onClick={() => handleSubmitAssignment(assignment.id)}
+                                              disabled={!submitFiles[assignment.id] || submitting[assignment.id]}
+                                              className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors"
+                                            >
+                                              {submitting[assignment.id] ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                              Güncelle
+                                            </button>
+                                          </div>
+                                          <button
+                                            onClick={() => setSubmitFiles(prev => ({ ...prev, [assignment.id + '_editing']: false, [assignment.id]: null }))}
+                                            className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 self-end"
+                                          >
+                                            İptal
+                                          </button>
+                                        </div>
+                                      )}
+                                    </>
                                   )}
                                 </>
                               )}
