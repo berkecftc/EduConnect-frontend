@@ -733,11 +733,22 @@ function InstructorDashboard() {
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {assignmentSubmissions.map((sub, i) => {
                           const id = sub.submissionId || sub.id;
+                          // Eğer backend fallback olarak "Student-uuid" yolluyorsa onu gerçek bir isimle ezmeye çalış
+                          const backendName = sub.studentName || '';
+                          const isPlaceholder = backendName.startsWith('Student-');
+                          const displayName = sub.student?.name || sub.student?.fullName || sub.student?.studentName || (!isPlaceholder ? backendName : 'Öğrenci');
+                          
+                          const displayNo = sub.studentNumber || sub.student?.studentNumber || sub.student?.number || '';
+                          const displayEmail = sub.studentEmail || sub.student?.email || '';
+
                           return (
                           <tr key={id || i} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                             <td className="px-5 py-4">
-                              <p className="font-medium text-slate-900 dark:text-slate-200">{sub.studentName || sub.student?.name || 'Öğrenci'}</p>
-                              <p className="text-xs text-slate-400 dark:text-slate-500">{sub.studentEmail || sub.student?.email || ''}</p>
+                              <p className="font-medium text-slate-900 dark:text-slate-200">{displayName}</p>
+                              <p className="text-xs text-slate-400 dark:text-slate-500">
+                                {displayNo ? `No: ${displayNo}` : ''} 
+                                {displayEmail ? ` • ${displayEmail}` : ''}
+                              </p>
                             </td>
                             <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">
                               {sub.submittedAt || sub.submissionDate ? new Date(sub.submittedAt || sub.submissionDate).toLocaleString('tr-TR') : '-'}
