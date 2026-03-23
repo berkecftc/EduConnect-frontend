@@ -9,13 +9,17 @@ import {
   createAnnouncement, getAnnouncements, deleteAnnouncement,
   getEnrolledStudents, downloadCourseFile
 } from '../../api/courseService';
-import { getCourseSubmissions, gradeSubmission, downloadAssignmentFile } from '../../api/assignmentService';
+import {
+  createAssignment, getCourseAssignments, deleteAssignment,
+  getCourseSubmissions, getAssignmentSubmissions,
+  gradeSubmission, downloadAssignmentFile
+} from '../../api/assignmentService';
 import academicianService from '../../api/academicianService';
 
 import {
   GraduationCap, BookOpen, UserPlus, ClipboardCheck, LogOut, Loader2, Check, AlertCircle,
   Calendar, X, Eye, Clock, ChevronRight, Shield, ArrowUpDown, Bell, Users, FileDown, Trash2, Send, Megaphone,
-  PlusCircle, Image, Upload, User, Menu, Moon, Sun, Briefcase
+  PlusCircle, Image, Upload, User, Menu, Moon, Sun, Briefcase, FilePlus, FileText, ClipboardList
 } from 'lucide-react';
 
 function InstructorDashboard() {
@@ -45,6 +49,16 @@ function InstructorDashboard() {
   const [enrolledStudents, setEnrolledStudents] = useState([]);
   const [selectedCourseForStudents, setSelectedCourseForStudents] = useState('');
 
+  // Assignment States
+  const [assignmentForm, setAssignmentForm] = useState({ title: '', description: '', dueDate: '', courseId: '' });
+  const [assignmentFile, setAssignmentFile] = useState(null);
+  const [courseAssignments, setCourseAssignments] = useState([]);
+  const [selectedCourseForAssignments, setSelectedCourseForAssignments] = useState('');
+  const [assignmentSubmissions, setAssignmentSubmissions] = useState([]);
+  const [selectedAssignmentForSubs, setSelectedAssignmentForSubs] = useState('');
+  const [selectedCourseForSubs, setSelectedCourseForSubs] = useState('');
+  const [courseAssignmentsForSubs, setCourseAssignmentsForSubs] = useState([]);
+
   const [enrollForm, setEnrollForm] = useState({ courseId: '', studentEmail: '' });
   const [courseForm, setCourseForm] = useState({ title: '', code: '', description: '', credit: 3, semester: '', capacity: 30 });
   const [courseImage, setCourseImage] = useState(null);
@@ -53,7 +67,7 @@ function InstructorDashboard() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState({
-    courses: true, submissions: false, enrolling: false, grading: {}, events: false, apps: false, announcements: false, students: false, role: false
+    courses: true, submissions: false, enrolling: false, grading: {}, events: false, apps: false, announcements: false, students: false, role: false, assignments: false, assignmentSubs: false
   });
 
   // Initial Fetches
@@ -67,6 +81,9 @@ function InstructorDashboard() {
     if (activeTab === 'applications' && courses.length > 0 && !selectedCourseForApps) setSelectedCourseForApps(courses[0].id);
     if (activeTab === 'announcements' && courses.length > 0 && !selectedCourseForAnnouncements) setSelectedCourseForAnnouncements(courses[0].id);
     if (activeTab === 'enrolledStudents' && courses.length > 0 && !selectedCourseForStudents) setSelectedCourseForStudents(courses[0].id);
+    if (activeTab === 'courseAssignments' && courses.length > 0 && !selectedCourseForAssignments) setSelectedCourseForAssignments(courses[0].id);
+    if (activeTab === 'assignmentSubmissions' && courses.length > 0 && !selectedCourseForSubs) setSelectedCourseForSubs(courses[0].id);
+    if (activeTab === 'createAssignment' && courses.length > 0 && !assignmentForm.courseId) setAssignmentForm(prev => ({ ...prev, courseId: courses[0].id }));
   }, [activeTab, courses]);
 
   // Load contents when tab or course changes for those tabs
@@ -83,10 +100,16 @@ function InstructorDashboard() {
   }, [selectedCourseForStudents, activeTab]);
 
   useEffect(() => {
-    if (activeTab === 'applications' && courses.length > 0 && !selectedCourseForApps) setSelectedCourseForApps(courses[0].id);
-    if (activeTab === 'announcements' && courses.length > 0 && !selectedCourseForAnnouncements) setSelectedCourseForAnnouncements(courses[0].id);
-    if (activeTab === 'enrolledStudents' && courses.length > 0 && !selectedCourseForStudents) setSelectedCourseForStudents(courses[0].id);
-  }, [activeTab, courses]);
+    if (activeTab === 'courseAssignments' && selectedCourseForAssignments) fetchCourseAssignmentsList();
+  }, [selectedCourseForAssignments, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'assignmentSubmissions' && selectedCourseForSubs) fetchCourseAssignmentsForSubs();
+  }, [selectedCourseForSubs, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'assignmentSubmissions' && selectedAssignmentForSubs) fetchAssignmentSubmissionsList();
+  }, [selectedAssignmentForSubs]);
 
   const showSuccess = (msg) => {
     setSuccessMessage(msg);
@@ -114,13 +137,13 @@ function InstructorDashboard() {
   };
 
   const handleApproveApplication = async (appId) => {
-    try { await approveApplication(selectedCourseForApps, appId); fetchPendingApplications(); showSuccess('Başvuru onaylandı'); }
-    catch (e) { alert(e?.response?.data?.message || 'Hata'); }
+    try { await approveApplication(appId); fetchPendingApplications(); showSuccess('Başvuru onaylandı'); }
+    catch (e) { alert(e?.response?.data?.message || e?.response?.data || 'Hata'); }
   };
 
   const handleRejectApplication = async (appId) => {
-    try { await rejectApplication(selectedCourseForApps, appId); fetchPendingApplications(); showSuccess('Başvuru reddedildi'); }
-    catch (e) { alert(e?.response?.data?.message || 'Hata'); }
+    try { await rejectApplication(appId); fetchPendingApplications(); showSuccess('Başvuru reddedildi'); }
+    catch (e) { alert(e?.response?.data?.message || e?.response?.data || 'Hata'); }
   };
 
   const fetchAnnouncementsList = async () => {
@@ -143,7 +166,7 @@ function InstructorDashboard() {
 
   const handleDeleteAnnouncement = async (id) => {
     if (!window.confirm("Silmek istediğinize emin misiniz?")) return;
-    try { await deleteAnnouncement(selectedCourseForAnnouncements, id); fetchAnnouncementsList(); showSuccess('Silindi'); }
+    try { await deleteAnnouncement(id); fetchAnnouncementsList(); showSuccess('Silindi'); }
     catch (e) { alert('Hata'); }
   };
 
@@ -152,6 +175,105 @@ function InstructorDashboard() {
     setLoading(prev => ({ ...prev, students: true }));
     try { setEnrolledStudents((await getEnrolledStudents(selectedCourseForStudents)) || []); } catch { setEnrolledStudents([]); }
     finally { setLoading(prev => ({ ...prev, students: false })); }
+  };
+
+  // ==================== ASSIGNMENT API CALLS ====================
+
+  const handleCreateAssignment = async (e) => {
+    e.preventDefault();
+    if (!assignmentForm.title || !assignmentForm.courseId) return;
+    try {
+      await createAssignment(assignmentForm, assignmentFile);
+      showSuccess('Ödev başarıyla oluşturuldu');
+      setAssignmentForm({ title: '', description: '', dueDate: '', courseId: courses[0]?.id || '' });
+      setAssignmentFile(null);
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.response?.data || 'Ödev oluşturulamadı';
+      alert(typeof msg === 'string' ? msg : 'Ödev oluşturulamadı');
+    }
+  };
+
+  const fetchCourseAssignmentsList = async () => {
+    if (!selectedCourseForAssignments) return;
+    setLoading(prev => ({ ...prev, assignments: true }));
+    try {
+      setCourseAssignments((await getCourseAssignments(selectedCourseForAssignments)) || []);
+    } catch { setCourseAssignments([]); }
+    finally { setLoading(prev => ({ ...prev, assignments: false })); }
+  };
+
+  const handleDeleteAssignment = async (id) => {
+    if (!window.confirm('Bu ödevi silmek istediğinize emin misiniz?')) return;
+    try {
+      await deleteAssignment(id);
+      showSuccess('Ödev silindi');
+      fetchCourseAssignmentsList();
+    } catch (e) { alert(e?.response?.data?.message || 'Silinemedi'); }
+  };
+
+  const fetchCourseAssignmentsForSubs = async () => {
+    if (!selectedCourseForSubs) return;
+    try {
+      const data = (await getCourseAssignments(selectedCourseForSubs)) || [];
+      setCourseAssignmentsForSubs(data);
+      if (data.length > 0) setSelectedAssignmentForSubs(data[0].id);
+      else { setSelectedAssignmentForSubs(''); setAssignmentSubmissions([]); }
+    } catch { setCourseAssignmentsForSubs([]); setAssignmentSubmissions([]); }
+  };
+
+  const fetchAssignmentSubmissionsList = async () => {
+    if (!selectedAssignmentForSubs) return;
+    setLoading(prev => ({ ...prev, assignmentSubs: true }));
+    try {
+      setAssignmentSubmissions((await getAssignmentSubmissions(selectedAssignmentForSubs)) || []);
+    } catch { setAssignmentSubmissions([]); }
+    finally { setLoading(prev => ({ ...prev, assignmentSubs: false })); }
+  };
+
+  const handleGradeSubmission = async (submissionId) => {
+    const grade = grades[submissionId];
+    if (grade === undefined || grade === '') return;
+    setLoading(prev => ({ ...prev, grading: { ...prev.grading, [submissionId]: true } }));
+    try {
+      await gradeSubmission(submissionId, { grade: Number(grade) });
+      showSuccess('Not verildi');
+      fetchAssignmentSubmissionsList();
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.response?.data || 'Not verilemedi';
+      alert(typeof msg === 'string' ? msg : 'Not verilemedi');
+    } finally {
+      setLoading(prev => ({ ...prev, grading: { ...prev.grading, [submissionId]: false } }));
+    }
+  };
+
+  const handleDownloadFile = async (fileUrl, fileName) => {
+    try {
+      const response = await downloadAssignmentFile(fileUrl);
+      
+      let finalName = fileName || 'dosya';
+      if (!finalName.includes('.') && fileUrl) {
+         const originalName = fileUrl.split('?')[0].split('/').pop();
+         const extIndex = originalName.lastIndexOf('.');
+         if (extIndex !== -1) {
+            finalName += originalName.substring(extIndex); // örneğin: ".docx"
+         }
+      }
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', finalName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      if (e?.response?.status === 404) {
+        alert('Dosya bulunamadı');
+      } else {
+        alert('Dosya indirilemedi');
+      }
+    }
   };
 
   const fetchEvents = async () => {
@@ -207,6 +329,9 @@ function InstructorDashboard() {
     { id: 'enrolledStudents', label: 'Kayıtlı Öğrenciler', icon: Users, type: 'academic' },
     { id: 'announcements', label: 'Duyurular', icon: Megaphone, type: 'academic' },
     { id: 'createCourse', label: 'Yeni Ders Oluştur', icon: PlusCircle, type: 'academic' },
+    { id: 'createAssignment', label: 'Ödev Oluştur', icon: FilePlus, type: 'academic' },
+    { id: 'courseAssignments', label: 'Ders Ödevleri', icon: FileText, type: 'academic' },
+    { id: 'assignmentSubmissions', label: 'Ödev Teslimleri', icon: ClipboardList, type: 'academic' },
     { id: 'pendingEvents', label: 'Kulüp Etkinlik Onayları', icon: Calendar, count: pendingEvents.length, type: 'admin' },
     { id: 'roleRequests', label: 'Görev Talepleri', icon: Shield, count: roleChangeRequests.length, type: 'admin' },
   ];
@@ -457,7 +582,7 @@ function InstructorDashboard() {
           </div>
         )}
 
-        {/* MORE TABS LIKE APPLICATIONS, CREATE COURSE CAN GO HERE IN THE SAME FORMAT */}
+        {/* CREATE COURSE */}
         {activeTab === 'createCourse' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Yeni Ders Oluştur</h1>
@@ -469,6 +594,228 @@ function InstructorDashboard() {
                 <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-lg text-sm">Oluştur</button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* CREATE ASSIGNMENT */}
+        {activeTab === 'createAssignment' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Ödev Oluştur</h1>
+            <form onSubmit={handleCreateAssignment} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-6 max-w-xl">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-slate-500 dark:text-slate-400">Ders Seçin</label>
+                  <select required value={assignmentForm.courseId} onChange={e => setAssignmentForm({ ...assignmentForm, courseId: e.target.value })} className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2 dark:bg-slate-800 dark:text-white">
+                    <option value="">-- Ders seçin --</option>
+                    {courses.map(c => <option key={c.id} value={c.id}>{c.name || c.title} ({c.code})</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm text-slate-500 dark:text-slate-400">Ödev Başlığı</label>
+                  <input required value={assignmentForm.title} onChange={e => setAssignmentForm({ ...assignmentForm, title: e.target.value })} className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2 dark:bg-slate-800 dark:text-white" />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-500 dark:text-slate-400">Açıklama</label>
+                  <textarea value={assignmentForm.description} onChange={e => setAssignmentForm({ ...assignmentForm, description: e.target.value })} className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2 dark:bg-slate-800 dark:text-white h-24" />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-500 dark:text-slate-400">Son Teslim Tarihi</label>
+                  <input type="datetime-local" value={assignmentForm.dueDate} onChange={e => setAssignmentForm({ ...assignmentForm, dueDate: e.target.value })} className="mt-1 w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2 dark:bg-slate-800 dark:text-white" />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-500 dark:text-slate-400">Ek Dosya (Opsiyonel)</label>
+                  <div className="mt-1 flex items-center gap-3">
+                    <label className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      <Upload className="w-4 h-4 text-slate-500" />
+                      <span className="text-sm text-slate-600 dark:text-slate-300">{assignmentFile ? assignmentFile.name : 'Dosya seç'}</span>
+                      <input type="file" className="hidden" onChange={e => setAssignmentFile(e.target.files[0])} />
+                    </label>
+                    {assignmentFile && (
+                      <button type="button" onClick={() => setAssignmentFile(null)} className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded">
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-lg text-sm flex items-center justify-center gap-2">
+                  <FilePlus className="w-4 h-4" /> Ödev Oluştur
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* COURSE ASSIGNMENTS */}
+        {activeTab === 'courseAssignments' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Ders Ödevleri</h1>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden p-6 mb-6">
+              <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">Ders Seçin</label>
+              <select value={selectedCourseForAssignments} onChange={e => setSelectedCourseForAssignments(e.target.value)} className="w-full md:w-1/2 p-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white">
+                {courses.map(c => <option key={c.id} value={c.id}>{c.name || c.title} ({c.code})</option>)}
+              </select>
+            </div>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+              {loading.assignments ? <div className="py-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-emerald-500" /></div> :
+                courseAssignments.length === 0 ? <p className="text-slate-500 dark:text-slate-400 text-center py-8">Bu derse ait ödev yok</p> : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {courseAssignments.map((assignment, i) => (
+                      <div key={assignment.id || i} className="p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                          <div className="flex-1">
+                            <h3 className="font-bold text-slate-900 dark:text-slate-200 text-lg">{assignment.title}</h3>
+                            {assignment.description && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{assignment.description}</p>}
+                            <div className="flex flex-wrap gap-3 mt-2">
+                              {assignment.dueDate && (
+                                <span className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                                  <Clock className="w-3.5 h-3.5" /> Son Teslim: {new Date(assignment.dueDate).toLocaleString('tr-TR')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {assignment.fileUrl && (
+                              <button onClick={() => handleDownloadFile(assignment.fileUrl, assignment.title + '_dosya')} className="px-3 py-2 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg text-sm hover:bg-blue-100 dark:hover:bg-blue-500/20 flex items-center gap-1.5 transition-colors">
+                                <FileDown className="w-4 h-4" /> İndir
+                              </button>
+                            )}
+                            <button onClick={() => handleDeleteAssignment(assignment.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+
+        {/* ASSIGNMENT SUBMISSIONS */}
+        {activeTab === 'assignmentSubmissions' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Ödev Teslimleri & Notlandırma</h1>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden p-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">Ders Seçin</label>
+                  <select value={selectedCourseForSubs} onChange={e => { setSelectedCourseForSubs(e.target.value); setSelectedAssignmentForSubs(''); setAssignmentSubmissions([]); }} className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white">
+                    {courses.map(c => <option key={c.id} value={c.id}>{c.name || c.title} ({c.code})</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">Ödev Seçin</label>
+                  <select value={selectedAssignmentForSubs} onChange={e => setSelectedAssignmentForSubs(e.target.value)} className="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white">
+                    {courseAssignmentsForSubs.length === 0 ? <option value="">Bu derse ait ödev yok</option> :
+                      courseAssignmentsForSubs.map(a => <option key={a.id} value={a.id}>{a.title}</option>)
+                    }
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+              {loading.assignmentSubs ? <div className="py-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-emerald-500" /></div> :
+                !selectedAssignmentForSubs ? <p className="text-slate-500 dark:text-slate-400 text-center py-8">Teslimlerini görmek için ödev seçin</p> :
+                assignmentSubmissions.length === 0 ? <p className="text-slate-500 dark:text-slate-400 text-center py-8">Bu ödeve henüz teslim yok</p> : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800/50">
+                          <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Öğrenci</th>
+                          <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Teslim Tarihi</th>
+                          <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Dosya</th>
+                          <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Mevcut Not</th>
+                          <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Not Ver</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {assignmentSubmissions.map((sub, i) => {
+                          const id = sub.submissionId || sub.id;
+                          return (
+                          <tr key={id || i} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                            <td className="px-5 py-4">
+                              <p className="font-medium text-slate-900 dark:text-slate-200">{sub.studentName || sub.student?.name || 'Öğrenci'}</p>
+                              <p className="text-xs text-slate-400 dark:text-slate-500">{sub.studentEmail || sub.student?.email || ''}</p>
+                            </td>
+                            <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">
+                              {sub.submittedAt || sub.submissionDate ? new Date(sub.submittedAt || sub.submissionDate).toLocaleString('tr-TR') : '-'}
+                            </td>
+                            <td className="px-5 py-4">
+                              {(() => {
+                                const url = sub.submissionFileUrl || sub.submittedFileUrl || sub.fileUrl || sub.filePath || sub.file;
+                                return url ? (
+                                  <button onClick={() => handleDownloadFile(url, `teslim_${sub.studentName || id}`)} className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 text-sm hover:underline">
+                                    <FileDown className="w-4 h-4" /> İndir
+                                  </button>
+                                ) : <span className="text-slate-400 text-sm">—</span>;
+                              })()}
+                            </td>
+                            <td className="px-5 py-4">
+                              {sub.grade !== null && sub.grade !== undefined ? (
+                                <span className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-sm font-semibold rounded-lg">{sub.grade}</span>
+                              ) : <span className="text-slate-400 text-sm">Notlanmadı</span>}
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min="0" max="100" step="1"
+                                  placeholder="0-100"
+                                  value={grades[id] || ''}
+                                  onChange={e => setGrades({ ...grades, [id]: e.target.value })}
+                                  className="w-20 px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-center text-sm dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                                />
+                                <button
+                                  onClick={() => handleGradeSubmission(id)}
+                                  disabled={loading.grading[id]}
+                                  className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+                                >
+                                  {loading.grading[id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                  Kaydet
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+
+        {/* ROLE REQUESTS */}
+        {activeTab === 'roleRequests' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white flex items-center gap-3">
+              Görev Talepleri
+              <span className="bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400 text-lg px-3 py-1 rounded-full">{roleChangeRequests.length}</span>
+            </h1>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+              {loading.role ? <div className="py-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-emerald-500" /></div> :
+                roleChangeRequests.length === 0 ? <p className="text-slate-500 dark:text-slate-400 text-center py-8">Bekleyen görev talebi yok</p> : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {roleChangeRequests.map((req, i) => (
+                      <div key={req.id || i} className="p-4 flex flex-col md:flex-row justify-between items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <div>
+                          <h3 className="font-bold text-slate-900 dark:text-slate-200">{req.userName || req.studentName || 'Kullanıcı'}</h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                            {req.clubName || 'Kulüp'} • {req.requestedRole || req.newRole || 'Görev'}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleApproveRoleChange(req.id)} className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700">Onayla</button>
+                          <button onClick={() => { /* reject handler could go here */ }} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-sm">Reddet</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
           </div>
         )}
       </main>

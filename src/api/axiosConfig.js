@@ -15,6 +15,13 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Eğer gönderilen data FormData ise (dosya yükleme işlemi),
+    // global 'application/json' header'ını sil ki tarayıcı otomatik 'multipart/form-data; boundary=...' eklesin.
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+    
     return config;
   },
   (error) => Promise.reject(error)

@@ -15,13 +15,13 @@ import {
   getMyParticipationRequests, sendParticipationRequest, getClubEvents
 } from '../../api/eventService';
 import { getMyCourses, getAllCourses, applyToCourse, getMyApplications, getAnnouncements, downloadCourseFile } from '../../api/courseService';
-import { getMyAssignments, downloadAssignmentFile } from '../../api/assignmentService';
+import { getMyAssignments, downloadAssignmentFile, submitAssignment } from '../../api/assignmentService';
 
 import {
   Users, Calendar, LogOut, Loader2, Plus, QrCode, UserCheck, Crown, BookOpen,
   ClipboardList, Check, AlertCircle, X, UserPlus, Shield, Trash2, ArrowUpDown,
   Send, Image, CalendarPlus, Bell, FileDown, User, Menu, Moon, Sun, ChevronRight,
-  Briefcase
+  Briefcase, GraduationCap, Upload, Clock
 } from 'lucide-react';
 
 function ClubOfficialDashboard() {
@@ -59,13 +59,15 @@ function ClubOfficialDashboard() {
   // Student States
   const [courses, setCourses] = useState([]);
   const [assignments, setAssignments] = useState([]);
-  const [allAssignments, setAllAssignments] = useState([]);
   const [clubs, setClubs] = useState([]);
   const [events, setEvents] = useState([]);
   const [membershipRequests, setMembershipRequests] = useState([]);
   const [participationRequests, setParticipationRequests] = useState([]);
   const [clubEventsForStudent, setClubEventsForStudent] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [allCourses, setAllCourses] = useState([]);
+  const [myApplications, setMyApplications] = useState([]);
+  const [applyingCourse, setApplyingCourse] = useState({});
 
   const [loading, setLoading] = useState({
     managedClubs: true, boardMembers: false, myEvents: true, eventRegistrations: false,
@@ -73,10 +75,13 @@ function ClubOfficialDashboard() {
     verifyingQr: false, pendingRequests: false, approvingRequest: false,
     eventParticipationRequests: true, roleChangeRequests: false, creatingRoleChange: false,
     removingRole: false, membershipRequests: true, participationRequests: true, clubEventsForStudent: true,
+    allCourses: false, myApplications: false,
   });
 
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
+  const [submitFiles, setSubmitFiles] = useState({});
+  const [submitting, setSubmitting] = useState({});
 
   // Initial Fetches
   useEffect(() => {
@@ -92,6 +97,13 @@ function ClubOfficialDashboard() {
     fetchStudentMembershipRequests();
     fetchStudentParticipationRequests();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'courseApplications') {
+      fetchAllCoursesForApply();
+      fetchMyApplicationsForStudent();
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (!loading.clubs && clubs.length > 0) fetchStudentClubEvents();
@@ -227,7 +239,6 @@ function ClubOfficialDashboard() {
     try {
       const data = await getMyCourses();
       setCourses(data || []);
-      filterAssignmentsByCourses(data || []);
     } catch { setErrors(prev => ({ ...prev, courses: 'Hata' })); }
     finally { setLoading(prev => ({ ...prev, courses: false })); }
   };
@@ -235,16 +246,9 @@ function ClubOfficialDashboard() {
   const fetchAssignments = async () => {
     try {
       const data = await getMyAssignments();
-      setAllAssignments(data || []);
-      if (courses.length > 0) filterAssignmentsByCourses(courses, data || []);
+      setAssignments(data || []);
     } catch { setErrors(prev => ({ ...prev, assignments: 'Hata' })); }
     finally { setLoading(prev => ({ ...prev, assignments: false })); }
-  };
-
-  const filterAssignmentsByCourses = (cData = courses, aData = allAssignments) => {
-    if (!cData.length || !aData.length) return;
-    const ids = cData.map(c => c.id || c.courseId || c.course?.id).filter(Boolean);
-    setAssignments(aData.filter(a => ids.includes(a.courseId || a.course?.id)));
   };
 
   const fetchClubs = async () => {
@@ -291,6 +295,82 @@ function ClubOfficialDashboard() {
     finally { setLoading(prev => ({ ...prev, clubEventsForStudent: false })); }
   };
 
+  // Course Application Functions
+  const fetchAllCoursesForApply = async () => {
+    setLoading(prev => ({ ...prev, allCourses: true }));
+    try { setAllCourses((await getAllCourses()) || []); }
+    catch { setAllCourses([]); }
+    finally { setLoading(prev => ({ ...prev, allCourses: false })); }
+  };
+
+  const fetchMyApplicationsForStudent = async () => {
+    setLoading(prev => ({ ...prev, myApplications: true }));
+    try { setMyApplications((await getMyApplications()) || []); }
+    catch { setMyApplications([]); }
+    finally { setLoading(prev => ({ ...prev, myApplications: false })); }
+  };
+
+  const handleApplyToCourse = async (courseId) => {
+    setApplyingCourse(prev => ({ ...prev, [courseId]: true }));
+    try {
+      await applyToCourse(courseId);
+      showSuccess('Ders başvurusu gönderildi!');
+      fetchMyApplicationsForStudent();
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.response?.data || 'Başvuru yapılamadı';
+      alert(typeof msg === 'string' ? msg : 'Başvuru yapılamadı');
+    } finally {
+      setApplyingCourse(prev => ({ ...prev, [courseId]: false }));
+    }
+  };
+
+  const handleSubmitAssignment = async (assignmentId) => {
+    const file = submitFiles[assignmentId];
+    if (!file) { alert('Lütfen bir dosya seçin'); return; }
+    setSubmitting(prev => ({ ...prev, [assignmentId]: true }));
+    try {
+      await submitAssignment(assignmentId, file);
+      showSuccess('Ödev başarıyla teslim edildi');
+      setSubmitFiles(prev => ({ ...prev, [assignmentId]: null }));
+      fetchAssignments();
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.response?.data || 'Ödev teslim edilemedi';
+      alert(typeof msg === 'string' ? msg : 'Ödev teslim edilemedi');
+    } finally {
+      setSubmitting(prev => ({ ...prev, [assignmentId]: false }));
+    }
+  };
+
+  const handleDownloadFile = async (fileUrl, fileName) => {
+    try {
+      const response = await downloadAssignmentFile(fileUrl);
+
+      let finalName = fileName || 'dosya';
+      if (!finalName.includes('.') && fileUrl) {
+         const originalName = fileUrl.split('?')[0].split('/').pop();
+         const extIndex = originalName.lastIndexOf('.');
+         if (extIndex !== -1) {
+            finalName += originalName.substring(extIndex); // örneğin: ".docx"
+         }
+      }
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', finalName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      if (e?.response?.status === 404) {
+        alert('Dosya bulunamadı');
+      } else {
+        alert('Dosya indirilemedi');
+      }
+    }
+  };
+
   // --- UI COMPONENTS ---
   const CardLoader = () => <div className="flex justify-center py-8"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>;
   const EmptyState = ({ msg, Icon = BookOpen }) => (
@@ -311,6 +391,7 @@ function ClubOfficialDashboard() {
 
     // Student Tools
     { id: 'courses', label: 'Kurslarım', icon: BookOpen, type: 'student' },
+    { id: 'courseApplications', label: 'Ders Başvurusu', icon: GraduationCap, type: 'student' },
     { id: 'assignments', label: 'Ödevlerim', icon: ClipboardList, type: 'student' },
     { id: 'clubs', label: 'Üye Olduğum Kulüpler', icon: Users, type: 'student' }
   ];
@@ -601,6 +682,91 @@ function ClubOfficialDashboard() {
           </div>
         )}
 
+        {/* COURSE APPLICATIONS */}
+        {activeTab === 'courseApplications' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Ders Başvurusu</h1>
+
+            {/* Mevcut Dersler */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden mb-6">
+              <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+                <h2 className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-blue-500" /> Mevcut Dersler
+                </h2>
+              </div>
+              {loading.allCourses ? <CardLoader /> :
+                allCourses.length === 0 ? <EmptyState msg="Mevcut ders bulunamadı" icon={BookOpen} /> : (() => {
+                  const enrolledIds = courses.map(c => c.id || c.courseId).filter(Boolean);
+                  const appliedIds = myApplications.map(a => a.courseId || a.course?.id).filter(Boolean);
+                  const availableCourses = allCourses.filter(c => !enrolledIds.includes(c.id) && !appliedIds.includes(c.id));
+                  return availableCourses.length === 0 ? (
+                    <div className="p-8 text-center text-slate-500 dark:text-slate-400">Başvurulabilecek ders kalmadı</div>
+                  ) : (
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {availableCourses.map((course, i) => (
+                        <div key={course.id || i} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                          <div className="flex-1">
+                            <h3 className="font-medium text-slate-900 dark:text-slate-200">{course.name || course.title}</h3>
+                            <div className="flex flex-wrap gap-3 mt-1">
+                              {course.code && <span className="text-xs text-slate-500 dark:text-slate-400">Kod: {course.code}</span>}
+                              {course.credit && <span className="text-xs text-slate-500 dark:text-slate-400">{course.credit} Kredi</span>}
+                              {course.capacity && <span className="text-xs text-slate-500 dark:text-slate-400">Kapasite: {course.capacity}</span>}
+                            </div>
+                            {course.description && <p className="text-sm text-slate-400 dark:text-slate-500 mt-1 line-clamp-1">{course.description}</p>}
+                          </div>
+                          <button
+                            onClick={() => handleApplyToCourse(course.id)}
+                            disabled={applyingCourse[course.id]}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors whitespace-nowrap"
+                          >
+                            {applyingCourse[course.id] ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                            Başvur
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()
+              }
+            </div>
+
+            {/* Başvurularım */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+                <h2 className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-2">
+                  <ClipboardList className="w-5 h-5 text-blue-500" /> Başvurularım
+                </h2>
+              </div>
+              {loading.myApplications ? <CardLoader /> :
+                myApplications.length === 0 ? <EmptyState msg="Henüz başvurunuz yok" icon={Send} /> : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {myApplications.map((app, i) => {
+                      const statusMap = {
+                        PENDING: { label: 'Bekliyor', classes: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' },
+                        APPROVED: { label: 'Onaylandı', classes: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50' },
+                        REJECTED: { label: 'Reddedildi', classes: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50' },
+                      };
+                      const status = statusMap[app.status] || statusMap.PENDING;
+                      return (
+                        <div key={app.id || i} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                          <div>
+                            <h3 className="font-medium text-slate-900 dark:text-slate-200">{app.courseName || app.course?.name || app.course?.title || 'Ders'}</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              Başvuru: {app.applicationDate || app.createdAt ? new Date(app.applicationDate || app.createdAt).toLocaleDateString('tr-TR') : '-'}
+                            </p>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${status.classes}`}>
+                            {status.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+
         {/* ASSIGNMENTS */}
         {activeTab === 'assignments' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -609,22 +775,134 @@ function ClubOfficialDashboard() {
               {loading.assignments ? <CardLoader /> :
                 assignments.length === 0 ? <EmptyState msg="Aktif ödev bulunmuyor" icon={ClipboardList} /> : (
                   <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {assignments.map((assignment, i) => (
-                      <div key={assignment.id || i} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                          <h3 className="font-medium text-slate-900 dark:text-slate-200">{assignment.title}</h3>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                            Son Teslim: {new Date(assignment.dueDate).toLocaleDateString('tr-TR')}
-                          </p>
+                    {assignments.map((assignment, i) => {
+                      const isOverdue = assignment.dueDate && new Date(assignment.dueDate) < new Date();
+                      return (
+                        <div key={assignment.id || i} className="p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 flex-wrap">
+                                <h3 className="font-semibold text-slate-900 dark:text-slate-200 text-lg">{assignment.title}</h3>
+                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  assignment.submitted
+                                    ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50'
+                                    : isOverdue
+                                      ? 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50'
+                                      : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50'
+                                }`}>
+                                  {assignment.submitted ? 'Teslim Edildi' : isOverdue ? 'Süresi Geçti' : 'Bekliyor'}
+                                </span>
+                              </div>
+                              {assignment.description && (
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">{assignment.description}</p>
+                              )}
+                              <div className="flex flex-wrap items-center gap-4 mt-2">
+                                {assignment.dueDate && (
+                                  <span className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                                    <Clock className="w-3.5 h-3.5" />
+                                    Son Teslim: {new Date(assignment.dueDate).toLocaleString('tr-TR')}
+                                  </span>
+                                )}
+                                {assignment.courseName && (
+                                  <span className="text-xs text-slate-400 dark:text-slate-500">
+                                    Ders: {assignment.courseName}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Grade Display */}
+                              {assignment.submitted && assignment.grade !== null && assignment.grade !== undefined && (
+                                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg">
+                                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Not: {assignment.grade}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex flex-col gap-2 md:items-end">
+                              {/* Download assignment file */}
+                              {(assignment.fileUrl || assignment.assignmentFileUrl) && (
+                                <button onClick={() => handleDownloadFile(assignment.fileUrl || assignment.assignmentFileUrl, assignment.title + '_dosya')} className="flex items-center gap-1.5 px-3 py-2 text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors">
+                                  <FileDown className="w-4 h-4" /> Ödev Dosyasını İndir
+                                </button>
+                              )}
+
+                              {/* First submission */}
+                              {!assignment.submitted && (
+                                <div className="flex items-center gap-2">
+                                  <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm">
+                                    <Upload className="w-4 h-4 text-slate-500" />
+                                    <span className="text-slate-600 dark:text-slate-300 max-w-[150px] truncate">
+                                      {submitFiles[assignment.id]?.name || 'Dosya seç'}
+                                    </span>
+                                    <input type="file" className="hidden" onChange={e => setSubmitFiles(prev => ({ ...prev, [assignment.id]: e.target.files[0] }))} />
+                                  </label>
+                                  <button
+                                    onClick={() => handleSubmitAssignment(assignment.id)}
+                                    disabled={!submitFiles[assignment.id] || submitting[assignment.id]}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors"
+                                  >
+                                    {submitting[assignment.id] ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                    Teslim Et
+                                  </button>
+                                </div>
+                              )}
+
+                              {/* After submission: download + edit */}
+                              {assignment.submitted && (
+                                <>
+                                  {/* Download submitted file */}
+                                  {(() => {
+                                    const subUrl = assignment.submissionFileUrl || assignment.submittedFileUrl || assignment.submission?.fileUrl;
+                                    return subUrl ? (
+                                      <button onClick={() => handleDownloadFile(subUrl, 'teslimim_' + assignment.title)} className="flex items-center gap-1.5 px-3 py-2 text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors">
+                                        <FileDown className="w-4 h-4" /> Teslimimi İndir
+                                      </button>
+                                    ) : null;
+                                  })()}
+
+                                  {/* Edit toggle */}
+                                  {!submitFiles[assignment.id + '_editing'] ? (
+                                    <button
+                                      onClick={() => setSubmitFiles(prev => ({ ...prev, [assignment.id + '_editing']: true }))}
+                                      className="flex items-center gap-1.5 px-3 py-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors"
+                                    >
+                                      <Upload className="w-4 h-4" /> Gönderiyi Düzenle
+                                    </button>
+                                  ) : (
+                                    <div className="flex flex-col gap-2">
+                                      <div className="flex items-center gap-2">
+                                        <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm">
+                                          <Upload className="w-4 h-4 text-slate-500" />
+                                          <span className="text-slate-600 dark:text-slate-300 max-w-[150px] truncate">
+                                            {submitFiles[assignment.id]?.name || 'Yeni dosya seç'}
+                                          </span>
+                                          <input type="file" className="hidden" onChange={e => setSubmitFiles(prev => ({ ...prev, [assignment.id]: e.target.files[0] }))} />
+                                        </label>
+                                        <button
+                                          onClick={() => handleSubmitAssignment(assignment.id)}
+                                          disabled={!submitFiles[assignment.id] || submitting[assignment.id]}
+                                          className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors"
+                                        >
+                                          {submitting[assignment.id] ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                          Güncelle
+                                        </button>
+                                      </div>
+                                      <button
+                                        onClick={() => setSubmitFiles(prev => ({ ...prev, [assignment.id + '_editing']: false, [assignment.id]: null }))}
+                                        className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 self-end"
+                                      >
+                                        İptal
+                                      </button>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${assignment.submitted
-                          ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50'
-                          : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50'
-                          }`}>
-                          {assignment.submitted ? 'Teslim Edildi' : 'Bekliyor'}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
             </div>

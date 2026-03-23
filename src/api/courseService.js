@@ -27,9 +27,7 @@ export const createCourse = async (courseData, file) => {
   if (file) {
     formData.append('file', file);
   }
-  const response = await api.post('/courses', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const response = await api.post('/courses', formData);
   return response.data;
 };
 
