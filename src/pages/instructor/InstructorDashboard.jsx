@@ -21,6 +21,7 @@ import {
   Calendar, X, Eye, Clock, ChevronRight, Shield, ArrowUpDown, Bell, Users, FileDown, Trash2, Send, Megaphone,
   PlusCircle, Image, Upload, User, Menu, Moon, Sun, Briefcase, FilePlus, FileText, ClipboardList
 } from 'lucide-react';
+import UserProfileTab from '../../components/profile/UserProfileTab';
 
 function InstructorDashboard() {
   const dispatch = useDispatch();
@@ -411,33 +412,7 @@ function InstructorDashboard() {
 
         {/* PROFILE TAB */}
         {activeTab === 'profile' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Danışman Profili</h1>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm max-w-2xl">
-              <div className="flex flex-col md:flex-row gap-8 items-start md:items-center border-b border-slate-100 dark:border-slate-800 pb-8 mb-8">
-                <div className="w-24 h-24 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 text-3xl font-bold">
-                  {user?.[0]?.toUpperCase() || 'E'}
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{user || 'Eğitmen'}</h2>
-                  <p className="text-slate-500 dark:text-slate-400 mt-1">{email || 'egitmen@university.edu'}</p>
-                  <span className="inline-block px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-sm font-medium rounded-full mt-3">
-                    Eğitmen & Danışman
-                  </span>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Sicil Numarası</p>
-                  <p className="font-medium text-slate-900 dark:text-slate-200">{studentNumber || 'ACAD-001'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Fakülte / Bölüm</p>
-                  <p className="font-medium text-slate-900 dark:text-slate-200">{department || 'Mühendislik Fakültesi'}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <UserProfileTab />
         )}
 
         {/* OVERVIEW / COURSES */}

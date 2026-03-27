@@ -23,6 +23,7 @@ import {
   Send, Image, CalendarPlus, Bell, FileDown, User, Menu, Moon, Sun, ChevronRight,
   Briefcase, GraduationCap, Upload, Clock
 } from 'lucide-react';
+import UserProfileTab from '../../components/profile/UserProfileTab';
 
 function ClubOfficialDashboard() {
   const dispatch = useDispatch();
@@ -524,50 +525,7 @@ function ClubOfficialDashboard() {
 
         {/* PROFILE TAB */}
         {activeTab === 'profile' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Yetkili Profili</h1>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm max-w-2xl">
-              <div className="flex flex-col md:flex-row gap-8 items-start md:items-center border-b border-slate-100 dark:border-slate-800 pb-8 mb-8">
-                <div className="w-24 h-24 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-3xl font-bold">
-                  {user?.[0]?.toUpperCase() || 'Y'}
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{user}</h2>
-                  <p className="text-slate-500 dark:text-slate-400 mt-1">{email || 'yetkili@university.edu'}</p>
-                  <div className="flex gap-2 mt-3">
-                    <span className="inline-block px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-sm font-medium rounded-full">
-                      Kulüp Yetkilisi
-                    </span>
-                    <span className="inline-block px-3 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 text-sm font-medium rounded-full">
-                      Öğrenci
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Öğrenci Numarası</p>
-                  <p className="font-medium text-slate-900 dark:text-slate-200">{studentNumber || '2023001235'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Bölüm / Departman</p>
-                  <p className="font-medium text-slate-900 dark:text-slate-200">{department || 'İşletme Yönetimi'}</p>
-                </div>
-                <div className="col-span-1 md:col-span-2 mt-4">
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">Hızlı İşlemler</p>
-                  <div className="flex gap-3">
-                    <button onClick={() => navigate('/clubs')} className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                      Tüm Kulüpleri Keşfet
-                    </button>
-                    <button onClick={() => navigate('/posts')} className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                      Öğrenci Forumu
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <UserProfileTab />
         )}
 
         {/* MANAGED CLUBS */}
