@@ -127,6 +127,10 @@ function UserProfileTab() {
                 <input type="text" value={editForm.lastName} onChange={e => setEditForm({...editForm, lastName: e.target.value})} className="w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 dark:bg-slate-800 dark:text-white" />
               </div>
               <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">E-posta Adresi</label>
+                <input type="text" value={basicInfo.email || email || user || ''} disabled className="w-full border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 bg-slate-100 dark:bg-slate-800/50 text-slate-900 dark:text-white cursor-not-allowed opacity-75" />
+              </div>
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Profil Resmi Yükle (Opsiyonel)</label>
                 <label className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors bg-slate-50 dark:bg-slate-800">
                   <Upload className="w-5 h-5 text-slate-500" />
@@ -165,7 +169,7 @@ function UserProfileTab() {
               
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white pr-8">{displayName}</h2>
-                <p className="text-slate-500 dark:text-slate-400 mt-1">{email}</p>
+                <p className="text-slate-500 dark:text-slate-400 mt-1">{basicInfo.email || email || user}</p>
                 <div className="flex flex-wrap items-center gap-3 mt-3">
                   <span className="inline-block px-3 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 text-sm font-medium rounded-full border border-blue-200 dark:border-blue-800/50">
                     {getRoleLabel()}
