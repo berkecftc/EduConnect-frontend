@@ -21,7 +21,7 @@ import {
   Users, Calendar, LogOut, Loader2, Plus, QrCode, UserCheck, Crown, BookOpen,
   ClipboardList, Check, AlertCircle, X, UserPlus, Shield, Trash2, ArrowUpDown,
   Send, Image, CalendarPlus, Bell, FileDown, User, Menu, Moon, Sun, ChevronRight,
-  Briefcase, GraduationCap, Upload, Clock
+  Briefcase, GraduationCap, Upload, Clock, Search, MessageSquare
 } from 'lucide-react';
 import UserProfileTab from '../../components/profile/UserProfileTab';
 
@@ -398,6 +398,8 @@ function ClubOfficialDashboard() {
 
   const menuItems = [
     { id: 'profile', label: 'Profil Karşılama', icon: User, type: 'general' },
+    { id: 'all_clubs', label: 'Tüm Kulüpler', icon: Search, type: 'general', path: '/clubs' },
+    { id: 'posts', label: 'Öğrenci Forumu (Blog)', icon: MessageSquare, type: 'general', path: '/posts' },
 
     // Official Tools
     { id: 'managed_clubs', label: 'Yönetilen Kulüp', icon: Crown, type: 'official' },
@@ -462,7 +464,14 @@ function ClubOfficialDashboard() {
             {menuItems.filter(m => m.type === 'general').map(item => (
               <button
                 key={item.id}
-                onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
+                onClick={() => { 
+                  if (item.path) {
+                    navigate(item.path);
+                  } else {
+                    setActiveTab(item.id); 
+                    setIsMobileMenuOpen(false); 
+                  }
+                }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === item.id ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'}`}
               >
                 <item.icon className="w-5 h-5" />
@@ -479,7 +488,14 @@ function ClubOfficialDashboard() {
             {menuItems.filter(m => m.type === 'official').map(item => (
               <button
                 key={item.id}
-                onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
+                onClick={() => { 
+                  if (item.path) {
+                    navigate(item.path);
+                  } else {
+                    setActiveTab(item.id); 
+                    setIsMobileMenuOpen(false); 
+                  }
+                }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === item.id ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'}`}
               >
                 <item.icon className="w-5 h-5" />
@@ -501,7 +517,14 @@ function ClubOfficialDashboard() {
             {menuItems.filter(m => m.type === 'student').map(item => (
               <button
                 key={item.id}
-                onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
+                onClick={() => { 
+                  if (item.path) {
+                    navigate(item.path);
+                  } else {
+                    setActiveTab(item.id); 
+                    setIsMobileMenuOpen(false); 
+                  }
+                }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === item.id ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'}`}
               >
                 <item.icon className="w-5 h-5" />

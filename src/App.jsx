@@ -47,7 +47,7 @@ function App() {
       <Route
         path="/clubs"
         element={
-          <ProtectedRoute allowedRoles={['ROLE_STUDENT']}>
+          <ProtectedRoute allowedRoles={['ROLE_STUDENT', 'ROLE_CLUB_OFFICIAL']}>
             <ClubList />
           </ProtectedRoute>
         }

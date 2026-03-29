@@ -10,7 +10,7 @@ import { getMyRegistrations, getMyParticipationRequests, sendParticipationReques
 import {
   BookOpen, ClipboardList, Users, Calendar, LogOut, Loader2, Send, X, Check,
   CalendarPlus, Image, Bell, FileDown, Megaphone, User, Menu, Moon, Sun, ChevronRight,
-  Upload, AlertCircle, Clock, GraduationCap, Trash2
+  Upload, AlertCircle, Clock, GraduationCap, Trash2, Search, MessageSquare
 } from 'lucide-react';
 import UserProfileTab from '../../components/profile/UserProfileTab';
 
@@ -298,6 +298,8 @@ function StudentDashboard() {
   // Layout Configuration
   const menuItems = [
     { id: 'profile', label: 'Profil Karşılama', icon: User },
+    { id: 'all_clubs', label: 'Tüm Kulüpler', icon: Search, path: '/clubs' },
+    { id: 'posts', label: 'Öğrenci Forumu (Blog)', icon: MessageSquare, path: '/posts' },
     { id: 'courses', label: 'Kurslarım', icon: BookOpen, count: courses.length },
     { id: 'courseApplications', label: 'Ders Başvurusu', icon: GraduationCap },
     { id: 'assignments', label: 'Ödevlerim', icon: ClipboardList, count: assignments.length },
@@ -357,7 +359,14 @@ function StudentDashboard() {
           {menuItems.map(item => (
             <button
               key={item.id}
-              onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
+              onClick={() => { 
+                if (item.path) {
+                  navigate(item.path);
+                } else {
+                  setActiveTab(item.id); 
+                  setIsMobileMenuOpen(false); 
+                }
+              }}
               className={`
                 w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                 ${activeTab === item.id
