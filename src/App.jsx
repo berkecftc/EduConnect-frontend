@@ -12,6 +12,7 @@ import PostList from './pages/post/PostList';
 import PostDetail from './pages/post/PostDetail';
 import PostCreate from './pages/post/PostCreate';
 import PostEdit from './pages/post/PostEdit';
+import Leaderboard from './pages/gamification/Leaderboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -83,6 +84,16 @@ function App() {
         element={
           <ProtectedRoute allowedRoles={['ROLE_STUDENT', 'ROLE_CLUB_OFFICIAL']}>
             <PostEdit />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Liderlik Tablosu (Herkes Erişebilir) */}
+      <Route
+        path="/leaderboard"
+        element={
+          <ProtectedRoute>
+            <Leaderboard />
           </ProtectedRoute>
         }
       />

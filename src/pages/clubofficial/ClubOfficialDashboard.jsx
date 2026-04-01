@@ -21,7 +21,7 @@ import {
   Users, Calendar, LogOut, Loader2, Plus, QrCode, UserCheck, Crown, BookOpen,
   ClipboardList, Check, AlertCircle, X, UserPlus, Shield, Trash2, ArrowUpDown,
   Send, Image, CalendarPlus, Bell, FileDown, User, Menu, Moon, Sun, ChevronRight,
-  Briefcase, GraduationCap, Upload, Clock, Search, MessageSquare
+  Briefcase, GraduationCap, Upload, Clock, Search, MessageSquare, Trophy
 } from 'lucide-react';
 import UserProfileTab from '../../components/profile/UserProfileTab';
 
@@ -258,6 +258,17 @@ function ClubOfficialDashboard() {
     finally { setLoading(prev => ({ ...prev, clubs: false })); }
   };
 
+  const getRoleLabel = (role) => {
+    switch(role) {
+      case 'ROLE_CLUB_OFFICIAL': return 'Kulüp Başkanı';
+      case 'ROLE_VICE_PRESIDENT': return 'Başkan Yardımcısı';
+      case 'ROLE_SECRETARY': return 'Sekreter';
+      case 'ROLE_TREASURER': return 'Sayman';
+      case 'ROLE_BOARD_MEMBER': return 'Yönetim Kurulu Üyesi';
+      default: return role || 'Kulüp Üyesi';
+    }
+  };
+
   const fetchEvents = async () => {
     try { setEvents((await getMyRegistrations()) || []); }
     catch { setErrors(prev => ({ ...prev, events: 'Hata' })); }
@@ -396,10 +407,18 @@ function ClubOfficialDashboard() {
     </div>
   );
 
+  // Assignments Filter
+  const validAssignments = assignments.filter(a => {
+    if (a.courseId) return courses.some(c => (c.id || c.courseId) === a.courseId);
+    if (a.courseName) return courses.some(c => (c.name || c.title) === a.courseName);
+    return true;
+  });
+
   const menuItems = [
     { id: 'profile', label: 'Profil Karşılama', icon: User, type: 'general' },
     { id: 'all_clubs', label: 'Tüm Kulüpler', icon: Search, type: 'general', path: '/clubs' },
     { id: 'posts', label: 'Öğrenci Forumu (Blog)', icon: MessageSquare, type: 'general', path: '/posts' },
+    { id: 'leaderboard', label: 'Liderlik Tablosu', icon: Trophy, type: 'general', path: '/leaderboard' },
 
     // Official Tools
     { id: 'managed_clubs', label: 'Yönetilen Kulüp', icon: Crown, type: 'official' },
@@ -583,14 +602,55 @@ function ClubOfficialDashboard() {
                         {boardMembers.map((member, i) => (
                           <div key={i} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                             <div>
-                              <p className="font-medium text-slate-900 dark:text-slate-200">{member.firstName} {member.lastName}</p>
-                              <span className="text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 px-2 py-0.5 rounded-full">{member.role}</span>
+                              <p className="font-medium text-slate-900 dark:text-slate-200 flex flex-wrap gap-1">
+                                <span>{(member.firstName || member.studentName || member.student?.firstName || member.student?.user?.firstName || member.user?.firstName || member.name || 'Belirtilmeyen')}</span>
+                                <span>{(member.lastName || member.studentSurname || member.student?.lastName || member.student?.user?.lastName || member.user?.lastName || member.surname || 'Kullanıcı')}</span>
+                              </p>
+                              <span className="text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 px-2 py-0.5 rounded-full inline-block mt-1">{getRoleLabel(member.role)}</span>
                             </div>
                           </div>
                         ))}
                       </div>
                     )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* MY EVENTS */}
+        {activeTab === 'my_events' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white flex items-center gap-2">
+              <Calendar className="w-6 h-6 text-indigo-500" /> Kulüp Etkinlikleri
+            </h1>
+            
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden p-6 mb-6">
+              {loading.myEvents ? <CardLoader /> :
+                myEvents.length === 0 ? <EmptyState msg="Kulübünüze ait henüz bir etkinlik bulunmuyor" icon={Calendar} /> : (
+                  <div className="space-y-4">
+                    {myEvents.map((evt, i) => {
+                       const evtDate = new Date(evt.eventTime || evt.eventDate);
+                       const isPast = evtDate < new Date();
+                       return (
+                         <div key={evt.id || i} className={`p-4 border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col md:flex-row justify-between md:items-center gap-4 hover:shadow-md transition-shadow ${isPast ? 'opacity-60 bg-slate-50 dark:bg-slate-800/20' : 'bg-white dark:bg-slate-800/80'}`}>
+                           <div className="flex-1">
+                             <div className="flex items-center gap-2 mb-1">
+                               <h3 className={`font-bold text-lg text-slate-900 dark:text-slate-200 ${isPast ? 'line-through decoration-slate-400' : ''}`}>{evt.title || evt.name}</h3>
+                               {isPast && <span className="text-xs bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full">Geçmiş Etkinlik</span>}
+                               {!isPast && <span className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 px-2 py-0.5 rounded-full">Gelecek Etkinlik</span>}
+                             </div>
+                             {evt.description && <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 mb-2 line-clamp-2">{evt.description}</p>}
+                             <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-500 mt-2">
+                               <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Tarih: {evtDate.toLocaleString('tr-TR')}</span>
+                               {evt.location && <span className="flex items-center gap-1">📍 Konum: {evt.location}</span>}
+                               {evt.capacity && <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Kapasite: {evt.capacity}</span>}
+                             </div>
+                           </div>
+                         </div>
+                       );
+                    })}
+                  </div>
+                )}
             </div>
           </div>
         )}
@@ -769,9 +829,9 @@ function ClubOfficialDashboard() {
             <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Ödevlerim</h1>
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
               {loading.assignments ? <CardLoader /> :
-                assignments.length === 0 ? <EmptyState msg="Aktif ödev bulunmuyor" icon={ClipboardList} /> : (
+                validAssignments.length === 0 ? <EmptyState msg="Aktif ödev bulunmuyor" icon={ClipboardList} /> : (
                   <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {assignments.map((assignment, i) => {
+                    {validAssignments.map((assignment, i) => {
                       const isOverdue = assignment.dueDate && new Date(assignment.dueDate) < new Date();
                       const isSubmitted = Boolean(assignment.submitted || assignment.submission || assignment.submissionFileUrl || assignment.submittedFileUrl || assignment.status === 'SUBMITTED');
                       

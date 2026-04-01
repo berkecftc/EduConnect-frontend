@@ -10,7 +10,7 @@ import { getMyRegistrations, getMyParticipationRequests, sendParticipationReques
 import {
   BookOpen, ClipboardList, Users, Calendar, LogOut, Loader2, Send, X, Check,
   CalendarPlus, Image, Bell, FileDown, Megaphone, User, Menu, Moon, Sun, ChevronRight,
-  Upload, AlertCircle, Clock, GraduationCap, Trash2, Search, MessageSquare
+  Upload, AlertCircle, Clock, GraduationCap, Trash2, Search, MessageSquare, Trophy
 } from 'lucide-react';
 import UserProfileTab from '../../components/profile/UserProfileTab';
 
@@ -295,18 +295,38 @@ function StudentDashboard() {
     </div>
   );
 
+  // Assignments Filter
+  const validAssignments = assignments.filter(a => {
+    if (a.courseId) return courses.some(c => (c.id || c.courseId) === a.courseId);
+    if (a.courseName) return courses.some(c => (c.name || c.title) === a.courseName);
+    return true;
+  });
+
+  // Membership Requests Filter
+  const validMembershipRequests = membershipRequests.filter(req => {
+    const reqClubId = req.clubId || req.club?.id;
+    return !clubs.some(c => (c.club?.id || c.clubId) === reqClubId);
+  });
+
+  // Club Events Filter (Only upcoming events)
+  const validClubEvents = clubEvents.filter(e => {
+    const eventDate = new Date(e.eventTime || e.eventDate);
+    return eventDate >= new Date();
+  });
+
   // Layout Configuration
   const menuItems = [
     { id: 'profile', label: 'Profil Karşılama', icon: User },
     { id: 'all_clubs', label: 'Tüm Kulüpler', icon: Search, path: '/clubs' },
     { id: 'posts', label: 'Öğrenci Forumu (Blog)', icon: MessageSquare, path: '/posts' },
+    { id: 'leaderboard', label: 'Liderlik Tablosu', icon: Trophy, path: '/leaderboard' },
     { id: 'courses', label: 'Kurslarım', icon: BookOpen, count: courses.length },
     { id: 'courseApplications', label: 'Ders Başvurusu', icon: GraduationCap },
-    { id: 'assignments', label: 'Ödevlerim', icon: ClipboardList, count: assignments.length },
+    { id: 'assignments', label: 'Ödevlerim', icon: ClipboardList, count: validAssignments.length },
     { id: 'clubs', label: 'Kulüplerim', icon: Users, count: clubs.length },
     { id: 'events', label: 'Etkinliklerim', icon: Calendar, count: events.length },
-    { id: 'clubEvents', label: 'Kulüp Etkinlikleri', icon: CalendarPlus, count: clubEvents.length },
-    { id: 'requests', label: 'Üyelik İsteklerim', icon: Send, count: membershipRequests.length },
+    { id: 'clubEvents', label: 'Kulüp Etkinlikleri', icon: CalendarPlus, count: validClubEvents.length },
+    { id: 'requests', label: 'Üyelik İsteklerim', icon: Send, count: validMembershipRequests.length },
   ];
 
   return (
@@ -513,9 +533,9 @@ function StudentDashboard() {
             <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Ödevlerim</h1>
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
               {loading.assignments ? <CardLoader /> :
-                assignments.length === 0 ? <EmptyState message="Aktif ödev bulunmuyor" icon={ClipboardList} /> : (
+                validAssignments.length === 0 ? <EmptyState message="Aktif ödev bulunmuyor" icon={ClipboardList} /> : (
                   <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {assignments.map((assignment, i) => {
+                    {validAssignments.map((assignment, i) => {
                       const isOverdue = assignment.dueDate && new Date(assignment.dueDate) < new Date();
                       const isSubmitted = Boolean(assignment.submitted || assignment.submission || assignment.submissionFileUrl || assignment.submittedFileUrl || assignment.status === 'SUBMITTED');
                       
@@ -723,9 +743,9 @@ function StudentDashboard() {
             <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Açık Kulüp Etkinlikleri</h1>
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
               {loading.clubEvents ? <CardLoader /> :
-                clubEvents.length === 0 ? <EmptyState message="Şu an açık kulüp etkinliği yok" icon={CalendarPlus} /> : (
+                validClubEvents.length === 0 ? <EmptyState message="Şu an açık kulüp etkinliği yok" icon={CalendarPlus} /> : (
                   <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {clubEvents.map((event, i) => (
+                    {validClubEvents.map((event, i) => (
                       <div key={event.id || i} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
                           <h3 className="font-medium text-slate-900 dark:text-slate-200">{event.title || event.name}</h3>
@@ -752,9 +772,9 @@ function StudentDashboard() {
             <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Üyelik İsteklerim</h1>
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
               {loading.membershipRequests ? <CardLoader /> :
-                membershipRequests.length === 0 ? <EmptyState message="Bekleyen isteğiniz bulunmuyor" icon={Send} /> : (
+                validMembershipRequests.length === 0 ? <EmptyState message="Bekleyen isteğiniz bulunmuyor" icon={Send} /> : (
                   <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {membershipRequests.map((req, i) => (
+                    {validMembershipRequests.map((req, i) => (
                       <div key={req.id || i} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex flex-col md:flex-row justify-between md:items-center gap-4">
                         <div>
                           <h3 className="font-medium text-slate-900 dark:text-slate-200">{req.clubName || req.club?.name}</h3>
