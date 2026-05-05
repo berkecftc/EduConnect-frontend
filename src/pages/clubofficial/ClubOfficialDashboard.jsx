@@ -21,9 +21,10 @@ import {
   Users, Calendar, LogOut, Loader2, Plus, QrCode, UserCheck, Crown, BookOpen,
   ClipboardList, Check, AlertCircle, X, UserPlus, Shield, Trash2, ArrowUpDown,
   Send, Image, CalendarPlus, Bell, FileDown, User, Menu, Moon, Sun, ChevronRight,
-  Briefcase, GraduationCap, Upload, Clock, Search, MessageSquare, Trophy
+  Briefcase, GraduationCap, Upload, Clock, Search, MessageSquare, Trophy, Bot
 } from 'lucide-react';
 import UserProfileTab from '../../components/profile/UserProfileTab';
+import AIChatAssistant from '../../components/AIChatAssistant';
 
 function ClubOfficialDashboard() {
   const dispatch = useDispatch();
@@ -425,12 +426,14 @@ function ClubOfficialDashboard() {
     { id: 'my_events', label: 'Kulüp Etkinlikleri', icon: Calendar, type: 'official' },
     { id: 'pending_requests', label: 'Bekleyen İstekler', icon: UserCheck, count: pendingCount, type: 'official' },
     { id: 'event_requests', label: 'Etkinlik Katılım', icon: UserPlus, count: eventParticipationRequests.length, type: 'official' },
+    { id: 'clubAssistant', label: 'Kulüp Asistanı (AI)', icon: Bot, type: 'official' },
 
     // Student Tools
     { id: 'courses', label: 'Kurslarım', icon: BookOpen, type: 'student' },
     { id: 'courseApplications', label: 'Ders Başvurusu', icon: GraduationCap, type: 'student' },
     { id: 'assignments', label: 'Ödevlerim', icon: ClipboardList, type: 'student' },
-    { id: 'clubs', label: 'Üye Olduğum Kulüpler', icon: Users, type: 'student' }
+    { id: 'clubs', label: 'Üye Olduğum Kulüpler', icon: Users, type: 'student' },
+    { id: 'studentAssistant', label: 'Öğrenci Asistanı (AI)', icon: Bot, type: 'student' }
   ];
 
   return (
@@ -1008,6 +1011,21 @@ function ClubOfficialDashboard() {
           </div>
         )}
 
+        {/* AI CLUB ASSISTANT */}
+        {activeTab === 'clubAssistant' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Yapay Zeka Kulüp Asistanı</h1>
+            <AIChatAssistant assistantType="club" />
+          </div>
+        )}
+
+        {/* AI STUDENT ASSISTANT */}
+        {activeTab === 'studentAssistant' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Yapay Zeka Öğrenci Asistanı</h1>
+            <AIChatAssistant assistantType="student" />
+          </div>
+        )}
       </main>
     </div>
   );

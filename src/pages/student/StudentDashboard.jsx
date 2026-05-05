@@ -10,9 +10,10 @@ import { getMyRegistrations, getMyParticipationRequests, sendParticipationReques
 import {
   BookOpen, ClipboardList, Users, Calendar, LogOut, Loader2, Send, X, Check,
   CalendarPlus, Image, Bell, FileDown, Megaphone, User, Menu, Moon, Sun, ChevronRight,
-  Upload, AlertCircle, Clock, GraduationCap, Trash2, Search, MessageSquare, Trophy
+  Upload, AlertCircle, Clock, GraduationCap, Trash2, Search, MessageSquare, Trophy, Bot
 } from 'lucide-react';
 import UserProfileTab from '../../components/profile/UserProfileTab';
+import AIChatAssistant from '../../components/AIChatAssistant';
 
 function StudentDashboard() {
   const dispatch = useDispatch();
@@ -327,6 +328,8 @@ function StudentDashboard() {
     { id: 'events', label: 'Etkinliklerim', icon: Calendar, count: events.length },
     { id: 'clubEvents', label: 'Kulüp Etkinlikleri', icon: CalendarPlus, count: validClubEvents.length },
     { id: 'requests', label: 'Üyelik İsteklerim', icon: Send, count: validMembershipRequests.length },
+    { id: 'studentAssistant', label: 'Öğrenci Asistanı (AI)', icon: Bot },
+    { id: 'clubAssistant', label: 'Kulüp Asistanı (AI)', icon: Bot },
   ];
 
   return (
@@ -795,6 +798,20 @@ function StudentDashboard() {
                   </div>
                 )}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'studentAssistant' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Yapay Zeka Öğrenci Asistanı</h1>
+            <AIChatAssistant assistantType="student" />
+          </div>
+        )}
+
+        {activeTab === 'clubAssistant' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Yapay Zeka Kulüp Asistanı</h1>
+            <AIChatAssistant assistantType="club" />
           </div>
         )}
       </main>

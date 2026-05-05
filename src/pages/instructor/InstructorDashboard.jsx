@@ -19,9 +19,10 @@ import academicianService from '../../api/academicianService';
 import {
   GraduationCap, BookOpen, UserPlus, ClipboardCheck, LogOut, Loader2, Check, AlertCircle,
   Calendar, X, Eye, Clock, ChevronRight, Shield, ArrowUpDown, Bell, Users, FileDown, Trash2, Send, Megaphone,
-  PlusCircle, Image, Upload, User, Menu, Moon, Sun, Briefcase, FilePlus, FileText, ClipboardList
+  PlusCircle, Image, Upload, User, Menu, Moon, Sun, Briefcase, FilePlus, FileText, ClipboardList, Bot
 } from 'lucide-react';
 import UserProfileTab from '../../components/profile/UserProfileTab';
+import AIChatAssistant from '../../components/AIChatAssistant';
 
 function InstructorDashboard() {
   const dispatch = useDispatch();
@@ -335,6 +336,7 @@ function InstructorDashboard() {
     { id: 'assignmentSubmissions', label: 'Ödev Teslimleri', icon: ClipboardList, type: 'academic' },
     { id: 'pendingEvents', label: 'Kulüp Etkinlik Onayları', icon: Calendar, count: pendingEvents.length, type: 'admin' },
     { id: 'roleRequests', label: 'Görev Talepleri', icon: Shield, count: roleChangeRequests.length, type: 'admin' },
+    { id: 'instructorCopilot', label: 'Akademisyen Asistanı (AI)', icon: Bot, type: 'general' },
   ];
 
   return (
@@ -802,6 +804,14 @@ function InstructorDashboard() {
                   </div>
                 )}
             </div>
+          </div>
+        )}
+
+        {/* AI COPILOT */}
+        {activeTab === 'instructorCopilot' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Yapay Zeka Akademisyen Asistanı</h1>
+            <AIChatAssistant assistantType="instructor" />
           </div>
         )}
       </main>
