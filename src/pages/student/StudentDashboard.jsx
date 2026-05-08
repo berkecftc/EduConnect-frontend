@@ -329,7 +329,6 @@ function StudentDashboard() {
     { id: 'clubEvents', label: 'Kulüp Etkinlikleri', icon: CalendarPlus, count: validClubEvents.length },
     { id: 'requests', label: 'Üyelik İsteklerim', icon: Send, count: validMembershipRequests.length },
     { id: 'studentAssistant', label: 'Öğrenci Asistanı (AI)', icon: Bot },
-    { id: 'clubAssistant', label: 'Kulüp Asistanı (AI)', icon: Bot },
   ];
 
   return (
@@ -808,12 +807,6 @@ function StudentDashboard() {
           </div>
         )}
 
-        {activeTab === 'clubAssistant' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Yapay Zeka Kulüp Asistanı</h1>
-            <AIChatAssistant assistantType="club" />
-          </div>
-        )}
       </main>
     </div>
   );

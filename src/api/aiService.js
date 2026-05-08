@@ -9,8 +9,3 @@ export const sendStudentMessage = async (message) => {
   const response = await api.post('/ai/student-assistant', { message });
   return response.data;
 };
-
-export const sendClubMessage = async (message) => {
-  const response = await api.post('/ai/club-assistant', { message });
-  return response.data;
-};

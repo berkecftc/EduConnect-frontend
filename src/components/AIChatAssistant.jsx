@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Bot, User, Trash2 } from 'lucide-react';
-import { sendStudentMessage, sendInstructorMessage, sendClubMessage } from '../api/aiService';
+import { sendStudentMessage, sendInstructorMessage } from '../api/aiService';
 
 const AIChatAssistant = ({ assistantType = 'student' }) => {
   const [messages, setMessages] = useState([]);
@@ -18,19 +18,11 @@ const AIChatAssistant = ({ assistantType = 'student' }) => {
           themeClasses: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400',
           botColor: 'bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300'
         };
-      case 'club':
-        return {
-          title: 'Kulüp Asistanı',
-          description: 'Etkinlik planlama, bütçe yönetimi ve kulüp duyuruları için yardımcı',
-          apiCall: sendClubMessage,
-          themeClasses: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400',
-          botColor: 'bg-emerald-100 dark:bg-emerald-800 text-emerald-600 dark:text-emerald-300'
-        };
       case 'student':
       default:
         return {
           title: 'Öğrenci Asistanı',
-          description: 'Ders seçimi, ödev planlama ve kampüs rehberliği için yardımcı',
+          description: 'Ders seçimi, ödev planlama, kampüs rehberliği ve kulüp tavsiyeleri için yardımcı',
           apiCall: sendStudentMessage,
           themeClasses: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400',
           botColor: 'bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300'

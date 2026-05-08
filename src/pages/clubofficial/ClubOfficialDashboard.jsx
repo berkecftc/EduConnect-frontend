@@ -426,7 +426,6 @@ function ClubOfficialDashboard() {
     { id: 'my_events', label: 'Kulüp Etkinlikleri', icon: Calendar, type: 'official' },
     { id: 'pending_requests', label: 'Bekleyen İstekler', icon: UserCheck, count: pendingCount, type: 'official' },
     { id: 'event_requests', label: 'Etkinlik Katılım', icon: UserPlus, count: eventParticipationRequests.length, type: 'official' },
-    { id: 'clubAssistant', label: 'Kulüp Asistanı (AI)', icon: Bot, type: 'official' },
 
     // Student Tools
     { id: 'courses', label: 'Kurslarım', icon: BookOpen, type: 'student' },
@@ -1008,14 +1007,6 @@ function ClubOfficialDashboard() {
                   </div>
                 )}
             </div>
-          </div>
-        )}
-
-        {/* AI CLUB ASSISTANT */}
-        {activeTab === 'clubAssistant' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Yapay Zeka Kulüp Asistanı</h1>
-            <AIChatAssistant assistantType="club" />
           </div>
         )}
 
