@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Bot, User, Trash2 } from 'lucide-react';
-import { sendStudentMessage, sendInstructorMessage } from '../api/aiService';
+import { sendStudentMessage, sendInstructorMessage, streamStudentMessage } from '../api/aiService';
 
 const AIChatAssistant = ({ assistantType = 'student' }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef(null);
 
   const getAssistantConfig = () => {
@@ -38,29 +39,105 @@ const AIChatAssistant = ({ assistantType = 'student' }) => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [messages, isLoading, isStreaming]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || isStreaming) return;
 
     const userMessage = input.trim();
     setInput('');
-    setMessages((prev) => [...prev, { text: userMessage, sender: 'user' }]);
-    setIsLoading(true);
 
-    try {
-      const response = await config.apiCall(userMessage);
-      const reply = response.reply || 'Cevap alınamadı.';
-      setMessages((prev) => [...prev, { text: reply, sender: 'bot' }]);
-    } catch (error) {
-      console.error('Chatbot error:', error);
+    if (assistantType === 'student') {
+      // 1. Immediately append the user message and an empty placeholder for the bot
       setMessages((prev) => [
         ...prev,
-        { text: 'Üzgünüm, bir hata oluştu veya bağlantı zaman aşımına uğradı. Lütfen tekrar deneyin.', sender: 'bot', isError: true },
+        { text: userMessage, sender: 'user' },
+        { text: '', sender: 'bot' }
       ]);
-    } finally {
-      setIsLoading(false);
+      setIsLoading(true);
+      setIsStreaming(true);
+
+      let isFirstToken = true;
+
+      try {
+        await streamStudentMessage(
+          userMessage,
+          (token) => {
+            if (isFirstToken) {
+              setIsLoading(false);
+              isFirstToken = false;
+            }
+            // Append token to the last message
+            setMessages((prev) => {
+              const next = [...prev];
+              if (next.length > 0) {
+                const lastIdx = next.length - 1;
+                next[lastIdx] = {
+                  ...next[lastIdx],
+                  text: next[lastIdx].text + token,
+                };
+              }
+              return next;
+            });
+          },
+          () => {
+            setIsStreaming(false);
+            setIsLoading(false);
+          },
+          (error) => {
+            console.error('Student Assistant stream error:', error);
+            setIsStreaming(false);
+            setIsLoading(false);
+            setMessages((prev) => {
+              const next = [...prev];
+              if (next.length > 0) {
+                const lastIdx = next.length - 1;
+                next[lastIdx] = {
+                  ...next[lastIdx],
+                  isError: true,
+                  text: next[lastIdx].text 
+                    ? next[lastIdx].text + '\n\n[Bağlantı hatası: Akış kesildi.]' 
+                    : 'Üzgünüm, bir hata oluştu veya bağlantı zaman aşımına uğradı. Lütfen tekrar deneyin.',
+                };
+              }
+              return next;
+            });
+          }
+        );
+      } catch (err) {
+        console.error('Student Assistant initial connection error:', err);
+        setIsStreaming(false);
+        setIsLoading(false);
+        setMessages((prev) => {
+          const next = [...prev];
+          if (next.length > 0 && next[next.length - 1].sender === 'bot' && !next[next.length - 1].text) {
+            next.pop(); // remove the empty bot placeholder
+          }
+          return [
+            ...next,
+            { text: 'Üzgünüm, asistan ile bağlantı kurulamadı. Lütfen tekrar deneyin.', sender: 'bot', isError: true }
+          ];
+        });
+      }
+    } else {
+      // Traditional JSON POST request logic for instructor-copilot
+      setMessages((prev) => [...prev, { text: userMessage, sender: 'user' }]);
+      setIsLoading(true);
+
+      try {
+        const response = await config.apiCall(userMessage);
+        const reply = response.reply || 'Cevap alınamadı.';
+        setMessages((prev) => [...prev, { text: reply, sender: 'bot' }]);
+      } catch (error) {
+        console.error('Chatbot error:', error);
+        setMessages((prev) => [
+          ...prev,
+          { text: 'Üzgünüm, bir hata oluştu veya bağlantı zaman aşımına uğradı. Lütfen tekrar deneyin.', sender: 'bot', isError: true },
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -156,12 +233,12 @@ const AIChatAssistant = ({ assistantType = 'student' }) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Mesajınızı yazın..."
-            disabled={isLoading}
+            disabled={isLoading || isStreaming}
             className="flex-1 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-500/50 disabled:opacity-50 transition-colors dark:text-slate-200"
           />
           <button
             type="submit"
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || isStreaming}
             className="p-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 dark:disabled:bg-blue-800 text-white rounded-xl transition-colors disabled:cursor-not-allowed flex-shrink-0"
           >
             <Send className="w-5 h-5" />
