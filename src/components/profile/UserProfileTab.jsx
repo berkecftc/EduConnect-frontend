@@ -2,10 +2,46 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { Trophy, Flame, Award, MessageSquare, Loader2, User, Edit2, Save, X, Upload } from 'lucide-react';
 import { getUserProfileAggregated, updateUserProfile } from '../../api/userService';
+import { getUserGamificationSummary } from '../../api/gamificationService';
+import api from '../../api/axiosConfig';
+
+function BadgeImage({ imageUrl, alt, className }) {
+  const [svgContent, setSvgContent] = useState(null);
+
+  useEffect(() => {
+    if (!imageUrl) return;
+
+    if (imageUrl.startsWith('/api/') || imageUrl.startsWith('http://localhost:8080/api/')) {
+      const relativeUrl = imageUrl.replace('http://localhost:8080/api', '');
+      api.get(relativeUrl)
+        .then(res => {
+          const base64Svg = btoa(unescape(encodeURIComponent(res.data)));
+          setSvgContent(`data:image/svg+xml;base64,${base64Svg}`);
+        })
+        .catch(err => {
+          console.error('Failed to fetch badge SVG:', err);
+        });
+    } else {
+      setSvgContent(imageUrl);
+    }
+  }, [imageUrl]);
+
+  if (!svgContent) {
+    return (
+      <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/40 rounded-full flex items-center justify-center text-purple-600">
+        <Award className="w-5 h-5 animate-pulse" />
+      </div>
+    );
+  }
+
+  return <img src={svgContent} alt={alt} className={className} />;
+}
+
 
 function UserProfileTab() {
   const { user, role, email, studentNumber, department, userId } = useSelector((state) => state.auth);
   const [profileData, setProfileData] = useState(null);
+  const [gamificationData, setGamificationData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -21,8 +57,22 @@ function UserProfileTab() {
       return;
     }
     try {
-      const data = await getUserProfileAggregated(userId);
-      setProfileData(data);
+      const [profileRes, gamificationRes] = await Promise.allSettled([
+        getUserProfileAggregated(userId),
+        getUserGamificationSummary()
+      ]);
+
+      if (profileRes.status === 'fulfilled') {
+        setProfileData(profileRes.value);
+      } else {
+        console.error('Profile aggregation fetch error:', profileRes.reason);
+      }
+
+      if (gamificationRes.status === 'fulfilled') {
+        setGamificationData(gamificationRes.value);
+      } else {
+        console.error('Gamification summary fetch error:', gamificationRes.reason);
+      }
     } catch (err) {
       console.error('Profile fetch error:', err);
       setError('Profil bilgileri alınırken bir hata oluştu');
@@ -80,8 +130,56 @@ function UserProfileTab() {
     profileCompletionPercentage = 0
   } = basicInfo;
   
-  const gamification = profileData?.gamification || { points: 0, streak: 0, badges: [] };
+  const gamification = gamificationData || profileData?.gamification || { points: 0, streak: 0, badges: [] };
   const recentPosts = profileData?.recentPosts || [];
+
+  const BADGE_DETAILS = {
+    FIRST_STEP: {
+      name: 'İlk Adım',
+      description: 'İlk puanınızı kazanarak sistemdeki ilk adımınızı attınız!',
+    },
+    POINTS_EXPLORER: {
+      name: 'Puan Kaşifi',
+      description: '250 puana ulaşarak sistemin derinliklerini keşfettiniz.',
+    },
+    POINTS_MASTER: {
+      name: 'Puan Ustası',
+      description: '1000 puana ulaşarak gerçek bir usta olduğunuzu kanıtladınız!',
+    },
+    WEEK_WARRIOR: {
+      name: 'Haftalık Savaşçı',
+      description: '7 günlük kesintisiz giriş serisine ulaştınız.',
+    },
+    STREAK_LEGEND: {
+      name: 'Seri Efsanesi',
+      description: '30 günlük kesintisiz giriş serisine ulaşarak efsane oldunuz!',
+    }
+  };
+
+  const getBadgeImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    return `http://localhost:8080${url}`;
+  };
+
+  const normalizedBadges = (gamification.badges || []).map((badge, idx) => {
+    if (typeof badge === 'string') {
+      const details = BADGE_DETAILS[badge] || { name: badge, description: '' };
+      return {
+        id: `${badge}-${idx}`,
+        name: details.name,
+        description: details.description,
+        imageUrl: null
+      };
+    }
+    return {
+      id: badge.id || `${badge.badgeType || 'badge'}-${idx}`,
+      name: badge.name || (badge.badgeType ? (BADGE_DETAILS[badge.badgeType]?.name || badge.badgeType) : 'Rozet'),
+      description: badge.description || (badge.badgeType ? BADGE_DETAILS[badge.badgeType]?.description : ''),
+      imageUrl: getBadgeImageUrl(badge.imageUrl)
+    };
+  });
+
 
   const displayName = firstName || lastName ? `${firstName || ''} ${lastName || ''}`.trim() : user;
   const displayDepartment = API_department || department || 'Bölüm belirtilmemiş';
@@ -242,12 +340,12 @@ function UserProfileTab() {
               <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-1.5">
                 <Award className="w-4 h-4 text-purple-500" /> Kazanılan Rozetler
               </h4>
-              {gamification.badges?.length > 0 ? (
+              {normalizedBadges?.length > 0 ? (
                 <div className="space-y-3">
-                  {gamification.badges.map(badge => (
+                  {normalizedBadges.map(badge => (
                     <div key={badge.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                       {badge.imageUrl ? (
-                        <img src={badge.imageUrl} alt={badge.name} className="w-10 h-10 object-contain drop-shadow-sm" />
+                        <BadgeImage imageUrl={badge.imageUrl} alt={badge.name} className="w-10 h-10 object-contain drop-shadow-sm" />
                       ) : (
                         <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/40 rounded-full flex items-center justify-center text-purple-600">
                           <Award className="w-5 h-5" />

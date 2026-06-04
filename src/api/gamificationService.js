@@ -6,3 +6,9 @@ export const getLeaderboard = async (limit = 20) => {
     });
     return response.data;
 };
+
+export const getUserGamificationSummary = async () => {
+    const response = await api.get('/gamification/users/me/summary');
+    return response.data;
+};
+
