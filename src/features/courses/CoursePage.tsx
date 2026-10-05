@@ -10,7 +10,7 @@ import { usePageTitle } from '@/lib/usePageTitle'
 import { useMyAssignments, useMyGrades, TYPE_LABEL, type MyAssignment, type MyGrades } from '@/features/assignments/api'
 import { viewAssignment, type AssignmentView } from '@/features/assignments/model'
 import { Meter } from '@/components/ui/Meter'
-import { useStaffTitles, withTitle } from '@/features/people/titles'
+import { withTitle } from '@/features/people/titles'
 import { RevealTitle } from '@/components/ui/RevealTitle'
 import { AssignmentRow } from '@/features/assignments/AssignmentRow'
 import { Badge } from '@/components/ui/Badge'
@@ -107,7 +107,6 @@ function CourseBody({ course: c }: { course: Course }) {
 function CourseHero({ course: c, next }: { course: Course; next?: { a: MyAssignment; v: AssignmentView } }) {
   const grades = useMyGrades(c.id)
   const g = grades.data
-  const titles = useStaffTitles([c.instructorId])
   return (
     <section className="grid gap-10 border-b border-ink pb-10 lg:grid-cols-12">
       <div className="min-w-0 lg:col-span-8">
@@ -117,7 +116,7 @@ function CourseHero({ course: c, next }: { course: Course; next?: { a: MyAssignm
         </p>
         <RevealTitle text={c.title} className="mt-1 text-4xl sm:text-5xl" />
         <p className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-1 text-lg text-ink-2">
-          {c.instructorName && <span>{withTitle(c.instructorName, titles.get(c.instructorId ?? ''))}</span>}
+          {c.instructorName && <span>{withTitle(c.instructorName, c.instructorTitle, c.instructorAcademicTitle)}</span>}
           {c.termLabel && <span>{c.termLabel}</span>}
           {c.section && <span>Şube {c.section}</span>}
           <span>
@@ -158,7 +157,6 @@ function CourseHero({ course: c, next }: { course: Course; next?: { a: MyAssignm
 
 function Overview({ course: c }: { course: Course }) {
   const staff = useCourseStaff(c.id)
-  const titles = useStaffTitles([c.instructorId, ...(staff.data ?? []).map((s) => s.userId)])
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <section aria-labelledby="ders-aciklama">
@@ -200,13 +198,13 @@ function Overview({ course: c }: { course: Course }) {
           <QueryBoundary query={staff} what="Kadro" skeletonRows={2}>
             {(list) =>
               list.length === 0 ? (
-                <p className="text-md text-ink-2">{withTitle(c.instructorName, titles.get(c.instructorId ?? '')) || 'Kadro bilgisi yok.'}</p>
+                <p className="text-md text-ink-2">{withTitle(c.instructorName, c.instructorTitle, c.instructorAcademicTitle) || 'Kadro bilgisi yok.'}</p>
               ) : (
                 <ul className="flex flex-col gap-3">
                   {list.map((s) => (
                     <li key={s.userId} className="flex items-start justify-between gap-3">
                       <span className="min-w-0">
-                        <span className="block font-semibold">{withTitle(s.name, titles.get(s.userId))}</span>
+                        <span className="block font-semibold">{withTitle(s.name, s.title, s.academicTitle)}</span>
                         {s.department && <span className="block text-sm text-ink-3">{s.department}</span>}
                       </span>
                       <Badge tone={s.role === 'COORDINATOR' ? 'info' : 'neutral'}>{STAFF_ROLE_LABEL[s.role]}</Badge>

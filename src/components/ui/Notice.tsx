@@ -11,21 +11,42 @@ const tones: Record<Tone, { box: string; icon: typeof Info; iconColor: string }>
   danger: { box: 'bg-danger-soft border-danger/40', icon: XCircle, iconColor: 'text-danger' },
 }
 
-/** Sayfa içi bildirim. Hata tonunda `role="alert"`, diğerlerinde `status`. */
+const lineColor: Record<Tone, string> = {
+  info: 'border-ink-3',
+  success: 'border-success',
+  warning: 'border-warning',
+  danger: 'border-danger',
+}
+
+/**
+ * Sayfa içi bildirim. Hata tonunda `role="alert"`, diğerlerinde `status`.
+ * `variant="line"`: kutusuz, yalnız soldaki tonlu çizgi (uygulama içi tarife düzeni).
+ */
 export function Notice({
   tone = 'info',
+  variant = 'box',
   title,
   children,
   action,
   className,
 }: {
   tone?: Tone
+  variant?: 'box' | 'line'
   title?: string
   children?: ReactNode
   action?: ReactNode
   className?: string
 }) {
   const { box, icon: Icon, iconColor } = tones[tone]
+  if (variant === 'line') {
+    return (
+      <div role={tone === 'danger' ? 'alert' : 'status'} className={cn('border-l-[3px] py-0.5 pl-4 text-md text-ink', lineColor[tone], className)}>
+        {title && <p className="font-semibold">{title}</p>}
+        {children && <div className={cn(title ? 'mt-0.5 text-ink-2' : 'text-ink-2')}>{children}</div>}
+        {action && <div className="mt-2.5">{action}</div>}
+      </div>
+    )
+  }
   return (
     <div
       role={tone === 'danger' ? 'alert' : 'status'}

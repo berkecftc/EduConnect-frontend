@@ -13,7 +13,7 @@ function page<M extends Record<string, unknown>>(load: () => Promise<M>, name: k
 }
 
 /** Henüz yeni tasarıma taşınmamış rotalar; menüden açılabilsin diye yer tutar. */
-const PENDING = ['clubs/*', 'events/*', 'me/*', 'posts/*', 'leaderboard', 'notifications', 'profile', 'settings/*', 'manage/*']
+const PENDING = ['clubs/advised', 'clubs/new', 'clubs/:clubId/*', 'events/*', 'me/*', 'posts/*', 'leaderboard', 'notifications', 'profile', 'settings/*', 'manage/*']
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -39,13 +39,17 @@ export const router = createBrowserRouter([
     children: [
       { index: true, ...page(() => import('@/pages/HomePage'), 'HomePage') },
       { path: 'courses', ...page(() => import('@/features/courses/CoursesPage'), 'CoursesPage') },
-      { path: 'courses/catalog', element: <NotBuiltPage /> },
+      { path: 'courses/catalog', ...page(() => import('@/features/courses/CatalogPage'), 'CatalogPage') },
       { path: 'courses/new', element: <NotBuiltPage /> },
       { path: 'courses/:courseId', ...page(() => import('@/features/courses/CoursePage'), 'CoursePage') },
       {
         path: 'courses/:courseId/assignments/:assignmentId',
         ...page(() => import('@/features/assignments/AssignmentPage'), 'AssignmentPage'),
       },
+      { path: 'clubs', ...page(() => import('@/features/clubs/ClubsPage'), 'ClubsPage') },
+      { path: 'clubs/approvals', ...page(() => import('@/features/clubs/ApprovalsPage'), 'ApprovalsPage') },
+      { path: 'clubs/mine', ...page(() => import('@/features/clubs/MyClubsPage'), 'MyClubsPage') },
+      { path: 'clubs/:clubId', ...page(() => import('@/features/clubs/ClubPage'), 'ClubPage') },
       { path: 'assignments', ...page(() => import('@/features/assignments/AssignmentsPage'), 'AssignmentsPage') },
       ...PENDING.map((path) => ({ path, element: <NotBuiltPage /> })),
       { path: '*', element: <NotFoundPage /> },

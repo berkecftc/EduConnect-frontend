@@ -6,13 +6,14 @@ import { AnimatePresence, motion } from 'motion/react'
 import { LINES } from '@/design/lines'
 import { ease, transition } from '@/design/motion'
 import { logout } from '@/lib/api/client'
-import { useSession, type Session } from '@/lib/auth/session'
+import { hasRole, useSession, type Session } from '@/lib/auth/session'
 import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
 import { ThemeSwitch } from '@/components/ui/ThemeSwitch'
 import { Wordmark } from '@/components/ui/Wordmark'
 import { displayName, useMe } from '@/features/me/useMe'
 import { useUnreadCount } from '@/features/notifications/api'
+import { useClubAccesses } from '@/features/clubs/manage'
 import { buildNav, roleLabel, type NavGroup } from './nav'
 
 /**
@@ -162,7 +163,9 @@ function useActivePath(groups: NavGroup[]) {
 }
 
 function SideNav({ session, indicatorId }: { session: Session; indicatorId: string }) {
-  const groups = useMemo(() => buildNav(session), [session])
+  const accesses = useClubAccesses(hasRole(session, 'ROLE_STUDENT', 'ROLE_CLUB_OFFICIAL'))
+  const approver = (accesses.data ?? []).some((a) => a.permissions.includes('APPROVE_AS_PRESIDENT'))
+  const groups = useMemo(() => buildNav(session, { approver }), [session, approver])
   const active = useActivePath(groups)
   const indicator = `nav-gosterge-${indicatorId}`
 

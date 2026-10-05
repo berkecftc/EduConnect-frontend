@@ -19,6 +19,9 @@ export type EnrolledCourse = {
   imageUrl: string | null
   instructorId: string | null
   instructorName: string | null
+  /** Unvan etiketi ("Doç. Dr.") ve kodu ("ASSOCIATE_PROFESSOR"); personel değilse ya da bilinmiyorsa null (F-84). */
+  instructorTitle?: string | null
+  instructorAcademicTitle?: string | null
   enrollmentDate: string
 }
 
@@ -37,7 +40,15 @@ export type Term = {
 }
 
 export type StaffRole = 'COORDINATOR' | 'INSTRUCTOR' | 'ASSISTANT'
-export type CourseStaff = { userId: string; role: StaffRole; name: string; department: string | null; since: string }
+export type CourseStaff = {
+  userId: string
+  role: StaffRole
+  name: string
+  title?: string | null
+  academicTitle?: string | null
+  department: string | null
+  since: string
+}
 
 export type Material = {
   id: string
@@ -201,4 +212,50 @@ export function useWithdrawApplication() {
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: courseKeys.applications }),
   })
+}
+
+/** Dönemler (F-41): `GET /api/courses/terms`, yeniden eskiye. */
+export function useTerms() {
+  return useQuery({
+    queryKey: ['courses', 'terms'],
+    staleTime: 60 * 60_000,
+    queryFn: async () =>
+      (await api.get<Term[]>('/courses/terms')).data.slice().sort((a, b) => b.startsOn.localeCompare(a.startsOn)),
+  })
+}
+
+/** Katalog: bir dönemin taslak dışındaki dersleri (`GET /api/courses?termId=`). */
+export function useCatalog(termId: string | undefined) {
+  return useQuery({
+    queryKey: ['courses', 'catalog', termId ?? 'all'],
+    enabled: termId !== undefined,
+    queryFn: async () => (await api.get<Course[]>('/courses', { params: termId ? { termId } : {} })).data,
+  })
+}
+
+/** Derse başvuru (`POST /api/courses/{id}/apply`); başarıda başvurular ve katalogdaki sayılar tazelenir. */
+export function useApplyToCourse() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (courseId: string) => (await api.post<CourseApplication>(`/courses/${courseId}/apply`)).data,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: courseKeys.applications })
+      void qc.invalidateQueries({ queryKey: ['courses', 'catalog'] })
+    },
+  })
+}
+
+/** Kayıt penceresi bugün açık mı (backend `Term.acceptsApplications` ile aynı; tarihler gün bazında). */
+export function enrollmentOpen(term: Term | undefined, today: string): boolean {
+  if (!term) return true
+  return (!term.enrollmentOpensOn || today >= term.enrollmentOpensOn) && (!term.enrollmentClosesOn || today <= term.enrollmentClosesOn)
+}
+
+/** Başvuru durumunun tonu. */
+export const APPLICATION_TONE: Record<ApplicationStatus, 'neutral' | 'warning' | 'success' | 'danger'> = {
+  PENDING: 'warning',
+  APPROVED: 'success',
+  REJECTED: 'danger',
+  WITHDRAWN: 'neutral',
+  CLOSED: 'neutral',
 }

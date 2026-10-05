@@ -1,8 +1,4 @@
-import { useMemo } from 'react'
-import { useQueries } from '@tanstack/react-query'
-import { api } from '@/lib/api/client'
-
-/** Unvan kodları (AcademicTitle) → okunur biçim; profilde `title` boşsa yedek. */
+/** Unvan kodları (AcademicTitle) → okunur biçim; yanıtta etiket boşsa yedek. */
 const TITLE_LABEL: Record<string, string> = {
   PROFESSOR: 'Prof. Dr.',
   ASSOCIATE_PROFESSOR: 'Doç. Dr.',
@@ -13,38 +9,15 @@ const TITLE_LABEL: Record<string, string> = {
   RESEARCH_ASSISTANT: 'Arş. Gör.',
 }
 
-type ProfileTitle = { title: string | null; academicTitle: string | null }
-
-/**
- * Personelin unvanları: kadro ve ders yanıtlarında unvan yok, profilden (`GET /api/users/profile/{id}`) alınır.
- * Personel profili herkese açıktır (F-60). Sonuç kişi başına önbelleğe alınır.
- */
-export function useStaffTitles(userIds: (string | null | undefined)[]): Map<string, string> {
-  const ids = useMemo(() => [...new Set(userIds.filter((id): id is string => !!id))], [userIds])
-  const results = useQueries({
-    queries: ids.map((id) => ({
-      queryKey: ['people', 'title', id],
-      staleTime: 60 * 60_000,
-      retry: false,
-      queryFn: async () => {
-        const { data } = await api.get<ProfileTitle>(`/users/profile/${id}`)
-        return data.title?.trim() || (data.academicTitle ? (TITLE_LABEL[data.academicTitle] ?? null) : null)
-      },
-    })),
-  })
-  return useMemo(() => {
-    const map = new Map<string, string>()
-    ids.forEach((id, i) => {
-      const t = results[i]?.data
-      if (t) map.set(id, t)
-    })
-    return map
-  }, [ids, results])
+/** Gösterilecek unvan: önce etiket (`title`), yoksa koddan (`academicTitle`) türetilen; ikisi de yoksa boş (F-84). */
+export function titleLabel(title: string | null | undefined, academicTitle?: string | null): string {
+  return title?.trim() || (academicTitle ? (TITLE_LABEL[academicTitle] ?? '') : '')
 }
 
 /** "Doç. Dr. Ayşe Yılmaz": unvanı adın önüne ekler; ad zaten unvanla başlıyorsa tekrar etmez. */
-export function withTitle(name: string | null | undefined, title: string | undefined): string {
+export function withTitle(name: string | null | undefined, title: string | null | undefined, academicTitle?: string | null): string {
   const n = (name ?? '').trim()
-  if (!title || !n) return n
-  return n.toLocaleLowerCase('tr-TR').startsWith(title.toLocaleLowerCase('tr-TR')) ? n : `${title} ${n}`
+  const t = titleLabel(title, academicTitle)
+  if (!t || !n) return n
+  return n.toLocaleLowerCase('tr-TR').startsWith(t.toLocaleLowerCase('tr-TR')) ? n : `${t} ${n}`
 }

@@ -9,7 +9,8 @@ import { useMyApplications, useMyCourses } from '@/features/courses/api'
 import { useMyRegistrations, useUpcomingEvents } from '@/features/events/api'
 import { useRecentNotifications } from '@/features/notifications/api'
 import { buildItems, summarize } from '@/features/today/items'
-import { CampusEvents, GradeReport, Panel, PendingApplications, RecentNotifications } from '@/features/today/Panels'
+import { CampusEvents, GradeReport, PendingApplications, RecentNotifications } from '@/features/today/Panels'
+import { Panel } from '@/components/ui/Panel'
 import { Timeline } from '@/features/today/Timeline'
 import { WeekStrip } from '@/features/today/WeekStrip'
 import { RevealTitle } from '@/components/ui/RevealTitle'
@@ -136,7 +137,7 @@ function StudentToday() {
             {notifications.isPending ? <Skeleton rows={3} /> : <RecentNotifications list={notifications.data ?? []} />}
           </Panel>
           {pending.length > 0 && (
-            <Panel title="Ders başvurularım" to="/courses">
+            <Panel title="Ders başvurularım" to="/courses/catalog?sekme=basvurular" linkLabel="Başvurularım">
               <PendingApplications list={pending} />
             </Panel>
           )}

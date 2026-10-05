@@ -1,20 +1,24 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Download, Sparkles } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { downloadFile } from '@/lib/api/client'
 import { toApiError, type ApiError } from '@/lib/api/problem'
+import { cn } from '@/lib/cn'
 import { formatNumber } from '@/lib/format'
 import { formatInstant, formatLocal } from '@/lib/time'
 import { usePageTitle } from '@/lib/usePageTitle'
-import { useCourse } from '@/features/courses/api'
+import { useCourse, type Course } from '@/features/courses/api'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { ChoiceGroup } from '@/components/ui/ChoiceGroup'
 import { Field } from '@/components/ui/Field'
 import { FileField } from '@/components/ui/FileField'
+import { Meter } from '@/components/ui/Meter'
 import { Notice } from '@/components/ui/Notice'
-import { EmptyState, PageHeader, QueryBoundary } from '@/components/ui/States'
+import { Panel } from '@/components/ui/Panel'
+import { RevealTitle } from '@/components/ui/RevealTitle'
+import { EmptyState, QueryBoundary } from '@/components/ui/States'
 import { Textarea } from '@/components/ui/Textarea'
 import {
   AI_NOTE_MAX,
@@ -26,7 +30,8 @@ import {
   useSubmitAssignment,
   type MyAssignment,
 } from './api'
-import { viewAssignment } from './model'
+import { DeadlineTrack } from './DeadlineTrack'
+import { viewAssignment, type AssignmentView } from './model'
 
 /** Teslim dosyası için ön sınır; asıl doğrulama sunucuda. */
 const SUBMISSION_MAX_BYTES = 20 * 1024 * 1024
@@ -40,171 +45,255 @@ export function AssignmentPage() {
   usePageTitle(a ? a.title : 'Ödev')
 
   return (
-    <div className="max-w-[60rem]">
-      <Link to={`/courses/${courseId}?sekme=odevler`} className="text-sm font-semibold text-ders underline-offset-2 hover:underline">
-        {course.data ? `${course.data.code} ödevleri` : 'Ders ödevleri'}
-      </Link>
-      <div className="mt-3">
-        <QueryBoundary query={assignments} what="Ödev" skeletonRows={3}>
-          {() =>
-            a ? (
-              <AssignmentBody assignment={a} courseLabel={course.data ? `${course.data.code} ${course.data.title}` : undefined} />
-            ) : (
-              <EmptyState title="Bu ödev bulunamadı">
-                Ödev kaldırılmış ya da bu derse kayıtlı olmayabilirsiniz.{' '}
-                <Link to="/assignments" className="font-semibold text-ders underline-offset-2 hover:underline">
-                  Ödevlerime dön
-                </Link>
-              </EmptyState>
-            )
-          }
-        </QueryBoundary>
-      </div>
+    <div className="mx-auto max-w-[80rem]">
+      <QueryBoundary query={assignments} what="Ödev" skeletonRows={3}>
+        {() =>
+          a ? (
+            <AssignmentBody assignment={a} course={course.data} />
+          ) : (
+            <EmptyState title="Bu ödev bulunamadı">
+              Ödev kaldırılmış ya da bu derse kayıtlı olmayabilirsiniz.{' '}
+              <Link to="/assignments" className="font-semibold text-ders underline-offset-2 hover:underline">
+                Ödevlerime dön
+              </Link>
+            </EmptyState>
+          )
+        }
+      </QueryBoundary>
     </div>
   )
 }
 
-function AssignmentBody({ assignment: a, courseLabel }: { assignment: MyAssignment; courseLabel?: string }) {
+function AssignmentBody({ assignment: a, course }: { assignment: MyAssignment; course?: Course }) {
   const v = viewAssignment(a)
   const s = a.submission
-  const [busy, setBusy] = useState(false)
+  const [downloading, setDownloading] = useState<string | null>(null)
 
   const download = async (url: string, name: string) => {
-    setBusy(true)
+    setDownloading(url)
     try {
       await downloadFile(url, name)
     } catch (e) {
       toast.error(toApiError(e).message)
     } finally {
-      setBusy(false)
+      setDownloading(null)
     }
   }
 
   return (
     <>
-      <PageHeader
-        title={a.title}
-        meta={
-          <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            {courseLabel && <span>{courseLabel}</span>}
-            <span>{TYPE_LABEL[a.type]}</span>
-            {a.weight > 0 && <span>Ağırlık %{formatNumber(a.weight)}</span>}
-            <span>{formatNumber(a.maxPoints)} puan</span>
+      {/* 1. Başlık bandı: solda ders, tür ve başlık; sağda tarife panosu gibi saat ya da puan. */}
+      <section className="grid gap-10 lg:grid-cols-12">
+        <div className="min-w-0 lg:col-span-8">
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-md">
+            <span aria-hidden className="h-5 w-[4px] bg-ders" />
+            <Link to={`/courses/${a.courseId}?sekme=odevler`} className="font-semibold underline-offset-4 hover:underline">
+              {course ? (
+                <>
+                  <span className="tabular font-heavy">{course.code}</span> {course.title}
+                </>
+              ) : (
+                'Ders ödevleri'
+              )}
+            </Link>
+            <span className="text-ink-3">{TYPE_LABEL[a.type]}</span>
+          </p>
+          <RevealTitle text={a.title} className="mt-1 text-5xl sm:text-6xl" />
+          <p className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-1 text-lg text-ink-2">
             <Badge tone={v.status.tone}>{v.status.label}</Badge>
-          </span>
-        }
-      />
-
-      <dl className="mt-8 grid gap-x-8 gap-y-5 border-y border-rule py-5 sm:grid-cols-2">
-        <div>
-          <dt className="text-sm text-ink-3">Son tarih</dt>
-          <dd className="mt-0.5 font-semibold">
-            <span className="tabular">{formatLocal(a.effectiveDueDate, 'long')}, {formatLocal(a.effectiveDueDate, 'time')}</span>
-            {a.effectiveDueDate !== a.dueDate && <Badge tone="info" className="ml-2">Size özel uzatma</Badge>}
-          </dd>
-          {v.timing && <dd className="text-sm text-ink-2">{v.timing}</dd>}
+            {a.groupSetId && <span>{a.groupName ? `Grup ödevi, ${a.groupName}` : 'Grup ödevi'}</span>}
+          </p>
         </div>
-        <div>
-          <dt className="text-sm text-ink-3">Geç teslim</dt>
-          <dd className="mt-0.5 font-semibold">
-            {a.effectiveLateUntil ? (
-              <span className="tabular">
-                {formatLocal(a.effectiveLateUntil, 'datetime')} kadar{v.penaltyText ? `, ${v.penaltyText} kesinti` : ''}
-              </span>
-            ) : (
-              'Yok, teslim son tarihte kapanır'
-            )}
-          </dd>
-        </div>
-        <div className="sm:col-span-2">
-          <dt className="flex items-center gap-1.5 text-sm text-ink-3">
-            <Sparkles className="size-4" aria-hidden />
-            Yapay zekâ kullanımı
-          </dt>
-          <dd className="mt-0.5">
-            <span className="font-semibold">{AI_POLICY[a.aiPolicy].label}.</span>{' '}
-            <span className="text-ink-2">{AI_POLICY[a.aiPolicy].description}</span>
-          </dd>
-        </div>
-        {a.groupSetId && (
-          <div className="sm:col-span-2">
-            <dt className="text-sm text-ink-3">Grup ödevi</dt>
-            <dd className="mt-0.5 font-semibold">{a.groupName ?? 'Henüz bir gruba katılmadınız'}</dd>
-          </div>
-        )}
-      </dl>
-
-      {(a.description || a.fileUrl) && (
-        <section aria-labelledby="odev-aciklama" className="mt-8">
-          <h2 id="odev-aciklama" className="text-lg">
-            Açıklama
-          </h2>
-          {a.description && <p className="mt-2 max-w-[68ch] whitespace-pre-line text-ink-2">{a.description}</p>}
-          {a.fileUrl && (
-            <Button className="mt-4" loading={busy} onClick={() => void download(`/assignments/${a.id}/file`, `${a.title}`)}>
-              <Download className="size-4" aria-hidden />
-              Ödev dosyasını indir
-            </Button>
-          )}
-        </section>
-      )}
-
-      {s && (
-        <section aria-labelledby="teslimim" className="mt-10">
-          <h2 id="teslimim" className="text-lg">
-            Teslimim
-          </h2>
-          <div className="mt-3 rounded-md border border-rule bg-surface p-4">
-            <p className="text-md text-ink-2">
-              {formatInstant(s.submittedAt, 'datetime')} tarihinde teslim edildi
-              {s.late && <Badge tone="warning" className="ml-2">Geç teslim</Badge>}
-            </p>
-            {v.gradeText && (
-              <p className="mt-3">
-                <span className="tabular text-2xl font-heavy">{v.gradeText}</span>
-                {s.late && v.penaltyText && <span className="ml-2 text-sm text-ink-3">({v.penaltyText})</span>}
-              </p>
-            )}
-            {s.feedback && (
-              <div className="mt-3">
-                <p className="text-sm font-semibold text-ink-3">Hocanın geri bildirimi</p>
-                <p className="mt-1 whitespace-pre-line">{s.feedback}</p>
-              </div>
-            )}
-            {s.textContent && (
-              <div className="mt-3">
-                <p className="text-sm font-semibold text-ink-3">Metin</p>
-                <p className="mt-1 max-h-60 overflow-y-auto whitespace-pre-line text-md">{s.textContent}</p>
-              </div>
-            )}
-            {s.aiUsed !== null && (
-              <p className="mt-3 text-sm text-ink-2">
-                Yapay zekâ beyanı: <span className="font-semibold text-ink">{s.aiUsed ? 'Kullandım' : 'Kullanmadım'}</span>
-                {s.aiUsed && s.aiNote ? `. ${s.aiNote}` : ''}
-              </p>
-            )}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button size="sm" loading={busy} onClick={() => void download(`/assignments/submissions/${s.submissionId}/file`, `${a.title} teslim`)}>
-                <Download className="size-4" aria-hidden />
-                Teslim dosyamı indir
-              </Button>
-            </div>
-            <Versions submissionId={s.submissionId} />
-          </div>
-        </section>
-      )}
-
-      <section aria-labelledby="teslim-et" className="mt-10">
-        <h2 id="teslim-et" className="text-lg">
-          {s ? 'Yeniden teslim et' : 'Teslim et'}
-        </h2>
-        {v.canSubmit ? (
-          <SubmitForm assignment={a} resubmit={!!s} late={v.phase === 'late'} penaltyText={v.penaltyText} />
-        ) : (
-          <p className="mt-2 text-ink-2">{v.blockedReason}</p>
-        )}
+        <Board assignment={a} view={v} />
       </section>
+
+      {/* 2. Teslim takvimi: açık, geç teslim ve kapalı dönemler; şu anki kalın çizgiyle. */}
+      <DeadlineTrack assignment={a} phase={v.phase} className="mt-14" />
+
+      {/* 3. İçerik: solda açıklama, teslimim ve teslim formu; sağda kurallar. */}
+      <div className="mt-16 grid gap-14 lg:grid-cols-12 lg:gap-10">
+        <div className="flex min-w-0 flex-col gap-14 lg:col-span-8">
+          {(a.description || a.fileUrl) && (
+            <Panel title="Açıklama">
+              {a.description && <p className="max-w-[68ch] text-lg whitespace-pre-line text-ink-2">{a.description}</p>}
+              {a.fileUrl && (
+                <DownloadRow
+                  className={a.description ? 'mt-6' : undefined}
+                  title="Ödev dosyası"
+                  hint="Hocanızın eklediği dosya"
+                  busy={downloading === `/assignments/${a.id}/file`}
+                  onClick={() => void download(`/assignments/${a.id}/file`, a.title)}
+                />
+              )}
+            </Panel>
+          )}
+
+          {s && (
+            <Panel title="Teslimim">
+              <dl className="border-t border-rule">
+                <Row label="Teslim">
+                  <span className="tabular">{formatInstant(s.submittedAt, 'datetime')}</span>
+                  {s.late && <Badge tone="warning" className="ml-3">Geç teslim</Badge>}
+                </Row>
+                {v.gradeText && (
+                  <Row label="Puan">
+                    <span className="tabular text-2xl font-heavy">{v.gradeText}</span>
+                    {s.late && v.penaltyText && <span className="ml-3 text-sm text-ink-3">{v.penaltyText} kesintisiyle</span>}
+                  </Row>
+                )}
+                {!v.gradeText && v.timing && <Row label="Puan">{v.timing}</Row>}
+                {s.feedback && (
+                  <Row label="Hocanızın notu">
+                    <span className="block max-w-[64ch] whitespace-pre-line">{s.feedback}</span>
+                  </Row>
+                )}
+                {s.textContent && (
+                  <Row label="Metin">
+                    <span className="block max-h-60 max-w-[64ch] overflow-y-auto whitespace-pre-line text-md">{s.textContent}</span>
+                  </Row>
+                )}
+                {s.aiUsed !== null && (
+                  <Row label="Yapay zekâ beyanı">
+                    <span className="font-semibold">{s.aiUsed ? 'Kullandım' : 'Kullanmadım'}</span>
+                    {s.aiUsed && s.aiNote && <span className="mt-0.5 block text-md text-ink-2">{s.aiNote}</span>}
+                  </Row>
+                )}
+                <Versions submissionId={s.submissionId} />
+              </dl>
+              <DownloadRow
+                className="border-t-0"
+                title="Teslim dosyam"
+                hint="Son teslim ettiğiniz sürüm"
+                busy={downloading === `/assignments/submissions/${s.submissionId}/file`}
+                onClick={() => void download(`/assignments/submissions/${s.submissionId}/file`, `${a.title} teslim`)}
+              />
+              {!v.canSubmit && <p className="mt-4 text-md text-ink-3">{v.blockedReason}</p>}
+            </Panel>
+          )}
+
+          {(v.canSubmit || !s) && (
+            <Panel title={s ? 'Yeniden teslim et' : 'Teslim et'}>
+              {v.canSubmit ? (
+                <SubmitForm assignment={a} resubmit={!!s} late={v.phase === 'late'} />
+              ) : (
+                <p className="text-lg text-ink-2">{v.blockedReason}</p>
+              )}
+            </Panel>
+          )}
+        </div>
+
+        <aside className="lg:col-span-4">
+          <Panel title="Kurallar">
+            <dl>
+              <Rule label="Yapay zekâ kullanımı">
+                <span className="font-semibold text-ink">{AI_POLICY[a.aiPolicy].label}.</span> {AI_POLICY[a.aiPolicy].description}
+              </Rule>
+              <Rule label="Geç teslim">
+                {a.effectiveLateUntil
+                  ? `${formatLocal(a.effectiveLateUntil, 'datetime')} kadar açık; ${a.latePenaltyPercent > 0 ? `puandan %${formatNumber(a.latePenaltyPercent)} kesilir` : 'kesinti uygulanmaz'}.`
+                  : 'Kabul edilmez; teslim son tarihte kapanır.'}
+              </Rule>
+              <Rule label="Yeniden teslim">
+                Puanlanana kadar yeniden teslim edebilirsiniz; yeni teslim öncekinin yerine geçer. Geç teslimden sonra yeniden teslim yapılamaz.
+              </Rule>
+              {a.groupSetId && <Rule label="Grup">{a.groupName ?? 'Henüz bir gruba katılmadınız. Teslim için önce bir gruba katılın.'}</Rule>}
+            </dl>
+          </Panel>
+        </aside>
+      </div>
     </>
+  )
+}
+
+/**
+ * Tarife panosu: puanlandıysa büyük puan ve ölçek çizgisi; değilse eylem saatinin büyük rakamı, günü ve kalan süre.
+ * Altında ağırlık ve tam puan.
+ */
+function Board({ assignment: a, view: v }: { assignment: MyAssignment; view: AssignmentView }) {
+  const s = a.submission
+  const final = s ? (s.finalGrade ?? s.grade) : null
+  const graded = v.graded && final !== null
+  const at = v.phase === 'late' ? v.closesAt : a.effectiveDueDate
+  const urgent = v.status.tone === 'warning' || v.status.tone === 'danger'
+  const note = v.timing ?? (v.phase === 'closed' && !s ? 'Teslim süresi doldu' : null)
+
+  return (
+    <dl className="self-end border-t border-rule pt-6 lg:col-span-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8">
+      {graded ? (
+        <div>
+          <dt className="text-sm text-ink-3">Puanınız</dt>
+          <dd className="tabular mt-1 text-6xl leading-none font-heavy">
+            {formatNumber(final)}
+            <span className="text-2xl font-semibold text-ink-3"> / {formatNumber(a.maxPoints)}</span>
+          </dd>
+          <dd className="mt-4 max-w-[16rem]">
+            <Meter value={final} max={a.maxPoints} label={`${formatNumber(a.maxPoints)} üzerinden ${formatNumber(final)}`} />
+          </dd>
+          {s?.late && final !== s.grade && (
+            <dd className="mt-2 text-sm text-ink-3">Geç teslim kesintisi öncesi {formatNumber(s.grade)}</dd>
+          )}
+        </div>
+      ) : (
+        <div>
+          <dt className="text-sm text-ink-3">{v.phase === 'late' ? 'Geç teslim bitişi' : 'Son tarih'}</dt>
+          <dd className="tabular mt-1 text-6xl leading-none font-heavy">{formatLocal(at, 'time')}</dd>
+          <dd className="mt-2 text-lg">{formatLocal(at, 'long')}</dd>
+          {note && <dd className={cn('mt-1 text-md', urgent ? 'font-semibold text-warning' : 'text-ink-2')}>{note}</dd>}
+        </div>
+      )}
+      <div className="mt-6 grid grid-cols-2 border-t border-rule pt-4">
+        <div>
+          <dt className="text-sm text-ink-3">Ağırlık</dt>
+          <dd className="tabular text-2xl font-heavy">{a.weight > 0 ? `%${formatNumber(a.weight)}` : '–'}</dd>
+        </div>
+        <div className="border-l border-rule pl-5">
+          <dt className="text-sm text-ink-3">Tam puan</dt>
+          <dd className="tabular text-2xl font-heavy">{formatNumber(a.maxPoints)}</dd>
+        </div>
+      </div>
+    </dl>
+  )
+}
+
+/** Teslim ayrıntısı satırı: solda etiket, sağda değer; ince çizgiyle ayrılır. */
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid gap-x-6 gap-y-1 border-b border-rule py-3.5 sm:grid-cols-[11rem_minmax(0,1fr)]">
+      <dt className="text-md text-ink-3">{label}</dt>
+      <dd>{children}</dd>
+    </div>
+  )
+}
+
+/** Kural: küçük etiket, altında açıklama. */
+function Rule({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="border-b border-rule py-3.5 first:pt-0">
+      <dt className="text-sm font-semibold text-ink">{label}</dt>
+      <dd className="mt-1 text-md text-ink-2">{children}</dd>
+    </div>
+  )
+}
+
+/** İndirme satırı: kutusuz, tam genişlik; üzerine gelince zemin soldan dolar. */
+function DownloadRow({ title, hint, busy, onClick, className }: { title: string; hint: string; busy: boolean; onClick: () => void; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      aria-busy={busy || undefined}
+      className={cn('row-fill flex w-full items-center justify-between gap-4 border-y border-rule px-1 py-3.5 text-left disabled:opacity-60', className)}
+    >
+      <span className="min-w-0">
+        <span className="block font-semibold">{title}</span>
+        <span className="block text-sm text-ink-3">{hint}</span>
+      </span>
+      <span className="flex shrink-0 items-center gap-2 text-sm font-semibold">
+        <Download className="size-4" aria-hidden />
+        {busy ? 'İndiriliyor…' : 'İndir'}
+      </span>
+    </button>
   )
 }
 
@@ -212,22 +301,24 @@ function Versions({ submissionId }: { submissionId: string }) {
   const versions = useSubmissionVersions(submissionId)
   if (!versions.data || versions.data.length < 2) return null
   return (
-    <details className="mt-4">
-      <summary className="cursor-pointer text-sm font-semibold text-ders">Sürüm geçmişi ({versions.data.length})</summary>
-      <ol className="mt-2 flex flex-col gap-1 text-sm text-ink-2">
-        {versions.data.map((ver) => (
-          <li key={ver.versionNo} className="tabular">
-            Sürüm {ver.versionNo}: {formatInstant(ver.submittedAt, 'datetime')}
-            {ver.late ? ', geç' : ''}
+    <Row label="Sürümler">
+      <ol className="flex flex-col gap-1 text-md">
+        {[...versions.data].reverse().map((ver) => (
+          <li key={ver.versionNo} className="tabular flex gap-4">
+            <span className="w-16 font-semibold">Sürüm {ver.versionNo}</span>
+            <span className="text-ink-2">
+              {formatInstant(ver.submittedAt, 'datetime')}
+              {ver.late ? ', geç' : ''}
+            </span>
           </li>
         ))}
       </ol>
-    </details>
+    </Row>
   )
 }
 
 /** Teslim formu (F-48, F-79): dosya ve/veya metin; politika gerektiriyorsa yapay zekâ beyanı. */
-function SubmitForm({ assignment: a, resubmit, late, penaltyText }: { assignment: MyAssignment; resubmit: boolean; late: boolean; penaltyText: string | null }) {
+function SubmitForm({ assignment: a, resubmit, late }: { assignment: MyAssignment; resubmit: boolean; late: boolean }) {
   const submit = useSubmitAssignment(a.id)
   const [file, setFile] = useState<File | null>(null)
   const [text, setText] = useState('')
@@ -264,11 +355,13 @@ function SubmitForm({ assignment: a, resubmit, late, penaltyText }: { assignment
     )
   }
 
+  const penalty = a.latePenaltyPercent > 0 ? ` ve puandan %${formatNumber(a.latePenaltyPercent)} kesilir` : ''
+
   return (
-    <form onSubmit={onSubmit} noValidate className="mt-4 flex max-w-[40rem] flex-col gap-5">
+    <form onSubmit={onSubmit} noValidate className="flex max-w-[44rem] flex-col gap-6">
       {(resubmit || late) && (
-        <Notice tone={late ? 'warning' : 'info'}>
-          {late && `Son tarih geçti; bu teslim geç sayılır${penaltyText ? ` ve puandan ${penaltyText.replace('geç teslim ', '')} kesilir` : ''}. Geç teslimden sonra yeniden teslim yapılamaz. `}
+        <Notice variant="line" tone={late ? 'warning' : 'info'}>
+          {late && `Son tarih geçti; bu teslim geç sayılır${penalty}. Geç teslimden sonra yeniden teslim yapılamaz. `}
           {resubmit && 'Yeni teslim öncekinin yerine geçer; önceki sürüm geçmişte kalır.'}
         </Notice>
       )}
@@ -279,6 +372,7 @@ function SubmitForm({ assignment: a, resubmit, late, penaltyText }: { assignment
       {needsDeclaration && (
         <>
           <ChoiceGroup
+            layout="rows"
             label="Yapay zekâ beyanı"
             value={aiUsed}
             onChange={setAiUsed}
@@ -296,7 +390,7 @@ function SubmitForm({ assignment: a, resubmit, late, penaltyText }: { assignment
         </>
       )}
       {failure && (
-        <Notice tone={failure.status === 409 ? 'warning' : 'danger'} title="Teslim edilemedi">
+        <Notice variant="line" tone={failure.status === 409 ? 'warning' : 'danger'} title="Teslim edilemedi">
           {failure.message}
         </Notice>
       )}

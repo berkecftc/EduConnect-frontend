@@ -7,6 +7,7 @@ export type Choice<T extends string> = { value: T; title: string; description?: 
 /**
  * Seçim kartları: tek seçimli, ok tuşlarıyla gezilir (Radix RadioGroup).
  * Seçili kartta kalın kenar ve işaret; renk tek başına bilgi taşımaz.
+ * `layout="rows"`: kutusuz, ince çizgili satırlar (uygulama içi tarife düzeni).
  */
 export function ChoiceGroup<T extends string>({
   label,
@@ -15,6 +16,7 @@ export function ChoiceGroup<T extends string>({
   choices,
   error,
   className,
+  layout = 'cards',
 }: {
   label: string
   value: T | undefined
@@ -22,7 +24,41 @@ export function ChoiceGroup<T extends string>({
   choices: Choice<T>[]
   error?: string
   className?: string
+  layout?: 'cards' | 'rows'
 }) {
+  if (layout === 'rows') {
+    return (
+      <fieldset className={className}>
+        <legend className="text-md font-semibold text-ink">{label}</legend>
+        <RadioGroup.Root
+          value={value ?? ''}
+          onValueChange={(v) => onChange(v as T)}
+          aria-invalid={error ? true : undefined}
+          className={cn('mt-2 border-t', error ? 'border-danger' : 'border-rule')}
+        >
+          {choices.map((c) => (
+            <RadioGroup.Item
+              key={c.value}
+              value={c.value}
+              className="group row-fill flex w-full items-start gap-4 border-b border-rule px-1 py-3.5 text-left"
+            >
+              <span
+                aria-hidden
+                className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border-2 border-control transition-colors group-hover:border-ink-2 group-data-[state=checked]:border-ink"
+              >
+                <RadioGroup.Indicator className="size-2.5 rounded-full bg-ink" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold text-ink group-data-[state=checked]:font-heavy">{c.title}</span>
+                {c.description && <span className="mt-0.5 block text-sm text-ink-2">{c.description}</span>}
+              </span>
+            </RadioGroup.Item>
+          ))}
+        </RadioGroup.Root>
+        {error && <p className="mt-1.5 text-sm font-semibold text-danger">{error}</p>}
+      </fieldset>
+    )
+  }
   return (
     <fieldset className={className}>
       <legend className="text-md font-semibold text-ink">{label}</legend>

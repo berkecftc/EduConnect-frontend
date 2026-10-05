@@ -7,8 +7,9 @@ export type NavGroup = { line: LineKey; label: string; items: NavItem[] }
 /**
  * Rol ve yetkiye göre menü. Her grup bir hat; öğeler o hattın durakları.
  * Rotalar bildirimlerin `link` alanlarıyla aynı (F-74…F-77).
+ * `clubs.approver`: herhangi bir kulüpte başkan onayı yetkisi (GET /clubs/my-access, F-85); rol adından tahmin edilmez.
  */
-export function buildNav(session: Session): NavGroup[] {
+export function buildNav(session: Session, clubs: { approver: boolean } = { approver: false }): NavGroup[] {
   const student = hasRole(session, 'ROLE_STUDENT', 'ROLE_CLUB_OFFICIAL')
   const academician = hasRole(session, 'ROLE_ACADEMICIAN')
   const staff = hasRole(session, 'ROLE_STAFF')
@@ -41,7 +42,7 @@ export function buildNav(session: Session): NavGroup[] {
           ]
         : [
             { to: '/clubs/mine', label: 'Kulüplerim' },
-            ...(hasRole(session, 'ROLE_CLUB_OFFICIAL') ? [{ to: '/clubs/approvals', label: 'Onay bekleyenler' }] : []),
+            ...(clubs.approver ? [{ to: '/clubs/approvals', label: 'Onay bekleyenler' }] : []),
             { to: '/clubs', label: 'Tüm kulüpler' },
           ],
     })

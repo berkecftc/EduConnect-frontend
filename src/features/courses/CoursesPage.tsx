@@ -1,37 +1,21 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { toast } from 'sonner'
 import { usePageTitle } from '@/lib/usePageTitle'
-import { formatInstant, nowLocalIso } from '@/lib/time'
+import { nowLocalIso } from '@/lib/time'
 import { formatNumber } from '@/lib/format'
 import { useGradesFor, useMyAssignments } from '@/features/assignments/api'
 import { viewAssignment } from '@/features/assignments/model'
-import { toApiError } from '@/lib/api/problem'
-import { Badge, type BadgeTone } from '@/components/ui/Badge'
+import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { useStaffTitles, withTitle } from '@/features/people/titles'
+import { withTitle } from '@/features/people/titles'
 import { EmptyState, PageHeader, QueryBoundary } from '@/components/ui/States'
 import {
-  APPLICATION_STATUS_LABEL,
   COURSE_STATUS_LABEL,
   COURSE_STATUS_TONE,
   useCurrentTerm,
   useMyApplications,
   useMyCourses,
-  useWithdrawApplication,
-  type ApplicationStatus,
-  type CourseApplication,
   type EnrolledCourse,
 } from './api'
-
-const APPLICATION_TONE: Record<ApplicationStatus, BadgeTone> = {
-  PENDING: 'warning',
-  APPROVED: 'success',
-  REJECTED: 'danger',
-  WITHDRAWN: 'neutral',
-  CLOSED: 'neutral',
-}
 
 /** Derslerim (öğrenci): bu dönemin dersleri, geçmiş dönemler ayrı; başvurular altta (F-42, F-44). */
 export function CoursesPage() {
@@ -39,6 +23,7 @@ export function CoursesPage() {
   const courses = useMyCourses()
   const term = useCurrentTerm()
   const applications = useMyApplications()
+  const pending = (applications.data ?? []).filter((a) => a.status === 'PENDING').length
 
   return (
     <div className="mx-auto max-w-[72rem]">
@@ -82,7 +67,14 @@ export function CoursesPage() {
         </QueryBoundary>
       </div>
 
-      {(applications.data ?? []).length > 0 && <Applications list={applications.data!} />}
+      {pending > 0 && (
+        <p className="mt-12 flex flex-wrap items-baseline gap-x-4 gap-y-1 border-t-2 border-ink pt-4 text-lg">
+          <span className="font-heavy">{pending} ders başvurunuz hoca onayında.</span>
+          <Link to="/courses/catalog?sekme=basvurular" className="text-md font-semibold underline-offset-4 hover:underline">
+            Başvurularım
+          </Link>
+        </p>
+      )}
     </div>
   )
 }
@@ -95,7 +87,6 @@ const BOARD = 'grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-3 lg:grid-cols-
  */
 function CourseTiles({ courses }: { courses: EnrolledCourse[] }) {
   const grades = useGradesFor(courses.map((c) => c.id))
-  const titles = useStaffTitles(courses.map((c) => c.instructorId))
   const assignments = useMyAssignments()
   const now = nowLocalIso()
   if (courses.length === 0) return null
@@ -127,7 +118,7 @@ function CourseTiles({ courses }: { courses: EnrolledCourse[] }) {
                     {c.title}
                   </span>
                   <span className="mt-1.5 flex flex-wrap gap-x-4 text-md text-ink-3">
-                    <span>{withTitle(c.instructorName, titles.get(c.instructorId ?? ''))}</span>
+                    <span>{withTitle(c.instructorName, c.instructorTitle, c.instructorAcademicTitle)}</span>
                     {c.section && <span>Şube {c.section}</span>}
                     <span>
                       {c.credit} kredi{c.ects ? `, ${c.ects} AKTS` : ''}
@@ -158,7 +149,6 @@ function CourseTiles({ courses }: { courses: EnrolledCourse[] }) {
 }
 
 function CourseList({ courses, label, className }: { courses: EnrolledCourse[]; label: string; className?: string }) {
-  const titles = useStaffTitles(courses.map((c) => c.instructorId))
   if (courses.length === 0) return null
   return (
     <section aria-label={label} className={className}>
@@ -174,7 +164,7 @@ function CourseList({ courses, label, className }: { courses: EnrolledCourse[]; 
               <span className="col-start-1 row-start-2 min-w-0 sm:col-start-2 sm:row-start-1">
                 <span className="block text-base font-semibold text-ink">{c.title}</span>
                 <span className="mt-0.5 flex flex-wrap gap-x-3 text-sm text-ink-3">
-                  {c.instructorName && <span>{withTitle(c.instructorName, titles.get(c.instructorId ?? ''))}</span>}
+                  {c.instructorName && <span>{withTitle(c.instructorName, c.instructorTitle, c.instructorAcademicTitle)}</span>}
                   {c.section && <span>Şube {c.section}</span>}
                   <span>
                     {c.credit} kredi{c.ects ? `, ${c.ects} AKTS` : ''}
@@ -189,62 +179,6 @@ function CourseList({ courses, label, className }: { courses: EnrolledCourse[]; 
           </li>
         ))}
       </ul>
-    </section>
-  )
-}
-
-function Applications({ list }: { list: CourseApplication[] }) {
-  const withdraw = useWithdrawApplication()
-  const [target, setTarget] = useState<CourseApplication | null>(null)
-  return (
-    <section aria-labelledby="basvurularim" className="mt-12">
-      <h2 id="basvurularim" className="text-xl">
-        Başvurularım
-      </h2>
-      <ul className="mt-3 divide-y divide-rule border-y border-rule">
-        {list.map((a) => (
-          <li key={a.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-2 py-3">
-            <span className="min-w-0 flex-1">
-              <span className="block text-md">
-                <span className="tabular font-heavy text-ders">{a.courseCode}</span> {a.courseTitle}
-              </span>
-              <span className="mt-0.5 block text-sm text-ink-3">
-                {formatInstant(a.applicationDate, 'datetime')} tarihinde başvurdunuz
-                {a.rejectionReason ? `. Gerekçe: ${a.rejectionReason}` : ''}
-              </span>
-            </span>
-            <Badge tone={APPLICATION_TONE[a.status]}>{APPLICATION_STATUS_LABEL[a.status]}</Badge>
-            {a.status === 'PENDING' && (
-              <Button size="sm" variant="ghost" onClick={() => setTarget(a)}>
-                Geri çek
-              </Button>
-            )}
-          </li>
-        ))}
-      </ul>
-      <ConfirmDialog
-        open={!!target}
-        onOpenChange={(o) => !o && setTarget(null)}
-        title="Başvuruyu geri çek"
-        description={
-          <>
-            <span className="font-semibold text-ink">{target?.courseCode}</span> başvurunuz geri çekilecek. Kayıt
-            dönemi açıksa yeniden başvurabilirsiniz.
-          </>
-        }
-        confirmLabel="Başvuruyu geri çek"
-        loading={withdraw.isPending}
-        onConfirm={() =>
-          target &&
-          withdraw.mutate(target.id, {
-            onSuccess: () => {
-              toast.success('Başvuru geri çekildi')
-              setTarget(null)
-            },
-            onError: (e) => toast.error(toApiError(e).message),
-          })
-        }
-      />
     </section>
   )
 }

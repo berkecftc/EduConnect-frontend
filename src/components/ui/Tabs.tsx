@@ -36,7 +36,7 @@ export function Tabs({ tabs, label, param = 'sekme' }: { tabs: TabDef[]; label: 
           >
             {t.label}
             {t.count !== undefined && (
-              <span className="tabular rounded-sm bg-sunken px-1.5 text-xs text-ink-2">{t.count}</span>
+              <span className="tabular text-sm text-ink-3">{t.count}</span>
             )}
             {value === t.value && (
               <motion.span
