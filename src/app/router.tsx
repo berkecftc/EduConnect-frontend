@@ -1,37 +1,34 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, type RouteObject } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { RequireAuth } from '@/components/layout/RequireAuth'
-import { EmailChangeConfirmPage } from '@/features/auth/EmailChangeConfirmPage'
-import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage'
 import { LoginPage } from '@/features/auth/LoginPage'
-import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
-import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage'
-import { DesignSystemPage } from '@/pages/DesignSystemPage'
-import { HomePage } from '@/pages/HomePage'
 import { NotBuiltPage, NotFoundPage } from '@/pages/StatusPages'
 
+/**
+ * Sayfalar rota bazlı bölünür: yalnız açıldığında indirilir. Giriş sayfası ilk açılış olduğu için pakette kalır.
+ * `page(() => import(...), 'Ad')` dosyanın adlı dışa aktarımını Component olarak verir.
+ */
+function page<M extends Record<string, unknown>>(load: () => Promise<M>, name: keyof M): Pick<RouteObject, 'lazy'> {
+  return { lazy: async () => ({ Component: (await load())[name] as React.ComponentType }) }
+}
+
 /** Henüz yeni tasarıma taşınmamış rotalar; menüden açılabilsin diye yer tutar. */
-const PENDING = [
-  'courses/*',
-  'assignments/*',
-  'clubs/*',
-  'events/*',
-  'me/*',
-  'posts/*',
-  'leaderboard',
-  'notifications',
-  'profile',
-  'settings/*',
-  'manage/*',
-]
+const PENDING = ['clubs/*', 'events/*', 'me/*', 'posts/*', 'leaderboard', 'notifications', 'profile', 'settings/*', 'manage/*']
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
-  { path: '/forgot-password', element: <ForgotPasswordPage /> },
-  { path: '/reset-password', element: <ResetPasswordPage /> },
-  { path: '/verify-email', element: <VerifyEmailPage /> },
-  { path: '/email-change/confirm', element: <EmailChangeConfirmPage /> },
-  ...(import.meta.env.DEV ? [{ path: '/design', element: <DesignSystemPage /> }] : []),
+  { path: '/register', ...page(() => import('@/features/auth/register/RegisterPage'), 'RegisterPage') },
+  { path: '/forgot-password', ...page(() => import('@/features/auth/ForgotPasswordPage'), 'ForgotPasswordPage') },
+  { path: '/reset-password', ...page(() => import('@/features/auth/ResetPasswordPage'), 'ResetPasswordPage') },
+  { path: '/verify-email', ...page(() => import('@/features/auth/VerifyEmailPage'), 'VerifyEmailPage') },
+  { path: '/email-change/confirm', ...page(() => import('@/features/auth/EmailChangeConfirmPage'), 'EmailChangeConfirmPage') },
+  ...(import.meta.env.DEV
+    ? [
+        { path: '/design', ...page(() => import('@/pages/DesignSystemPage'), 'DesignSystemPage') },
+        // Örnek veriyle önizleme: oturum bellekte, istekler ağa gitmez (yalnız geliştirme).
+        { path: '/onizleme', ...page(() => import('@/dev/PreviewPage'), 'PreviewPage') },
+      ]
+    : []),
   {
     path: '/',
     element: (
@@ -40,7 +37,16 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <HomePage /> },
+      { index: true, ...page(() => import('@/pages/HomePage'), 'HomePage') },
+      { path: 'courses', ...page(() => import('@/features/courses/CoursesPage'), 'CoursesPage') },
+      { path: 'courses/catalog', element: <NotBuiltPage /> },
+      { path: 'courses/new', element: <NotBuiltPage /> },
+      { path: 'courses/:courseId', ...page(() => import('@/features/courses/CoursePage'), 'CoursePage') },
+      {
+        path: 'courses/:courseId/assignments/:assignmentId',
+        ...page(() => import('@/features/assignments/AssignmentPage'), 'AssignmentPage'),
+      },
+      { path: 'assignments', ...page(() => import('@/features/assignments/AssignmentsPage'), 'AssignmentsPage') },
       ...PENDING.map((path) => ({ path, element: <NotBuiltPage /> })),
       { path: '*', element: <NotFoundPage /> },
     ],

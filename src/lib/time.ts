@@ -78,3 +78,59 @@ export function nowLocalIso(now: Date = new Date()): string {
   }).format(now)
   return parts.replace(' ', 'T')
 }
+
+const relative = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' })
+
+/** UTC kayıt anını göreli yazar: "az önce", "5 dakika önce", "2 saat önce", "dün"; bir haftadan eskiyse tarih. */
+export function formatRelative(value: string | null | undefined, now: number = Date.now()): string {
+  if (!value) return ''
+  const t = new Date(value).getTime()
+  if (Number.isNaN(t)) return ''
+  const minutes = Math.round((t - now) / 60_000)
+  if (Math.abs(minutes) < 1) return 'az önce'
+  if (Math.abs(minutes) < 60) return relative.format(minutes, 'minute')
+  const hours = Math.round(minutes / 60)
+  if (Math.abs(hours) < 24) return relative.format(hours, 'hour')
+  const days = Math.round(hours / 24)
+  if (Math.abs(days) < 7) return relative.format(days, 'day')
+  return formatInstant(value, 'short')
+}
+
+/** Günün saatine göre selam (Türkiye saati). */
+export function greeting(now: string = nowLocalIso()): string {
+  const h = Number(now.slice(11, 13))
+  if (h < 5) return 'İyi geceler'
+  if (h < 12) return 'Günaydın'
+  if (h < 18) return 'İyi günler'
+  return 'İyi akşamlar'
+}
+
+/** Bölgesiz yerel ISO'yu karşılaştırılabilir zaman damgasına çevirir (yalnız farklar için; saat dilimi önemsizdir). */
+export function localStamp(value: string): number {
+  return localToUtcDate(value)?.getTime() ?? Number.NaN
+}
+
+/** İki bölgesiz yerel saat arasındaki fark (ms): `to - from`. */
+export function localDiffMs(from: string, to: string): number {
+  return localStamp(to) - localStamp(from)
+}
+
+/** Kalan süreyi kısa Türkçe metne çevirir: "45 dakika", "5 saat", "3 gün". Süre geçtiyse `null`. */
+export function formatRemaining(ms: number): string | null {
+  if (!(ms > 0)) return null
+  const minutes = Math.floor(ms / 60_000)
+  if (minutes < 60) return `${Math.max(1, minutes)} dakika`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 48) return `${hours} saat`
+  return `${Math.floor(hours / 24)} gün`
+}
+
+/** Yerel günün etiketi: "Bugün", "Yarın" ya da "8 Ekim Perşembe". */
+export function dayLabel(localIso: string, now: string = nowLocalIso()): string {
+  const day = localIso.slice(0, 10)
+  const today = now.slice(0, 10)
+  const tomorrow = new Date(localStamp(`${today}T00:00:00`) + 86_400_000).toISOString().slice(0, 10)
+  if (day === today) return 'Bugün'
+  if (day === tomorrow) return 'Yarın'
+  return formatLocal(localIso, 'long')
+}

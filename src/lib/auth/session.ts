@@ -93,8 +93,16 @@ export function readStoredSession(): Session | null {
   return read()
 }
 
-export function setSession(next: Session | null) {
+/**
+ * Oturumu ayarlar. `persist: false` yalnız bellekte tutar (geliştirme önizlemesi);
+ * sayfa yenilenince kaybolur ve kalıcı oturuma dokunmaz.
+ */
+export function setSession(next: Session | null, { persist = true }: { persist?: boolean } = {}) {
   current = next
+  if (!persist) {
+    emit()
+    return
+  }
   try {
     if (next) localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
     else localStorage.removeItem(STORAGE_KEY)

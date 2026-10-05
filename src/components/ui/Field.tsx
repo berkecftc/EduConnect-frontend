@@ -5,6 +5,7 @@ type ControlProps = {
   id?: string
   'aria-describedby'?: string
   'aria-invalid'?: boolean
+  'aria-required'?: boolean
 }
 
 /**
@@ -15,14 +16,17 @@ export function Field({
   hint,
   error,
   action,
+  required,
   className,
   children,
 }: {
   label: string
   hint?: ReactNode
   error?: string
-  /** Etiketin sağındaki bağlantı (ör. "Parolamı unuttum"). */
+  /** Etiketin sağındaki bağlantı (ör. "Şifremi unuttum"). */
   action?: ReactNode
+  /** Zorunlu alan: etikette yıldız, kontrolde aria-required. */
+  required?: boolean
   className?: string
   children: ReactElement<ControlProps>
 }) {
@@ -42,10 +46,16 @@ export function Field({
     >
       <label htmlFor={id} className="self-baseline text-md font-semibold text-ink [grid-area:label]">
         {label}
+        {required && <span aria-hidden className="text-danger"> *</span>}
       </label>
       <div className="[grid-area:control]">
         {isValidElement(children)
-          ? cloneElement(children, { id, 'aria-describedby': describedBy, 'aria-invalid': error ? true : undefined })
+          ? cloneElement(children, {
+              id,
+              'aria-describedby': describedBy,
+              'aria-invalid': error ? true : undefined,
+              'aria-required': required || undefined,
+            })
           : children}
       </div>
       {action && <div className="self-baseline [grid-area:action]">{action}</div>}

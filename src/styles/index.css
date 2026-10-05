@@ -165,6 +165,12 @@
   --text-4xl: 2.875rem;
   --text-4xl--line-height: 1;
   --text-4xl--letter-spacing: -0.025em;
+  --text-5xl: 3.75rem;
+  --text-5xl--line-height: 0.95;
+  --text-5xl--letter-spacing: -0.035em;
+  --text-6xl: 5rem;
+  --text-6xl--line-height: 0.92;
+  --text-6xl--letter-spacing: -0.045em;
 
   --font-weight-*: initial;
   --font-weight-normal: 400;
@@ -173,10 +179,11 @@
 
   /* Köşeler: hiyerarşiye göre, her şeye aynı yarıçap değil */
   --radius-*: initial;
-  --radius-xs: 3px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
+  /* İsviçre tarifesi: köşeler neredeyse keskin; yuvarlaklık bilgi taşımaz. */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
   --radius-full: 9999px;
 
   /* Derinlik: yalnız yüzen katmanlarda */
@@ -268,6 +275,10 @@
   :where(p) {
     text-wrap: pretty;
   }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ec-rule-strong) transparent;
+  }
   ::selection {
     background: var(--ec-ders-soft);
     color: var(--ec-ink);
@@ -278,6 +289,30 @@
   }
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+}
+
+/*
+ * Tarife satırı: üzerine gelince zemin soldan sağa dolar. Yalnız transform; düzen kaymaz.
+ */
+@layer components {
+  .row-fill {
+    position: relative;
+    isolation: isolate;
+  }
+  .row-fill::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--ec-sunken);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 420ms var(--ease-rail);
+  }
+  .row-fill:hover::before,
+  .row-fill:focus-visible::before {
+    transform: scaleX(1);
   }
 }
 

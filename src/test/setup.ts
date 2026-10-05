@@ -19,3 +19,10 @@ if (!window.matchMedia) {
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
 afterEach(() => cleanup())
+
+// jsdom'da ResizeObserver yok; Radix bileşenleri ölçüm için kullanır.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as unknown as typeof ResizeObserver
