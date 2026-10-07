@@ -120,6 +120,16 @@ export const APPLICATION_STATUS_LABEL: Record<ApplicationStatus, string> = {
 /** Ders sürüyor mu (başvuru, teslim, çekilme açık). */
 export const isRunning = (s: CourseStatus) => s === 'OPEN' || s === 'ACTIVE'
 
+/** Materyalleri bölümlere ayırır: bölümsüzler "Genel" başta, diğerleri doğal sırayla (Hafta 2, Hafta 3, Hafta 10). */
+export function groupMaterials(list: Material[]): [string, Material[]][] {
+  const groups = new Map<string, Material[]>()
+  for (const m of [...list].sort((a, b) => a.sortOrder - b.sortOrder)) {
+    const key = m.section?.trim() || 'Genel'
+    groups.set(key, [...(groups.get(key) ?? []), m])
+  }
+  return [...groups.entries()].sort(([a], [b]) => (a === 'Genel' ? -1 : b === 'Genel' ? 1 : a.localeCompare(b, 'tr', { numeric: true })))
+}
+
 export const courseKeys = {
   mine: ['courses', 'mine'] as const,
   detail: (id: string) => ['courses', id] as const,

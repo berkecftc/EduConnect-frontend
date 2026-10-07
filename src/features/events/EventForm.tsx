@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { ChoiceGroup } from '@/components/ui/ChoiceGroup'
 import { Field } from '@/components/ui/Field'
 import { FileField } from '@/components/ui/FileField'
+import { FormSection } from '@/components/ui/FormSection'
 import { Input } from '@/components/ui/Input'
 import { Notice } from '@/components/ui/Notice'
 import { Textarea } from '@/components/ui/Textarea'
@@ -64,7 +65,7 @@ export function EventForm({
 
   return (
     <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col">
-      <Section title="Etkinlik" hint="Başlık ve açıklama etkinlik sayfasında, konuşmacılar başlığın altında görünür.">
+      <FormSection title="Etkinlik" hint="Başlık ve açıklama etkinlik sayfasında, konuşmacılar başlığın altında görünür.">
         <Field label="Başlık" required error={err('title')}>
           <Input maxLength={255} {...text('title')} />
         </Field>
@@ -74,9 +75,9 @@ export function EventForm({
         <Field label="Konuşmacılar" hint="İsteğe bağlı. Ör. Prof. Dr. Nil Ersoy, Can Erdem">
           <Input maxLength={2000} {...text('speakers')} />
         </Field>
-      </Section>
+      </FormSection>
 
-      <Section title="Zaman ve yer" hint="Saatler Türkiye saatidir. Bitiş boş kalırsa başlangıçtan iki saat sonra sayılır.">
+      <FormSection title="Zaman ve yer" hint="Saatler Türkiye saatidir. Bitiş boş kalırsa başlangıçtan iki saat sonra sayılır.">
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Başlangıç" required error={err('startsAt')}>
             <Input type="datetime-local" {...text('startsAt')} />
@@ -88,9 +89,9 @@ export function EventForm({
         <Field label="Yer" hint="Ör. B Blok 204">
           <Input maxLength={255} {...text('location')} />
         </Field>
-      </Section>
+      </FormSection>
 
-      <Section title="Katılım" hint="Kontenjan dolunca yeni katılımcılar bekleme listesine alınır.">
+      <FormSection title="Katılım" hint="Kontenjan dolunca yeni katılımcılar bekleme listesine alınır.">
         <ChoiceGroup
           layout="rows"
           label="Kimler katılabilir"
@@ -114,9 +115,9 @@ export function EventForm({
         <Field label="Kontenjan" hint="Boş bırakırsanız sınırsız." error={err('capacity')}>
           <Input inputMode="numeric" className="max-w-[10rem]" {...text('capacity')} />
         </Field>
-      </Section>
+      </FormSection>
 
-      <Section title="Kayıt dönemi" hint="Hepsi isteğe bağlı. Boş bırakırsanız kayıt yayımlandığı anda açılır ve etkinlik başlayana kadar sürer.">
+      <FormSection title="Kayıt dönemi" hint="Hepsi isteğe bağlı. Boş bırakırsanız kayıt yayımlandığı anda açılır ve etkinlik başlayana kadar sürer.">
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Kayıt açılışı" error={err('registrationOpensAt')}>
             <Input type="datetime-local" {...text('registrationOpensAt')} />
@@ -128,15 +129,15 @@ export function EventForm({
         <Field label="İptal son tarihi" hint="Bu saatten sonra katılımcılar kaydını iptal edemez." error={err('cancelUntil')}>
           <Input type="datetime-local" className="sm:max-w-[calc(50%-0.625rem)]" {...text('cancelUntil')} />
         </Field>
-      </Section>
+      </FormSection>
 
       {withPoster && (
-        <Section title="Afiş" hint="İsteğe bağlı. Afişsiz etkinlikte sayfada yalnız metin görünür.">
+        <FormSection title="Afiş" hint="İsteğe bağlı. Afişsiz etkinlikte sayfada yalnız metin görünür.">
           <FileField label="Afiş görseli" hint="JPG, PNG ya da WebP; en fazla 5 MB." accept="image/jpeg,image/png,image/webp" maxBytes={POSTER_MAX_BYTES} value={poster} onChange={setPoster} />
-        </Section>
+        </FormSection>
       )}
 
-      {extra && <Section title="Not">{extra}</Section>}
+      {extra && <FormSection title="Not">{extra}</FormSection>}
 
       <div className="flex flex-col gap-4 border-t-2 border-ink pt-6">
         {failure && !serverField && (
@@ -151,21 +152,5 @@ export function EventForm({
         </div>
       </div>
     </form>
-  )
-}
-
-/** Form bölümü: solda başlık ve açıklama, sağda alanlar; bölümler ince çizgiyle ayrılır. */
-function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
-  return (
-    <fieldset className="grid gap-x-10 gap-y-4 border-t border-rule py-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <legend className="sr-only">{title}</legend>
-      <div>
-        <p aria-hidden className="text-lg font-heavy">
-          {title}
-        </p>
-        {hint && <p className="mt-1 text-sm text-ink-3">{hint}</p>}
-      </div>
-      <div className="flex max-w-[40rem] flex-col gap-5">{children}</div>
-    </fieldset>
   )
 }

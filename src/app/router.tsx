@@ -39,10 +39,10 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, ...page(() => import('@/pages/HomePage'), 'HomePage') },
-      { path: 'courses', ...page(() => import('@/features/courses/CoursesPage'), 'CoursesPage') },
+      { path: 'courses', ...page(() => import('@/features/courses/CourseRoutes'), 'CoursesIndex') },
       { path: 'courses/catalog', ...page(() => import('@/features/courses/CatalogPage'), 'CatalogPage') },
-      { path: 'courses/new', element: <NotBuiltPage /> },
-      { path: 'courses/:courseId', ...page(() => import('@/features/courses/CoursePage'), 'CoursePage') },
+      { path: 'courses/new', ...page(() => import('@/features/courses/CourseCreatePage'), 'CourseCreatePage') },
+      { path: 'courses/:courseId', ...page(() => import('@/features/courses/CourseRoutes'), 'CourseRoute') },
       {
         path: 'courses/:courseId/assignments/:assignmentId',
         ...page(() => import('@/features/assignments/AssignmentPage'), 'AssignmentPage'),

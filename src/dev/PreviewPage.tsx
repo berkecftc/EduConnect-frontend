@@ -6,6 +6,7 @@ import { api } from '@/lib/api/client'
 import { setSession } from '@/lib/auth/session'
 import * as fx from './fixtures'
 import * as px from './postFixtures'
+import * as tx from './teachPreview'
 
 type Handler = (m: RegExpMatchArray, config: InternalAxiosRequestConfig) => unknown
 
@@ -603,10 +604,10 @@ const fixtureAdapter: AxiosAdapter = async (config: InternalAxiosRequestConfig) 
   const reply = (status: number, data: unknown): AxiosResponse => ({ status, statusText: '', data, headers: {}, config })
   const method = config.method ?? 'get'
   if (method !== 'get') {
-    const hit = WRITE.filter(([verb]) => verb === method).map(([, re, handle]) => [url.match(re), handle] as const).find(([m]) => m)
+    const hit = (tx.state.academician ? [...tx.WRITE, ...WRITE] : WRITE).filter(([verb]) => verb === method).map(([, re, handle]) => [url.match(re), handle] as const).find(([m]) => m)
     return reply(200, hit ? await hit[1](hit[0]!, config) : {})
   }
-  for (const [re, handle] of GET) {
+  for (const [re, handle] of tx.state.academician ? [...tx.GET, ...GET] : GET) {
     const m = url.match(re)
     if (!m) continue
     try {
@@ -632,23 +633,26 @@ export function PreviewPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   useEffect(() => {
+    // ?rol=akademisyen: Dr. Öğr. Üyesi Mehmet Kaya olarak; yoksa öğrenci Elif Demir olarak.
+    const academician = new URLSearchParams(window.location.search).get('rol') === 'akademisyen'
+    tx.state.academician = academician
     api.defaults.adapter = fixtureAdapter
     qc.clear()
     setSession(
       {
         token: 'onizleme',
         refreshToken: 'onizleme',
-        userId: 'u1',
-        email: fx.me.email!,
-        roles: ['ROLE_STUDENT'],
-        primaryRole: 'ROLE_STUDENT',
+        userId: academician ? tx.me.id : 'u1',
+        email: academician ? tx.me.email! : fx.me.email!,
+        roles: [academician ? 'ROLE_ACADEMICIAN' : 'ROLE_STUDENT'],
+        primaryRole: academician ? 'ROLE_ACADEMICIAN' : 'ROLE_STUDENT',
         pendingRequests: [],
         permissions: [],
         expiresAt: Date.now() + 24 * 3_600_000,
       },
       { persist: false },
     )
-    navigate('/', { replace: true })
+    navigate(academician ? '/courses' : '/', { replace: true })
   }, [navigate, qc])
   return null
 }

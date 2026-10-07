@@ -24,6 +24,7 @@ import {
   COURSE_STATUS_LABEL,
   COURSE_STATUS_TONE,
   STAFF_ROLE_LABEL,
+  groupMaterials,
   isRunning,
   useAnnouncements,
   useCourse,
@@ -239,14 +240,9 @@ function Materials({ courseId }: { courseId: string }) {
     <QueryBoundary query={materials} what="Materyaller">
       {(list) => {
         if (list.length === 0) return <EmptyState title="Henüz materyal yok">Hoca ders notu ya da bağlantı eklediğinde burada listelenir.</EmptyState>
-        const sections = new Map<string, Material[]>()
-        for (const m of [...list].sort((a, b) => a.sortOrder - b.sortOrder)) {
-          const key = m.section?.trim() || 'Genel'
-          sections.set(key, [...(sections.get(key) ?? []), m])
-        }
         return (
           <div className="flex flex-col gap-8">
-            {[...sections.entries()].map(([section, items]) => (
+            {groupMaterials(list).map(([section, items]) => (
               <section key={section} aria-label={section}>
                 <h2 className="border-b border-rule pb-2 text-md font-heavy">{section}</h2>
                 <ul className="divide-y divide-rule">
