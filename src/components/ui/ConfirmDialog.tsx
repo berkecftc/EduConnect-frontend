@@ -16,6 +16,7 @@ export function ConfirmDialog({
   loading = false,
   onConfirm,
   children,
+  hideCancel = false,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -27,6 +28,8 @@ export function ConfirmDialog({
   onConfirm: () => void
   /** Ek alanlar (ör. isteğe bağlı gerekçe). */
   children?: ReactNode
+  /** Yalnız bilgi veren pencerede (tek "Tamam") iptal düğmesi gizlenir; Esc yine kapatır. */
+  hideCancel?: boolean
 }) {
   return (
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
@@ -39,9 +42,11 @@ export function ConfirmDialog({
           </AlertDialog.Description>
           {children && <div className="mt-5">{children}</div>}
           <div className="mt-6 flex flex-wrap justify-end gap-2">
-            <AlertDialog.Cancel asChild>
-              <Button variant="ghost">Vazgeç</Button>
-            </AlertDialog.Cancel>
+            {!hideCancel && (
+              <AlertDialog.Cancel asChild>
+                <Button variant="ghost">Vazgeç</Button>
+              </AlertDialog.Cancel>
+            )}
             <Button
               variant={destructive ? 'danger' : 'primary'}
               loading={loading}

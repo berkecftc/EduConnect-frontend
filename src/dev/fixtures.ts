@@ -961,3 +961,38 @@ export const academicCatalog = [
     ],
   },
 ]
+
+// ——— Liderlik tablosu ———
+
+const LEADERS: [string, number, string[]][] = [
+  ['Mert Aksu', 1240, ['POINTS_MASTER', 'STREAK_LEGEND', 'FORTNIGHT_WARRIOR', 'WEEK_WARRIOR', 'POINTS_EXPLORER', 'PROFILE_COMPLETE', 'FIRST_STEP']],
+  ['B. Ö.', 980, ['POINTS_EXPLORER', 'FORTNIGHT_WARRIOR', 'WEEK_WARRIOR', 'FIRST_STEP']],
+  ['Can Erdem', 760, ['POINTS_EXPLORER', 'WEEK_WARRIOR', 'FIRST_STEP']],
+  ['Ece Yalçın', 610, ['POINTS_EXPLORER', 'PROFILE_COMPLETE', 'FIRST_STEP']],
+  ['Kaan Yıldız', 455, ['POINTS_EXPLORER', 'FIRST_STEP']],
+  ['S. A.', 390, ['WEEK_WARRIOR', 'FIRST_STEP']],
+  ['Elif Demir', 245, ['WEEK_WARRIOR', 'FIRST_STEP']],
+  ['Deniz Kara', 230, ['FIRST_STEP']],
+  ['Oğuz Tan', 180, ['FIRST_STEP']],
+  ['Zehra Uçar', 120, ['FIRST_STEP']],
+]
+
+export function leaderboard(period: string, limit: number) {
+  const scale = period === 'ALL_TIME' ? 3 : 1
+  const entries = LEADERS.slice(0, limit).map(([displayName, points, badges], i) => ({
+    rank: i + 1,
+    displayName,
+    points: points * scale,
+    badges,
+    me: displayName === 'Elif Demir',
+  }))
+  return {
+    period,
+    termLabel: period === 'TERM' ? '2026-2027 Güz' : null,
+    from: period === 'TERM' ? '2026-09-14' : null,
+    to: period === 'TERM' ? '2027-01-31' : null,
+    facultyId: null,
+    entries,
+    me: { rank: 7, points: 245 * scale, visible: leaderboardPreference.visible },
+  }
+}

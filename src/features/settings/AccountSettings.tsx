@@ -3,14 +3,13 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { logout } from '@/lib/api/client'
 import { toApiError, type ApiError } from '@/lib/api/problem'
 import { useSession } from '@/lib/auth/session'
-import { emailField, newPasswordField } from '@/features/auth/schemas'
-import { useChangePassword, useEmailChange } from '@/features/profile/api'
+import { newPasswordField } from '@/features/auth/schemas'
+import { useChangePassword } from '@/features/profile/api'
 import { Button } from '@/components/ui/Button'
 import { Field } from '@/components/ui/Field'
-import { Input, PasswordInput } from '@/components/ui/Input'
+import { PasswordInput } from '@/components/ui/Input'
 import { Notice } from '@/components/ui/Notice'
 import { Panel } from '@/components/ui/Panel'
 
@@ -24,15 +23,12 @@ const passwordSchema = z
   .refine((v) => v.newPassword !== v.currentPassword, { path: ['newPassword'], message: 'Yeni şifre eskisiyle aynı olamaz' })
 type PasswordValues = z.infer<typeof passwordSchema>
 
-const emailSchema = z.object({ newEmail: emailField, currentPassword: z.string().min(1, 'Mevcut şifrenizi girin') })
-type EmailValues = z.infer<typeof emailSchema>
-
-/** Hesap: şifre ve e-posta değişikliği (F-55). */
+/** Hesap: şifre değişikliği; kurum e-posta adresi yalnız gösterilir, değiştirilemez. */
 export function AccountSettings() {
   return (
     <div className="flex flex-col gap-20">
       <PasswordForm />
-      <EmailForm />
+      <EmailAddress />
     </div>
   )
 }
@@ -88,65 +84,15 @@ function PasswordForm() {
   )
 }
 
-function EmailForm() {
+/** Kurum e-postası okul tarafından verilir; giriş ve bildirimler bu adresi kullanır, değiştirilemez. */
+function EmailAddress() {
   const session = useSession()
-  const change = useEmailChange()
-  const [sentTo, setSentTo] = useState<string | null>(null)
-  const [failure, setFailure] = useState<ApiError | null>(null)
-  const form = useForm<EmailValues>({ resolver: zodResolver(emailSchema), defaultValues: { newEmail: '', currentPassword: '' } })
-  const { errors } = form.formState
-
-  const onSubmit = form.handleSubmit((v) => {
-    setFailure(null)
-    change.mutate(v, {
-      onSuccess: (r) => {
-        if (r.status === 'CHANGED') {
-          toast.success('E-posta adresiniz değişti. Yeni adresinizle yeniden giriş yapın.')
-          void logout()
-          return
-        }
-        setSentTo(v.newEmail)
-        form.reset()
-      },
-      onError: (err) => {
-        const ae = toApiError(err)
-        if (ae.code === 'CURRENT_PASSWORD_INVALID') form.setError('currentPassword', { message: ae.message })
-        else if (ae.code === 'EMAIL_UNCHANGED' || ae.code === 'EMAIL_TAKEN' || ae.code === 'EMAIL_DOMAIN_NOT_ALLOWED') form.setError('newEmail', { message: ae.message })
-        else setFailure(ae)
-      },
-    })
-  })
-
   return (
     <Panel title="E-posta adresi">
-      <p className="max-w-[60ch] text-md text-ink-2">
-        Şu anki adresiniz <span className="font-semibold text-ink">{session?.email}</span>. Yeni adrese bir doğrulama bağlantısı gönderilir; bağlantıyı
-        açtığınızda adres değişir ve oturumunuz kapanır.
+      <p className="text-xl font-semibold break-all">{session?.email}</p>
+      <p className="mt-2 max-w-[60ch] text-md text-ink-2">
+        Kurum e-posta adresiniz okul tarafından verilir ve değiştirilemez. Girişte ve bildirim e-postalarında bu adres kullanılır.
       </p>
-      {sentTo ? (
-        <Notice variant="line" tone="success" title="Bağlantı gönderildi" className="mt-6">
-          {sentTo} adresine bir doğrulama bağlantısı gönderdik. Bağlantıyı açana kadar giriş adresiniz değişmez.
-        </Notice>
-      ) : (
-        <form onSubmit={onSubmit} noValidate className="mt-6 flex max-w-[28rem] flex-col gap-5">
-          <Field label="Yeni e-posta adresi" required error={errors.newEmail?.message}>
-            <Input type="email" autoComplete="email" {...form.register('newEmail')} />
-          </Field>
-          <Field label="Mevcut şifre" required hint="Değişikliği sizin yaptığınızı doğrulamak için." error={errors.currentPassword?.message}>
-            <PasswordInput autoComplete="current-password" {...form.register('currentPassword')} />
-          </Field>
-          {failure && (
-            <Notice variant="line" tone="danger" title="E-posta değiştirilemedi">
-              {failure.message}
-            </Notice>
-          )}
-          <div>
-            <Button type="submit" variant="primary" loading={change.isPending}>
-              Doğrulama bağlantısı gönder
-            </Button>
-          </div>
-        </form>
-      )}
     </Panel>
   )
 }

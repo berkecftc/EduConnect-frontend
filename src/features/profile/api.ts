@@ -116,14 +116,6 @@ export function useChangePassword() {
   })
 }
 
-/** E-posta değişikliği: `VERIFICATION_SENT` yeni adrese bağlantı gitti; `CHANGED` hemen değişti (oturum kapanır). */
-export function useEmailChange() {
-  return useMutation({
-    mutationFn: async (v: { newEmail: string; currentPassword: string }) =>
-      (await api.post<{ status: 'VERIFICATION_SENT' | 'CHANGED'; message: string }>('/auth/email-change', v)).data,
-  })
-}
-
 // ——— Liderlik tablosu görünürlüğü (F-73) ———
 
 export type DisplayMode = 'FULL_NAME' | 'INITIALS'

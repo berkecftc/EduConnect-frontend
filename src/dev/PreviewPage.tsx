@@ -5,15 +5,29 @@ import type { AxiosAdapter, AxiosResponse, InternalAxiosRequestConfig } from 'ax
 import { api } from '@/lib/api/client'
 import { setSession } from '@/lib/auth/session'
 import * as fx from './fixtures'
+import * as px from './postFixtures'
 
 type Handler = (m: RegExpMatchArray, config: InternalAxiosRequestConfig) => unknown
 
 /** Yol → örnek yanıt. Sıra önemli: daha özel yollar önce. */
 const GET: [RegExp, Handler][] = [
   [/^\/users\/me$/, () => ({ ...fx.me })],
+  [/^\/posts$/, (_m, config) => px.feed('all', (config.params ?? {}) as { category?: string; official?: boolean; page?: number; size?: number })],
+  [/^\/posts\/saved$/, (_m, config) => px.feed('saved', (config.params ?? {}) as { page?: number })],
+  [/^\/posts\/me$/, (_m, config) => px.feed('mine', (config.params ?? {}) as { page?: number })],
+  [/^\/posts\/appeals\/me$/, () => px.appeals.map((a) => ({ ...a }))],
+  [/^\/posts\/([^/]+)\/comments$/, (m) => px.commentsOf(m[1]!)],
+  [/^\/posts\/([^/]+)$/, (m) => ({ ...(px.posts.find((p) => p.id === m[1]) ?? notFound()) })],
   [/^\/users\/profile\/me\/change-requests$/, () => fx.changeRequests.map((r) => ({ ...r }))],
   [/^\/users\/academic\/catalog$/, () => fx.academicCatalog],
   [/^\/gamification\/users\/me\/leaderboard-preference$/, () => ({ ...fx.leaderboardPreference })],
+  [
+    /^\/gamification\/leaderboard$/,
+    (_m, config) => {
+      const { period = 'TERM', limit = 20 } = (config.params ?? {}) as { period?: string; limit?: number }
+      return fx.leaderboard(period, limit)
+    },
+  ],
   [/^\/courses\/my-courses$/, () => fx.courses],
   // Kopya: başvuru ve geri çekme diziyi yerinde değiştirir; aynı nesne dönerse React Query değişikliği görmez.
   [/^\/courses\/my-applications$/, () => fx.applications.map((a) => ({ ...a }))],
@@ -90,6 +104,147 @@ const GET: [RegExp, Handler][] = [
 
 /** Yazma istekleri (yöntem, yol): başvuru, geri çekme, ayrılma ve yenileme önizleme verisini değiştirir; diğerleri boş yanıt döner. */
 const WRITE: [string, RegExp, Handler][] = [
+  ['post', /^\/posts$/, (_m, config) => px.newPost(JSON.parse(String(config.data)))],
+  [
+    'put',
+    /^\/posts\/([^/]+)$/,
+    (m, config) => {
+      const p = px.posts.find((x) => x.id === m[1])!
+      const body = JSON.parse(String(config.data)) as { title: string; content: string }
+      Object.assign(p, { title: body.title, content: body.content, updatedAt: new Date().toISOString() })
+      return { ...p }
+    },
+  ],
+  [
+    'delete',
+    /^\/posts\/([^/]+)$/,
+    (m) => {
+      const i = px.posts.findIndex((x) => x.id === m[1])
+      if (i >= 0) px.posts.splice(i, 1)
+      return null
+    },
+  ],
+  [
+    'put',
+    /^\/posts\/([^/]+)\/like$/,
+    (m) => {
+      const p = px.posts.find((x) => x.id === m[1])!
+      if (!p.liked) Object.assign(p, { liked: true, likeCount: p.likeCount + 1 })
+      return { liked: p.liked, likeCount: p.likeCount }
+    },
+  ],
+  [
+    'delete',
+    /^\/posts\/([^/]+)\/like$/,
+    (m) => {
+      const p = px.posts.find((x) => x.id === m[1])!
+      if (p.liked) Object.assign(p, { liked: false, likeCount: p.likeCount - 1 })
+      return { liked: p.liked, likeCount: p.likeCount }
+    },
+  ],
+  [
+    'post',
+    /^\/posts\/([^/]+)\/bookmark$/,
+    (m) => {
+      const p = px.posts.find((x) => x.id === m[1])!
+      p.bookmarked = !p.bookmarked
+      return { bookmarked: p.bookmarked }
+    },
+  ],
+  ['post', /^\/posts\/([^/]+)\/comments$/, (m, config) => px.newComment(m[1]!, (JSON.parse(String(config.data)) as { content: string }).content)],
+  [
+    'post',
+    /^\/posts\/comments\/([^/]+)\/replies$/,
+    (m, config) => px.newComment(px.findComment(m[1]!)!.postId, (JSON.parse(String(config.data)) as { content: string }).content, m[1]!),
+  ],
+  [
+    'delete',
+    /^\/posts\/([^/]+)\/comments\/([^/]+)$/,
+    (m) => {
+      const i = px.comments.findIndex((c) => c.id === m[2])
+      if (i >= 0) px.comments.splice(i, 1)
+      else for (const c of px.comments) c.replies = c.replies.filter((r) => r.id !== m[2])
+      px.recount(m[1]!)
+      return null
+    },
+  ],
+  [
+    'put',
+    /^\/posts\/([^/]+)\/accepted-answer$/,
+    (m, config) => {
+      px.posts.find((x) => x.id === m[1])!.acceptedCommentId = (JSON.parse(String(config.data)) as { commentId: string }).commentId
+      return null
+    },
+  ],
+  [
+    'delete',
+    /^\/posts\/([^/]+)\/accepted-answer$/,
+    (m) => {
+      px.posts.find((x) => x.id === m[1])!.acceptedCommentId = null
+      return null
+    },
+  ],
+  [
+    'post',
+    /^\/posts\/(?:comments\/)?([^/]+)\/report$/,
+    (_m, config) => {
+      const { reason } = JSON.parse(String(config.data)) as { reason: string }
+      const sensitive = reason === 'HARASSMENT' || reason === 'THREAT'
+      return {
+        sensitive,
+        reasonLabel: reason,
+        supportMessage: sensitive
+          ? "Bildirimin öncelikli olarak bir moderatöre iletildi. Acil bir tehlike varsa kampüs güvenliğine veya 112'ye başvur; konuşmak istersen üniversitenin psikolojik danışmanlık birimi sana destek olabilir."
+          : null,
+      }
+    },
+  ],
+  [
+    'post',
+    /^\/posts\/comments\/([^/]+)\/hide$/,
+    (m, config) => {
+      const c = px.findComment(m[1]!)!
+      Object.assign(c, { status: 'HIDDEN', moderationNote: (JSON.parse(String(config.data)) as { reason: string }).reason })
+      px.recount(c.postId)
+      return null
+    },
+  ],
+  [
+    'post',
+    /^\/posts\/(comments\/)?([^/]+)\/appeal$/,
+    (m, config) => {
+      const comment = !!m[1]
+      const a = {
+        id: 'ap-' + Date.now(),
+        targetType: comment ? ('COMMENT' as const) : ('POST' as const),
+        targetId: m[2]!,
+        postId: comment ? (px.findComment(m[2]!)?.postId ?? null) : m[2]!,
+        statement: (JSON.parse(String(config.data)) as { statement: string }).statement,
+        status: 'OPEN' as const,
+        decisionNote: null,
+        createdAt: new Date().toISOString(),
+      }
+      px.appeals.unshift(a)
+      return a
+    },
+  ],
+  [
+    'put',
+    /^\/posts\/([^/]+)\/attachment$/,
+    (m, config) => {
+      const file = (config.data as FormData).get('file') as File
+      px.posts.find((x) => x.id === m[1])!.attachmentName = file.name
+      return null
+    },
+  ],
+  [
+    'delete',
+    /^\/posts\/([^/]+)\/attachment$/,
+    (m) => {
+      px.posts.find((x) => x.id === m[1])!.attachmentName = null
+      return null
+    },
+  ],
   [
     'post',
     /^\/users\/profile\/me\/change-requests$/,
@@ -131,11 +286,6 @@ const WRITE: [string, RegExp, Handler][] = [
       if (body.currentPassword === 'yanlis') previewError(config, 400, 'WRONG_CURRENT_PASSWORD', 'Wrong current password')
       return 'Password changed successfully.'
     },
-  ],
-  [
-    'post',
-    /^\/auth\/email-change$/,
-    () => ({ status: 'VERIFICATION_SENT', message: 'Yeni adresinize doğrulama bağlantısı gönderildi.' }),
   ],
   [
     'post',
