@@ -514,7 +514,23 @@ export const notifications: AppNotification[] = [
   { id: 'nt3', category: 'EVENT', type: 'EVENT_REMINDER', title: 'Arduino atölyesi yarın 18:30', body: 'Biletiniz Biletlerim sayfasında.', link: '/events/e1', read: false, createdAt: ago(9) },
   { id: 'nt4', category: 'ACHIEVEMENT', type: 'BADGE_EARNED', title: 'Yeni rozet: Yardımsever', body: 'Bir cevabınız kabul edildi.', link: '/profile', read: true, createdAt: ago(30) },
   { id: 'nt5', category: 'CLUB_NEWS', type: 'CLUB_ANNOUNCEMENT', title: 'Robotik Kulübü: yeni dönem tanışma', body: 'Perşembe 17:00, kulüp odası.', link: '/clubs/k1', read: true, createdAt: ago(50) },
+  { id: 'nt6', category: 'COURSE', type: 'ASSIGNMENT_REMINDER', title: '[BİL 304] Normalizasyon ödevinin teslimine 1 gün kaldı', body: 'Son tarih bu akşam 23:59.', link: '/courses/c2/assignments/a1', read: false, createdAt: ago(1) },
+  { id: 'nt7', category: 'CLUB_MANAGEMENT', type: 'CLUB_MEMBERSHIP', title: 'Satranç Kulübü: yeni üyelik başvurusu', body: 'Kaan Yıldız kulübe katılmak istiyor.', link: '/clubs/k2?sekme=yonetim', read: false, createdAt: ago(6) },
+  { id: 'nt8', category: 'ACCOUNT', type: 'PASSWORD_CHANGED', title: 'Şifreniz değiştirildi', body: 'Bu işlemi siz yapmadıysanız hemen şifrenizi sıfırlayın.', link: null, read: true, createdAt: ago(24 * 4) },
+  { id: 'nt9', category: 'CLUB_NEWS', type: 'CLUB_NOTICE', title: 'Tiyatro Kulübü kapatıldı', body: 'Kulübün etkinlikleri iptal edildi.', link: null, read: false, createdAt: ago(24 * 6) },
 ]
+
+export const preferences = [
+  { category: 'ACCOUNT', label: 'Hesap ve güvenlik', mandatory: true, emailEnabled: true },
+  { category: 'COURSE', label: 'Dersler', mandatory: true, emailEnabled: true },
+  { category: 'EVENT', label: 'Kayıtlı olduğum etkinlikler', mandatory: true, emailEnabled: true },
+  { category: 'MODERATION', label: 'Moderasyon kararları', mandatory: true, emailEnabled: true },
+  { category: 'CLUB_MANAGEMENT', label: 'Kulüp yönetimi', mandatory: true, emailEnabled: true },
+  { category: 'CLUB_NEWS', label: 'Kulüp duyuruları ve etkinlikleri', mandatory: false, emailEnabled: true },
+  { category: 'COMMUNITY', label: 'Topluluk etkileşimleri', mandatory: false, emailEnabled: false },
+  { category: 'ACHIEVEMENT', label: 'Puan ve rozetler', mandatory: false, emailEnabled: false },
+] as const satisfies readonly { category: AppNotification['category']; label: string; mandatory: boolean; emailEnabled: boolean }[]
+
 
 export const summary: GamificationSummary = {
   totalPoints: 245,
@@ -892,3 +908,56 @@ export function attendanceReport(eventId: string) {
 export const eventChanges: Record<string, { id: string; kind: 'EDITED' | 'RESUBMITTED' | 'POSTPONED' | 'RELOCATED' | 'CANCELLED'; details: string | null; reason: string | null; createdAt: string }[]> = {
   e1: [{ id: 'ch1', kind: 'RELOCATED', details: 'B Blok 104 → B Blok 204', reason: 'Laboratuvar daha geniş.', createdAt: ago(20) }],
 }
+
+/** Önizlemede değiştirilebilen tercih kopyası. */
+export const preferenceState = preferences.map((p) => ({ ...p }))
+
+// ——— Profil ve hesap ———
+
+export const changeRequests = [
+  {
+    id: 'cr1',
+    currentName: 'Elif Demir',
+    firstName: null,
+    lastName: 'Demir Kaya',
+    academicTitle: null,
+    titleLabel: null,
+    programId: null,
+    departmentId: null,
+    reason: 'Evlilik sonrası soyadım değişti.',
+    status: 'REJECTED' as 'PENDING' | 'APPROVED' | 'REJECTED',
+    reviewNote: 'Nüfus kaydınız henüz güncellenmemiş görünüyor; güncellendikten sonra yeniden başvurun.' as string | null,
+    reviewedAt: ago(24 * 20) as string | null,
+    createdAt: ago(24 * 25),
+  },
+]
+
+export const leaderboardPreference = { visible: true, displayMode: 'FULL_NAME' as 'FULL_NAME' | 'INITIALS' }
+
+export const academicCatalog = [
+  {
+    id: 'f1',
+    code: 'MUH',
+    name: 'Mühendislik Fakültesi',
+    active: true,
+    departments: [
+      {
+        id: 'd1',
+        code: 'BIL',
+        name: 'Bilgisayar Mühendisliği',
+        active: true,
+        programs: [
+          { id: 'p1', code: 'BIL-L', name: 'Bilgisayar Mühendisliği', level: 'BACHELOR', durationYears: 4, active: true },
+          { id: 'p2', code: 'BIL-YL', name: 'Bilgisayar Mühendisliği', level: 'MASTER', durationYears: 2, active: true },
+        ],
+      },
+      {
+        id: 'd2',
+        code: 'EEM',
+        name: 'Elektrik-Elektronik Mühendisliği',
+        active: true,
+        programs: [{ id: 'p3', code: 'EEM-L', name: 'Elektrik-Elektronik Mühendisliği', level: 'BACHELOR', durationYears: 4, active: true }],
+      },
+    ],
+  },
+]

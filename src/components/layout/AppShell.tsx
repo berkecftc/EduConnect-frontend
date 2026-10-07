@@ -271,6 +271,12 @@ function UserBlock({ session }: { session: Session }) {
         <span className="block truncate text-md font-semibold group-hover:underline">{displayName(me, session.email)}</span>
         <span className="block truncate text-sm text-ink-3">{me?.programName ?? roleLabel(session)}</span>
       </NavLink>
+      <NavLink
+        to="/settings"
+        className={({ isActive }) => cn('mt-2 inline-block text-sm font-semibold underline-offset-4 hover:underline', isActive ? 'text-ink' : 'text-ink-2')}
+      >
+        Ayarlar
+      </NavLink>
       <div className="mt-4 flex items-center justify-between gap-2">
         <ThemeSwitch />
         <Button variant="ghost" size="sm" onClick={() => void logout()}>

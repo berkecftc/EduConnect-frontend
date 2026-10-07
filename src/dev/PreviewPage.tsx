@@ -10,7 +10,10 @@ type Handler = (m: RegExpMatchArray, config: InternalAxiosRequestConfig) => unkn
 
 /** Yol → örnek yanıt. Sıra önemli: daha özel yollar önce. */
 const GET: [RegExp, Handler][] = [
-  [/^\/users\/me$/, () => fx.me],
+  [/^\/users\/me$/, () => ({ ...fx.me })],
+  [/^\/users\/profile\/me\/change-requests$/, () => fx.changeRequests.map((r) => ({ ...r }))],
+  [/^\/users\/academic\/catalog$/, () => fx.academicCatalog],
+  [/^\/gamification\/users\/me\/leaderboard-preference$/, () => ({ ...fx.leaderboardPreference })],
   [/^\/courses\/my-courses$/, () => fx.courses],
   // Kopya: başvuru ve geri çekme diziyi yerinde değiştirir; aynı nesne dönerse React Query değişikliği görmez.
   [/^\/courses\/my-applications$/, () => fx.applications.map((a) => ({ ...a }))],
@@ -44,7 +47,16 @@ const GET: [RegExp, Handler][] = [
   [/^\/events\/manage\/([^/]+)\/attendance$/, (m) => fx.attendanceReport(m[1]!)],
   [/^\/events\/manage\/([^/]+)\/changes$/, (m) => [...(fx.eventChanges[m[1]!] ?? [])]],
   [/^\/notifications\/unread-count$/, () => ({ unread: fx.notifications.filter((n) => !n.read).length })],
-  [/^\/notifications$/, () => ({ content: fx.notifications, totalElements: fx.notifications.length, totalPages: 1, number: 0, last: true })],
+  [
+    /^\/notifications$/,
+    (_m, config) => {
+      const { unreadOnly, page = 0, size = 20 } = (config.params ?? {}) as { unreadOnly?: boolean; page?: number; size?: number }
+      const all = [...fx.notifications].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).filter((n) => !unreadOnly || !n.read)
+      const content = all.slice(page * size, page * size + size).map((n) => ({ ...n }))
+      return { content, totalElements: all.length, totalPages: Math.ceil(all.length / size), number: page, last: (page + 1) * size >= all.length }
+    },
+  ],
+  [/^\/notifications\/preferences$/, () => fx.preferenceState.map((p) => ({ ...p }))],
   [/^\/gamification\/users\/me\/summary$/, () => fx.summary],
   [/^\/clubs$/, () => fx.clubs],
   [/^\/clubs\/my-access$/, () => fx.clubAccesses],
@@ -78,6 +90,81 @@ const GET: [RegExp, Handler][] = [
 
 /** Yazma istekleri (yöntem, yol): başvuru, geri çekme, ayrılma ve yenileme önizleme verisini değiştirir; diğerleri boş yanıt döner. */
 const WRITE: [string, RegExp, Handler][] = [
+  [
+    'post',
+    /^\/users\/profile\/me\/change-requests$/,
+    (_m, config) => {
+      if (fx.changeRequests.some((r) => r.status === 'PENDING')) previewError(config, 409, 'CHANGE_REQUEST_PENDING', 'Bekleyen bir değişiklik talebiniz var.')
+      const body = JSON.parse(String(config.data)) as Record<string, string>
+      const r = { id: 'cr-' + Date.now(), currentName: 'Elif Demir', firstName: body.firstName ?? null, lastName: body.lastName ?? null, academicTitle: null, titleLabel: null, programId: body.programId ?? null, departmentId: body.departmentId ?? null, reason: body.reason!, status: 'PENDING', reviewNote: null, reviewedAt: null, createdAt: new Date().toISOString() }
+      ;(fx.changeRequests as unknown as (typeof r)[]).unshift(r)
+      return r
+    },
+  ],
+  [
+    'put',
+    /^\/users\/profile\/([^/]+)$/,
+    (_m, config) => {
+      Object.assign(fx.me, JSON.parse(String(config.data)))
+      return { ...fx.me }
+    },
+  ],
+  [
+    'post',
+    /^\/users\/me\/profile-picture$/,
+    (_m, config) => {
+      fx.me.profileImageUrl = URL.createObjectURL((config.data as FormData).get('file') as File)
+      return fx.me.profileImageUrl
+    },
+  ],
+  [
+    'put',
+    /^\/gamification\/users\/me\/leaderboard-preference$/,
+    (_m, config) => Object.assign(fx.leaderboardPreference, JSON.parse(String(config.data))),
+  ],
+  [
+    'post',
+    /^\/auth\/change-password$/,
+    (_m, config) => {
+      // Önizleme kuralı: mevcut şifre alanına "yanlis" yazılırsa backend'in yanlış şifre hatası taklit edilir.
+      const body = JSON.parse(String(config.data)) as { currentPassword: string }
+      if (body.currentPassword === 'yanlis') previewError(config, 400, 'WRONG_CURRENT_PASSWORD', 'Wrong current password')
+      return 'Password changed successfully.'
+    },
+  ],
+  [
+    'post',
+    /^\/auth\/email-change$/,
+    () => ({ status: 'VERIFICATION_SENT', message: 'Yeni adresinize doğrulama bağlantısı gönderildi.' }),
+  ],
+  [
+    'post',
+    /^\/notifications\/([^/]+)\/read$/,
+    (m) => {
+      const n = fx.notifications.find((x) => x.id === m[1])
+      if (n) n.read = true
+      return n ?? null
+    },
+  ],
+  [
+    'post',
+    /^\/notifications\/read-all$/,
+    () => {
+      const unread = fx.notifications.filter((n) => !n.read)
+      unread.forEach((n) => (n.read = true))
+      return { updated: unread.length }
+    },
+  ],
+  [
+    'put',
+    /^\/notifications\/preferences$/,
+    (_m, config) => {
+      const body = JSON.parse(String(config.data)) as { category: string; emailEnabled: boolean }
+      const p = fx.preferenceState.find((x) => x.category === body.category)!
+      p.emailEnabled = body.emailEnabled
+      return { ...p }
+    },
+  ],
   [
     'post',
     /^\/events\/manage$/,
@@ -352,6 +439,11 @@ const WRITE: [string, RegExp, Handler][] = [
 class PreviewNotFound extends Error {}
 function notFound(): never {
   throw new PreviewNotFound()
+}
+
+/** Önizlemede backend hatası taklidi (ProblemDetail biçimi). */
+function previewError(config: InternalAxiosRequestConfig, status: number, errorCode: string, message: string): never {
+  throw Object.assign(new Error(message), { isAxiosError: true, config, response: { status, statusText: '', headers: {}, config, data: { status, errorCode, message } } })
 }
 
 /** Ağa gitmeden örnek veriyle yanıt veren axios adaptörü; gerçekçi olsun diye kısa gecikme. */

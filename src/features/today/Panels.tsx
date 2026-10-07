@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { LINES } from '@/design/lines'
 import { formatNumber } from '@/lib/format'
 import { formatInstant, formatLocal, formatRelative } from '@/lib/time'
 import { cn } from '@/lib/cn'
@@ -7,7 +6,7 @@ import type { EnrolledCourse, Announcement, CourseApplication } from '@/features
 import { APPLICATION_STATUS_LABEL } from '@/features/courses/api'
 import type { MyGrades } from '@/features/assignments/api'
 import type { CampusEvent } from '@/features/events/api'
-import type { AppNotification, NotificationCategory } from '@/features/notifications/api'
+import { CATEGORY_META, useOpenNotification, type AppNotification } from '@/features/notifications/api'
 import { Meter } from '@/components/ui/Meter'
 import { StationLine } from '@/components/ui/StationLine'
 
@@ -47,25 +46,16 @@ export function GradeReport({ courses, grades }: { courses: EnrolledCourse[]; gr
   )
 }
 
-const CATEGORY_LINE: Record<NotificationCategory, string> = {
-  ACCOUNT: LINES.yonetim.stroke,
-  COURSE: LINES.ders.stroke,
-  EVENT: LINES.etkinlik.stroke,
-  MODERATION: LINES.yonetim.stroke,
-  CLUB_MANAGEMENT: LINES.kulup.stroke,
-  CLUB_NEWS: LINES.kulup.stroke,
-  COMMUNITY: LINES.topluluk.stroke,
-  ACHIEVEMENT: LINES.topluluk.stroke,
-}
-
+/** Son bildirimler: tıklayınca okundu sayılır ve bağlantıya gidilir (F-74). */
 export function RecentNotifications({ list }: { list: AppNotification[] }) {
+  const open = useOpenNotification()
   if (list.length === 0) return <p className="py-2 text-md text-ink-2">Yeni bildirim yok.</p>
   return (
     <ul>
       {list.map((n) => {
         const body = (
           <>
-            <span aria-hidden className="mt-1.5 h-3 w-[3px] shrink-0" style={{ background: CATEGORY_LINE[n.category] }} />
+            <span aria-hidden className="mt-1.5 h-3 w-[3px] shrink-0" style={{ background: CATEGORY_META[n.category].line }} />
             <span className="min-w-0 flex-1">
               <span className={cn('block text-md', n.read ? 'text-ink-2' : 'font-semibold text-ink')}>{n.title}</span>
               <span className="block text-xs text-ink-3">
@@ -77,10 +67,10 @@ export function RecentNotifications({ list }: { list: AppNotification[] }) {
         )
         return (
           <li key={n.id} className="border-b border-rule last:border-0">
-            {n.link ? (
-              <Link to={n.link} className="row-fill -mx-2 flex gap-3 px-2 py-2.5">
+            {n.link || !n.read ? (
+              <button type="button" onClick={() => open(n)} className="row-fill -mx-2 flex w-[calc(100%+1rem)] gap-3 px-2 py-2.5 text-left">
                 {body}
-              </Link>
+              </button>
             ) : (
               <div className="flex gap-3 py-2.5">{body}</div>
             )}

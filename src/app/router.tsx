@@ -13,7 +13,7 @@ function page<M extends Record<string, unknown>>(load: () => Promise<M>, name: k
 }
 
 /** Henüz yeni tasarıma taşınmamış rotalar; menüden açılabilsin diye yer tutar. */
-const PENDING = ['clubs/advised', 'clubs/new', 'clubs/:clubId/*', 'events/:eventId/*', 'me/*', 'posts/*', 'leaderboard', 'notifications', 'profile', 'settings/*', 'manage/*']
+const PENDING = ['clubs/advised', 'clubs/new', 'clubs/:clubId/*', 'events/:eventId/*', 'me/*', 'posts/*', 'leaderboard', 'manage/*']
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -22,6 +22,8 @@ export const router = createBrowserRouter([
   { path: '/reset-password', ...page(() => import('@/features/auth/ResetPasswordPage'), 'ResetPasswordPage') },
   { path: '/verify-email', ...page(() => import('@/features/auth/VerifyEmailPage'), 'VerifyEmailPage') },
   { path: '/email-change/confirm', ...page(() => import('@/features/auth/EmailChangeConfirmPage'), 'EmailChangeConfirmPage') },
+  // E-postadaki abonelikten çıkma bağlantısı: oturumsuz açılır (F-74).
+  { path: '/notifications/unsubscribe', ...page(() => import('@/features/notifications/UnsubscribePage'), 'UnsubscribePage') },
   ...(import.meta.env.DEV
     ? [
         { path: '/design', ...page(() => import('@/pages/DesignSystemPage'), 'DesignSystemPage') },
@@ -55,6 +57,10 @@ export const router = createBrowserRouter([
       { path: 'events/:eventId/yonetim', ...page(() => import('@/features/events/EventManagePage'), 'EventManagePage') },
       { path: 'clubs/:clubId/events/new', ...page(() => import('@/features/events/EventCreatePage'), 'EventCreatePage') },
       { path: 'me/tickets', ...page(() => import('@/features/events/TicketsPage'), 'TicketsPage') },
+      { path: 'profile', ...page(() => import('@/features/profile/ProfilePage'), 'ProfilePage') },
+      { path: 'notifications', ...page(() => import('@/features/notifications/NotificationsPage'), 'NotificationsPage') },
+      { path: 'settings', ...page(() => import('@/features/settings/SettingsPage'), 'SettingsPage') },
+      { path: 'settings/:section', ...page(() => import('@/features/settings/SettingsPage'), 'SettingsPage') },
       { path: 'assignments', ...page(() => import('@/features/assignments/AssignmentsPage'), 'AssignmentsPage') },
       ...PENDING.map((path) => ({ path, element: <NotBuiltPage /> })),
       { path: '*', element: <NotFoundPage /> },
