@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { toApiError } from '@/lib/api/problem'
 import { usePageTitle } from '@/lib/usePageTitle'
-import { withTitle } from '@/features/people/titles'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -21,13 +20,16 @@ import {
   STAFF_ROLE_LABEL,
   useAnnouncements,
   useCourse,
-  useCourseStaff,
   useMaterials,
   type Course,
   type StaffRole,
 } from './api'
+import { useCourseAssignments, useGroupSets } from '@/features/assignments/staff'
+import { CourseAssessmentsTab, GradebookTab } from './CourseAssessments'
+import { CourseGroupsTab } from './CourseGroups'
 import { CourseAnnouncementsManage, CourseMaterialsManage } from './CourseContent'
 import { CourseApplications, CourseStudents } from './CourseRoster'
+import { StaffManage } from './CourseStaff'
 import { abilities, useCourseLifecycle, useUpdateCourse, type TeachingCourse } from './teach'
 
 /**
@@ -55,6 +57,8 @@ function Body({ course: c, role, pending }: { course: Course; role: StaffRole; p
   const can = abilities(role)
   const materials = useMaterials(c.id)
   const announcements = useAnnouncements(c.id)
+  const assessments = useCourseAssignments(c.id)
+  const groupSets = useGroupSets(c.id)
   return (
     <>
       <Hero course={c} role={role} pending={can.applications ? pending : null} />
@@ -64,6 +68,14 @@ function Body({ course: c, role, pending }: { course: Course; role: StaffRole; p
           label="Ders yönetimi"
           tabs={[
             { value: 'genel', label: 'Genel', content: <Overview course={c} role={role} /> },
+            {
+              value: 'odevler',
+              label: 'Ödevler',
+              count: assessments.data?.length,
+              content: <CourseAssessmentsTab course={c} role={role} />,
+            },
+            { value: 'not-defteri', label: 'Not defteri', content: <GradebookTab course={c} /> },
+            { value: 'gruplar', label: 'Gruplar', count: groupSets.data?.length, content: <CourseGroupsTab course={c} role={role} /> },
             ...(can.applications
               ? [{ value: 'basvurular', label: 'Başvurular', count: pending, content: <CourseApplications course={c} /> }]
               : []),
@@ -286,7 +298,7 @@ function Overview({ course: c, role }: { course: Course; role: StaffRole }) {
           </>
         )}
       </section>
-      <StaffList course={c} />
+      <StaffManage course={c} role={role} />
     </div>
   )
 }
@@ -351,33 +363,5 @@ function EditForm({ course: c, onDone }: { course: Course; onDone: () => void })
         </button>
       </div>
     </form>
-  )
-}
-
-function StaffList({ course: c }: { course: Course }) {
-  const staff = useCourseStaff(c.id)
-  return (
-    <section aria-labelledby="ders-kadro">
-      <h2 id="ders-kadro" className="text-lg">
-        Kadro
-      </h2>
-      <div className="mt-3">
-        <QueryBoundary query={staff} what="Kadro" skeletonRows={2}>
-          {(list) => (
-            <ul className="flex flex-col gap-3">
-              {list.map((s) => (
-                <li key={s.userId} className="flex items-start justify-between gap-3">
-                  <span className="min-w-0">
-                    <span className="block font-semibold">{withTitle(s.name, s.title, s.academicTitle)}</span>
-                    {s.department && <span className="block text-sm text-ink-3">{s.department}</span>}
-                  </span>
-                  <Badge tone={s.role === 'COORDINATOR' ? 'info' : 'neutral'}>{STAFF_ROLE_LABEL[s.role]}</Badge>
-                </li>
-              ))}
-            </ul>
-          )}
-        </QueryBoundary>
-      </div>
-    </section>
   )
 }

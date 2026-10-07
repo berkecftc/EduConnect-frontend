@@ -13,8 +13,14 @@ describe('kadro görevine göre yetkiler (F-43)', () => {
     expect([can.applications, can.announce, can.materials, can.removeStudent]).toEqual([true, true, true, true])
   })
 
-  it('asistan başvuru, duyuru, materyal ve öğrenci çıkarmayı görmez', () => {
-    expect(Object.values(abilities('ASSISTANT')).some(Boolean)).toBe(false)
+  it('asistan yalnız teslimleri görür ve puanlar', () => {
+    const can = abilities('ASSISTANT')
+    expect(can.grade).toBe(true)
+    expect(
+      Object.entries(can)
+        .filter(([, v]) => v)
+        .map(([k]) => k),
+    ).toEqual(['grade'])
   })
 })
 
@@ -44,8 +50,9 @@ describe('ders açma formu', () => {
     expect(validateCourseDraft(draft({ title: '', credit: '' }), true)).toEqual({})
   })
 
-  it('kodları Türkçe büyük harfle karşılaştırır', () => {
-    expect(normCode('  bil   301 ')).toBe('BİL 301')
+  it('kodları sunucu gibi karşılaştırır (Türkçe büyütme, İ→I)', () => {
+    expect(normCode('  bil   301 ')).toBe('BIL 301')
+    expect(normCode('BİL 301')).toBe(normCode('BIL 301'))
   })
 })
 

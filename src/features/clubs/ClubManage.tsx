@@ -1,11 +1,8 @@
 import { useState } from 'react'
-import { useReducedMotion } from 'motion/react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { toApiError } from '@/lib/api/problem'
 import { useSession } from '@/lib/auth/session'
-import { cn } from '@/lib/cn'
-import { formatNumber } from '@/lib/format'
 import { formatInstant, formatLocalRange, localDiffMs, nowLocalIso } from '@/lib/time'
 import { EVENT_STATUS, useClubManagedEvents } from '@/features/events/manage'
 import { Badge } from '@/components/ui/Badge'
@@ -16,6 +13,7 @@ import { Input } from '@/components/ui/Input'
 import { Panel } from '@/components/ui/Panel'
 import { QueryBoundary } from '@/components/ui/States'
 import { Textarea } from '@/components/ui/Textarea'
+import { WorkStrip, type WorkItem } from '@/components/ui/WorkStrip'
 import { ApprovalItem } from './ApprovalItem'
 import {
   can,
@@ -49,7 +47,7 @@ export function ClubManage({ clubId, access }: { clubId: string; access: ClubAcc
 
   return (
     <div className="flex flex-col gap-16">
-      <WorkStrip clubId={clubId} access={access} requests={showRequests} decisions={showDecisions} events={operatesEvents} />
+      <ClubWorkStrip clubId={clubId} access={access} requests={showRequests} decisions={showDecisions} events={operatesEvents} />
       <div className="grid gap-20 lg:grid-cols-12 lg:gap-10">
         <div className="flex min-w-0 flex-col gap-20 lg:col-span-8">
           {showRequests && <MembershipRequests clubId={clubId} decides={decides} />}
@@ -66,13 +64,11 @@ export function ClubManage({ clubId, access }: { clubId: string; access: ClubAcc
   )
 }
 
-type WorkItem = { anchor: string; value: number | undefined; label: string; note?: string; urgent: boolean }
-
 /**
  * Bekleyen işler: sekmenin ilk satırı "ne yapmam gerekiyor?" sorusunu cevaplar. Dev rakam, kısa etiket;
  * tıklayınca ilgili bölüme kayar. Sizden karar bekleyen rakamlar uyarı renginde.
  */
-function WorkStrip({
+function ClubWorkStrip({
   clubId,
   access,
   requests,
@@ -85,7 +81,6 @@ function WorkStrip({
   decisions: boolean
   events: boolean
 }) {
-  const reduced = useReducedMotion()
   const pending = usePendingMembershipRequests(clubId, requests)
   const approvals = useClubApprovals(clubId, decisions)
   const managed = useClubManagedEvents(clubId, events)
@@ -94,7 +89,7 @@ function WorkStrip({
   const items: WorkItem[] = []
   if (requests) {
     const n = pending.data?.length
-    items.push({ anchor: 'yonetim-basvurular', value: n, label: 'başvuru bekliyor', urgent: !!n })
+    items.push({ key: 'basvurular', anchor: 'yonetim-basvurular', value: n, label: 'başvuru bekliyor', urgent: !!n })
   }
   if (decisions) {
     const open = (approvals.data ?? []).filter((r) => isPendingApproval(r.status))
@@ -102,13 +97,20 @@ function WorkStrip({
     items.push(
       mine > 0
         ? {
+            key: 'kararlar',
             anchor: 'yonetim-kararlar',
             value: mine,
             label: 'karar sizi bekliyor',
             note: open.length > mine ? `${open.length - mine} karar başkasında` : undefined,
             urgent: true,
           }
-        : { anchor: 'yonetim-kararlar', value: approvals.data ? open.length : undefined, label: 'karar sürüyor', urgent: false },
+        : {
+            key: 'kararlar',
+            anchor: 'yonetim-kararlar',
+            value: approvals.data ? open.length : undefined,
+            label: 'karar sürüyor',
+            urgent: false,
+          },
     )
   }
   if (events) {
@@ -116,6 +118,7 @@ function WorkStrip({
     const upcoming = list.filter((e) => e.status === 'ACTIVE' && localDiffMs(now, e.endsAt ?? e.startsAt) >= 0).length
     const waiting = list.filter((e) => e.status === 'PENDING_PRESIDENT' || e.status === 'PENDING' || e.status === 'REJECTED').length
     items.push({
+      key: 'etkinlikler',
       anchor: 'yonetim-etkinlikler',
       value: managed.data ? upcoming : undefined,
       label: 'yaklaşan etkinlik',
@@ -123,30 +126,7 @@ function WorkStrip({
       urgent: false,
     })
   }
-  if (items.length === 0) return null
-
-  return (
-    <nav aria-label="Bekleyen işler" className="grid border-b border-rule sm:grid-cols-3">
-      {items.map((it, i) => (
-        <button
-          key={it.anchor}
-          type="button"
-          onClick={() => document.getElementById(it.anchor)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })}
-          className={cn(
-            'row-fill group flex flex-col items-start px-1 py-5 text-left sm:px-5',
-            i > 0 && 'border-t border-rule sm:border-t-0 sm:border-l',
-            i === 0 && 'sm:pl-1',
-          )}
-        >
-          <span className={cn('tabular text-5xl leading-none font-heavy', it.urgent ? 'text-warning' : it.value ? 'text-ink' : 'text-ink-3')}>
-            {it.value === undefined ? '–' : formatNumber(it.value)}
-          </span>
-          <span className="mt-2 text-md font-semibold group-hover:underline group-hover:underline-offset-4">{it.label}</span>
-          {it.note && <span className="text-sm text-ink-2">{it.note}</span>}
-        </button>
-      ))}
-    </nav>
-  )
+  return <WorkStrip items={items} />
 }
 
 function MembershipRequests({ clubId, decides }: { clubId: string; decides: boolean }) {
@@ -224,7 +204,11 @@ function RequestRow({ clubId, request: r, decides }: { clubId: string; request: 
             >
               Kabul et
             </Button>
-            <button type="button" onClick={() => setDialog('reject')} className="text-sm font-semibold text-ink-2 underline-offset-4 hover:text-danger hover:underline">
+            <button
+              type="button"
+              onClick={() => setDialog('reject')}
+              className="text-sm font-semibold text-ink-2 underline-offset-4 hover:text-danger hover:underline"
+            >
               Reddet
             </button>
           </>
@@ -233,7 +217,11 @@ function RequestRow({ clubId, request: r, decides }: { clubId: string; request: 
             <Button size="sm" onClick={() => setDialog('APPROVE')}>
               Kabul öner
             </Button>
-            <button type="button" onClick={() => setDialog('REJECT')} className="text-sm font-semibold text-ink-2 underline-offset-4 hover:text-ink hover:underline">
+            <button
+              type="button"
+              onClick={() => setDialog('REJECT')}
+              className="text-sm font-semibold text-ink-2 underline-offset-4 hover:text-ink hover:underline"
+            >
               Ret öner
             </button>
           </>
@@ -390,8 +378,13 @@ function Events({ clubId, creates }: { clubId: string; creates: boolean }) {
       <QueryBoundary query={events} what="Etkinlikler" skeletonRows={2}>
         {(list) => {
           // Önce sonuçlanmamışlar (onay bekleyen, reddedilen, yayındaki), sonra geçmiş; her grupta tarihe göre.
-          const open = list.filter((e) => e.status !== 'COMPLETED' && e.status !== 'CANCELLED').sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-          const done = list.filter((e) => e.status === 'COMPLETED' || e.status === 'CANCELLED').sort((a, b) => b.startsAt.localeCompare(a.startsAt)).slice(0, 5)
+          const open = list
+            .filter((e) => e.status !== 'COMPLETED' && e.status !== 'CANCELLED')
+            .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+          const done = list
+            .filter((e) => e.status === 'COMPLETED' || e.status === 'CANCELLED')
+            .sort((a, b) => b.startsAt.localeCompare(a.startsAt))
+            .slice(0, 5)
           if (list.length === 0) return <p className="text-ink-3">Henüz etkinlik yok.</p>
           return (
             <ul className="border-t border-rule">

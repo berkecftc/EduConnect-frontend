@@ -15,7 +15,7 @@ type Handler = (m: RegExpMatchArray, config: InternalAxiosRequestConfig) => unkn
 /** Önizleme hangi rolle açıldı; PreviewPage ayarlar, adaptör tabloları buna göre seçer. */
 export const state = { academician: false }
 
-const ME_ID = 's1'
+export const ME_ID = 's1'
 const ME_NAME = 'Dr. Öğr. Üyesi Mehmet Kaya'
 const ago = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString()
 
@@ -286,7 +286,7 @@ export const history: Record<string, EnrollmentEvent[]> = {
 // ——— Kadro, duyuru, materyal ———
 
 export const staff: Record<string, CourseStaff[]> = {
-  c1: fx.staff.c1!,
+  c1: fx.staff.c1!.map((s) => ({ ...s })),
   c21: [
     {
       userId: 's3',
@@ -308,7 +308,8 @@ export const staff: Record<string, CourseStaff[]> = {
     },
   ],
 }
-const soloStaff = (): CourseStaff[] => [fx.staff.c1![0]!]
+/** Dersin kadrosu; tanımsızsa yalnız koordinatör (Mehmet Kaya). Yazma işlemleri bu diziyi değiştirir. */
+export const staffOf = (id: string): CourseStaff[] => (staff[id] ??= [{ ...fx.staff.c1![0]! }])
 
 export const announcements: Record<string, Announcement[]> = {
   c1: fx.announcements.c1!.map((a) => ({ ...a })),
@@ -358,7 +359,7 @@ const catalogCourses: CatalogCourse[] = [
   { id: 'k405', code: 'BİL 405', title: 'Derin Öğrenme', credit: 3, ects: 6 },
   { id: 'k499', code: 'BİL 499', title: 'Bitirme Projesi I', credit: 3, ects: 8 },
 ]
-const norm = (s: string) => s.trim().replace(/\s+/g, ' ').toLocaleUpperCase('tr-TR')
+const norm = (s: string) => s.trim().replace(/\s+/g, ' ').toLocaleUpperCase('tr-TR').replace(/İ/g, 'I')
 
 // ——— Görünümler ———
 
@@ -426,7 +427,7 @@ export const GET: [RegExp, Handler][] = [
   [/^\/courses\/([^/]+)\/applications$/, (m) => applications.filter((a) => a.courseId === m[1]).map((a) => ({ ...a }))],
   [/^\/courses\/([^/]+)\/enrolled-students$/, (m) => [...(students[m[1]!] ?? [])]],
   [/^\/courses\/([^/]+)\/enrollment-history$/, (m) => [...(history[m[1]!] ?? [])].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))],
-  [/^\/courses\/([^/]+)\/staff$/, (m) => staff[m[1]!] ?? soloStaff()],
+  [/^\/courses\/([^/]+)\/staff$/, (m) => staffOf(m[1]!).map((s) => ({ ...s }))],
   [/^\/courses\/([^/]+)\/materials$/, (m) => (materials[m[1]!] ?? []).map((x) => ({ ...x }))],
   [/^\/courses\/([^/]+)\/announcements$/, (m) => [...(announcements[m[1]!] ?? [])]],
   [

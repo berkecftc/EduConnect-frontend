@@ -25,7 +25,7 @@ export type TeachingCourse = {
 
 /**
  * Kadro görevine göre yapılabilenler (F-43). Kurallar backend'de de var; burada yalnız düğmeleri gizlemek için.
- * Koordinatör her şeyi; hoca düzenleme, yayın/arşiv ve kadro dışında; asistan başvuru ve duyuru dışında.
+ * Koordinatör her şeyi; hoca düzenleme, yayın/arşiv ve kadro dışında; asistan yalnız teslimleri görür ve puanlar.
  */
 export function abilities(role: StaffRole | undefined) {
   const coordinator = role === 'COORDINATOR'
@@ -38,8 +38,15 @@ export function abilities(role: StaffRole | undefined) {
     announce: !!role && !assistant,
     materials: !!role && !assistant,
     removeStudent: !!role && !assistant,
+    /** Değerlendirme ekleme/düzenleme, süre uzatma ve puan ilanı (assignment-service: koordinatör ya da hoca). */
+    assignments: !!role && !assistant,
+    /** Teslimleri görme ve puan verme: kadrodaki herkes. */
+    grade: !!role,
   }
 }
+
+/** Değerlendirme eklemek, düzenlemek ve silmek için ders kaydı açık olmalı (taslak, kayıt açık, devam ediyor). */
+export const assessmentsEditable = (s: CourseStatus) => s === 'DRAFT' || s === 'OPEN' || s === 'ACTIVE'
 
 /** Araştırma görevlisi ders koordinatörü olamaz (409 RESEARCH_ASSISTANT_NOT_COORDINATOR); "Ders aç" gösterilmez. */
 export function useCanOpenCourse() {
@@ -89,8 +96,8 @@ export type CourseDraft = {
 
 export type CourseDraftErrors = Partial<Record<keyof CourseDraft, string>>
 
-/** Kod karşılaştırması: boşluklar tekleştirilir, Türkçe büyük harf (bil 301 = BİL 301). */
-export const normCode = (s: string) => s.trim().replace(/\s+/g, ' ').toLocaleUpperCase('tr-TR')
+/** Kod karşılaştırması sunucudakiyle aynı (F-86): boşluk tekleşir, Türkçe büyütülür, İ→I (bil 301 = BİL 301 = BIL 301). */
+export const normCode = (s: string) => s.trim().replace(/\s+/g, ' ').toLocaleUpperCase('tr-TR').replace(/İ/g, 'I')
 
 /**
  * Ders açma formunun ön kontrolü; sınırlar CourseRequest ile aynı. Katalogdaki ders seçildiyse
@@ -128,7 +135,6 @@ export function useCreateCourse() {
       image: File | null
     }) => {
       const body = {
-        // Backend kodu Locale.ROOT ile büyütür ("bil" → "BIL"); Türkçe kuralla biz büyütürüz ki katalogla eşleşsin.
         code: normCode(draft.code),
         title: draft.title.trim(),
         description: draft.description.trim() || null,
@@ -337,5 +343,68 @@ export function useDeleteMaterial(courseId: string) {
       await api.delete(`/courses/${courseId}/materials/${id}`)
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: courseKeys.materials(courseId) }),
+  })
+}
+
+// ——— Kadro (F-43) ———
+
+/** Akademisyen arama (`GET /api/users/search/academicians?query=`, F-87): tam ad da bulunur, yalnız aktif personel, en fazla 10 sonuç. */
+export type AcademicianHit = {
+  id: string
+  firstName: string | null
+  lastName: string | null
+  title: string | null
+  academicTitle: string | null
+  department: string | null
+  departmentId: string | null
+}
+
+export function useAcademicianSearch(q: string) {
+  const query = q.trim()
+  return useQuery({
+    queryKey: ['users', 'search', 'academicians', query.toLocaleLowerCase('tr-TR')],
+    enabled: query.length >= 2,
+    staleTime: 60_000,
+    queryFn: async () => (await api.get<AcademicianHit[]>('/users/search/academicians', { params: { query } })).data,
+  })
+}
+
+function useStaffRefresh(courseId: string) {
+  const qc = useQueryClient()
+  return () => {
+    void qc.invalidateQueries({ queryKey: courseKeys.staff(courseId) })
+    void qc.invalidateQueries({ queryKey: teachKeys.mine })
+  }
+}
+
+/** Kadroya ekle (koordinatör): yalnız hoca ya da asistan; koordinatör devri yöneticidedir. */
+export function useAddStaff(courseId: string) {
+  const refresh = useStaffRefresh(courseId)
+  return useMutation({
+    mutationFn: async (v: { userId: string; role: Exclude<StaffRole, 'COORDINATOR'> }) => {
+      await api.post(`/courses/${courseId}/staff`, v)
+    },
+    onSuccess: refresh,
+  })
+}
+
+export function useChangeStaffRole(courseId: string) {
+  const refresh = useStaffRefresh(courseId)
+  return useMutation({
+    mutationFn: async (v: { userId: string; role: Exclude<StaffRole, 'COORDINATOR'> }) => {
+      await api.put(`/courses/${courseId}/staff/${v.userId}`, { role: v.role })
+    },
+    onSuccess: refresh,
+  })
+}
+
+/** Kadrodan çıkar (koordinatör) ya da kadrodan ayrıl (kişinin kendisi). */
+export function useRemoveStaff(courseId: string) {
+  const refresh = useStaffRefresh(courseId)
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      await api.delete(`/courses/${courseId}/staff/${userId}`)
+    },
+    onSuccess: refresh,
   })
 }

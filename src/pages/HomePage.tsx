@@ -16,12 +16,15 @@ import { WeekStrip } from '@/features/today/WeekStrip'
 import { RevealTitle } from '@/components/ui/RevealTitle'
 import { Notice } from '@/components/ui/Notice'
 import { Skeleton } from '@/components/ui/States'
+import { AcademicianToday } from '@/features/today/AcademicianToday'
 
-/** Bugün: öğrencinin günü tek bakışta (çizelge, hafta şeridi, ders karnesi, bildirimler, kampüs). */
+/** Bugün: kişinin günü tek bakışta. Öğrencide çizelge, hafta şeridi, ders karnesi; akademisyende bekleyen işler ve dersler. */
 export function HomePage() {
   usePageTitle('Bugün')
   const session = useSession()
   const student = hasRole(session, 'ROLE_STUDENT', 'ROLE_CLUB_OFFICIAL')
+  // Menü gibi: akademisyen kaydı varsa akademisyen görünümü (çift bağlılıkta da).
+  const academician = hasRole(session, 'ROLE_ACADEMICIAN')
 
   return (
     <div className="mx-auto max-w-[80rem]">
@@ -30,7 +33,7 @@ export function HomePage() {
           {session.pendingRequests.includes('ACADEMICIAN') ? 'Personel' : 'Öğrenci'} kaydınız doğrulayıcı onayından sonra etkinleşecek.
         </Notice>
       )}
-      {student ? <StudentToday /> : <OtherRoleToday />}
+      {academician ? <AcademicianToday /> : student ? <StudentToday /> : <OtherRoleToday />}
     </div>
   )
 }
@@ -64,10 +67,16 @@ function StudentToday() {
   const grades = useGradesFor(ids)
   const codeOf = useMemo(() => new Map((courses.data ?? []).map((c) => [c.id, c.code])), [courses.data])
 
-  const items = useMemo(() => buildItems(assignments.data ?? [], registrations.data ?? [], now), [assignments.data, registrations.data, now])
+  const items = useMemo(
+    () => buildItems(assignments.data ?? [], registrations.data ?? [], now),
+    [assignments.data, registrations.data, now],
+  )
   const shown = day ? items.filter((it) => it.at.startsWith(day)) : items
   const weekEvents = useMemo(
-    () => (events.data ?? []).filter((e) => localDiffMs(now, e.startsAt) >= -3_600_000 && localDiffMs(now, e.startsAt) <= 7 * 86_400_000).slice(0, 4),
+    () =>
+      (events.data ?? [])
+        .filter((e) => localDiffMs(now, e.startsAt) >= -3_600_000 && localDiffMs(now, e.startsAt) <= 7 * 86_400_000)
+        .slice(0, 4),
     [events.data, now],
   )
   const registered = useMemo(() => new Set((registrations.data ?? []).map((r) => r.eventId)), [registrations.data])
@@ -110,7 +119,9 @@ function StudentToday() {
                 </Notice>
               ) : shown.length === 0 ? (
                 <p className="py-6 text-md text-ink-2">
-                  {day ? 'Bu güne düşen teslim ya da kayıtlı etkinlik yok.' : 'Önümüzdeki iki hafta için teslim ya da kayıtlı etkinlik yok.'}
+                  {day
+                    ? 'Bu güne düşen teslim ya da kayıtlı etkinlik yok.'
+                    : 'Önümüzdeki iki hafta için teslim ya da kayıtlı etkinlik yok.'}
                 </p>
               ) : (
                 <Timeline items={shown} now={now} codeOf={codeOf} />

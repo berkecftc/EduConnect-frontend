@@ -13,7 +13,7 @@ function page<M extends Record<string, unknown>>(load: () => Promise<M>, name: k
 }
 
 /** Henüz yeni tasarıma taşınmamış rotalar; menüden açılabilsin diye yer tutar. */
-const PENDING = ['clubs/advised', 'clubs/new', 'clubs/:clubId/*', 'events/:eventId/*', 'me/*', 'manage/*']
+const PENDING = ['clubs/new', 'clubs/:clubId/*', 'events/:eventId/*', 'me/*', 'manage/*']
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -44,11 +44,16 @@ export const router = createBrowserRouter([
       { path: 'courses/new', ...page(() => import('@/features/courses/CourseCreatePage'), 'CourseCreatePage') },
       { path: 'courses/:courseId', ...page(() => import('@/features/courses/CourseRoutes'), 'CourseRoute') },
       {
+        path: 'courses/:courseId/assignments/new',
+        ...page(() => import('@/features/assignments/AssignmentCreatePage'), 'AssignmentCreatePage'),
+      },
+      {
         path: 'courses/:courseId/assignments/:assignmentId',
-        ...page(() => import('@/features/assignments/AssignmentPage'), 'AssignmentPage'),
+        ...page(() => import('@/features/assignments/AssignmentRoutes'), 'AssignmentRoute'),
       },
       { path: 'clubs', ...page(() => import('@/features/clubs/ClubsPage'), 'ClubsPage') },
       { path: 'clubs/approvals', ...page(() => import('@/features/clubs/ApprovalsPage'), 'ApprovalsPage') },
+      { path: 'clubs/advised', ...page(() => import('@/features/clubs/AdvisedClubsPage'), 'AdvisedClubsPage') },
       { path: 'clubs/mine', ...page(() => import('@/features/clubs/MyClubsPage'), 'MyClubsPage') },
       { path: 'clubs/:clubId', ...page(() => import('@/features/clubs/ClubPage'), 'ClubPage') },
       { path: 'events', ...page(() => import('@/features/events/EventsPage'), 'EventsPage') },
