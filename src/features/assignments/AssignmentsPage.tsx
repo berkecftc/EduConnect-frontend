@@ -40,7 +40,7 @@ export function AssignmentsPage() {
             buckets[0]!.items.sort((x, y) => viewAssignment(x, now).actionAt.localeCompare(viewAssignment(y, now).actionAt))
             for (const b of buckets.slice(1)) b.items.sort((x, y) => y.effectiveDueDate.localeCompare(x.effectiveDueDate))
             return (
-              <div className="flex flex-col gap-14">
+              <div className="flex flex-col gap-20">
                 {buckets
                   .filter((b) => b.items.length > 0)
                   .map((b) => (

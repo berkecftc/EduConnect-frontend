@@ -24,8 +24,25 @@ const GET: [RegExp, Handler][] = [
   [/^\/assignments\/my-assignments$/, () => fx.assignments],
   [/^\/assignments\/course\/([^/]+)\/my-grades$/, (m) => fx.gradesFor(m[1]!)],
   [/^\/assignments\/submissions\/([^/]+)\/versions$/, () => []],
-  [/^\/events\/my-registrations$/, () => fx.registrations],
-  [/^\/events$/, () => ({ content: fx.campusEvents, number: 0, size: 6, totalElements: fx.campusEvents.length, totalPages: 1, first: true, last: true })],
+  [/^\/events\/my-registrations$/, () => fx.registrations.map((r) => ({ ...r }))],
+  [/^\/events\/my-participation-requests$/, () => fx.participationRequests.map((r) => ({ ...r }))],
+  [
+    /^\/events$/,
+    (_m, config) =>
+      (config.params as { page?: number } | undefined)?.page != null
+        ? { content: fx.campusEvents, number: 0, size: 6, totalElements: fx.campusEvents.length, totalPages: 1, first: true, last: true }
+        : fx.campusEvents,
+  ],
+  [/^\/events\/([^/]+)\/availability$/, (m) => (fx.campusEvents.some((e) => e.id === m[1]) ? fx.availability(m[1]!) : notFound())],
+  [/^\/events\/manage\/club\/([^/]+)\/events$/, (m) => [...fx.campusEvents, ...fx.managedEvents].filter((e) => e.clubId === m[1]).map((e) => ({ ...e }))],
+  [
+    /^\/events\/president\/pending$/,
+    () => fx.managedEvents.filter((e) => e.status === 'PENDING_PRESIDENT' && fx.clubAccess(e.clubId ?? '').actingPresident).map((e) => ({ ...e })),
+  ],
+  [/^\/events\/advisor\/pending$/, () => []],
+  [/^\/events\/([^/]+)\/participation-requests$/, (m) => (fx.eventRequests[m[1]!] ?? []).map((r) => ({ ...r }))],
+  [/^\/events\/manage\/([^/]+)\/attendance$/, (m) => fx.attendanceReport(m[1]!)],
+  [/^\/events\/manage\/([^/]+)\/changes$/, (m) => [...(fx.eventChanges[m[1]!] ?? [])]],
   [/^\/notifications\/unread-count$/, () => ({ unread: fx.notifications.filter((n) => !n.read).length })],
   [/^\/notifications$/, () => ({ content: fx.notifications, totalElements: fx.notifications.length, totalPages: 1, number: 0, last: true })],
   [/^\/gamification\/users\/me\/summary$/, () => fx.summary],
@@ -56,10 +73,156 @@ const GET: [RegExp, Handler][] = [
   ],
   [/^\/clubs\/([^/]+)$/, (m) => fx.clubDetail(m[1]!) ?? notFound()],
   [/^\/events\/club\/([^/]+)$/, (m) => fx.campusEvents.filter((e) => e.clubId === m[1])],
+  [/^\/events\/([^/]+)$/, (m) => ({ ...(fx.findEvent(m[1]!) ?? notFound()) })],
 ]
 
 /** Yazma istekleri (yöntem, yol): başvuru, geri çekme, ayrılma ve yenileme önizleme verisini değiştirir; diğerleri boş yanıt döner. */
 const WRITE: [string, RegExp, Handler][] = [
+  [
+    'post',
+    /^\/events\/manage$/,
+    async (_m, config) => {
+      const part = (config.data as FormData).get('data') as Blob
+      const d = JSON.parse(await part.text()) as Record<string, unknown> & { clubName: string }
+      const club = fx.clubs.find((c) => c.name === d.clubName)!
+      const e = {
+        ...(d as object),
+        id: 'e-' + Date.now(),
+        imageUrl: null,
+        clubId: club.id,
+        clubName: club.name,
+        organizerName: null,
+        status: fx.clubAccess(club.id).actingPresident ? ('PENDING' as const) : ('PENDING_PRESIDENT' as const),
+      } as unknown as (typeof fx.managedEvents)[number]
+      fx.managedEvents.unshift(e)
+      return e
+    },
+  ],
+  [
+    'put',
+    /^\/events\/manage\/([^/]+)$/,
+    (m, config) => {
+      const e = fx.findEvent(m[1]!)!
+      const body = JSON.parse(String(config.data)) as Record<string, unknown> & { note?: string }
+      const resubmit = e.status === 'REJECTED'
+      Object.assign(e, body, resubmit ? { status: 'PENDING_PRESIDENT', rejectionReason: null } : {})
+      ;(fx.eventChanges[e.id] ??= []).unshift({ id: 'ch-' + Date.now(), kind: resubmit ? 'RESUBMITTED' : 'EDITED', details: null, reason: body.note ?? null, createdAt: new Date().toISOString() })
+      return e
+    },
+  ],
+  [
+    'post',
+    /^\/events\/manage\/([^/]+)\/(postpone|relocate|cancel)$/,
+    (m, config) => {
+      const e = fx.findEvent(m[1]!)!
+      const body = JSON.parse(String(config.data)) as { startsAt: string | null; endsAt: string | null; location: string | null; reason: string }
+      const kind = m[2] === 'postpone' ? 'POSTPONED' : m[2] === 'relocate' ? 'RELOCATED' : 'CANCELLED'
+      const details = m[2] === 'postpone' ? `${e.startsAt.slice(0, 16)} → ${body.startsAt?.slice(0, 16)}` : m[2] === 'relocate' ? `${e.location ?? '–'} → ${body.location}` : null
+      if (m[2] === 'postpone') Object.assign(e, { startsAt: body.startsAt, endsAt: body.endsAt ?? e.endsAt, status: 'PENDING' })
+      if (m[2] === 'relocate') e.location = body.location
+      if (m[2] === 'cancel') Object.assign(e, { status: 'CANCELLED', cancellationReason: body.reason })
+      ;(fx.eventChanges[e.id] ??= []).unshift({ id: 'ch-' + Date.now(), kind, details, reason: body.reason, createdAt: new Date().toISOString() })
+      return e
+    },
+  ],
+  [
+    'post',
+    /^\/events\/(president|advisor)\/([^/]+)\/(approve|reject)$/,
+    (m, config) => {
+      const e = fx.findEvent(m[2]!)!
+      if (m[3] === 'approve') e.status = m[1] === 'president' ? 'PENDING' : 'ACTIVE'
+      else Object.assign(e, { status: 'REJECTED', rejectionReason: (JSON.parse(String(config.data ?? '{}')) as { reason?: string }).reason ?? null })
+      return e
+    },
+  ],
+  [
+    'post',
+    /^\/events\/participation-requests\/([^/]+)\/(approve|reject)$/,
+    (m) => {
+      const r = Object.values(fx.eventRequests).flat().find((x) => x.id === m[1])!
+      Object.assign(r, { status: m[2] === 'approve' ? 'APPROVED' : 'REJECTED', processedDate: new Date().toISOString() })
+      return r
+    },
+  ],
+  [
+    'post',
+    /^\/events\/manage\/verify-qr$/,
+    (_m, config) => {
+      const code = (JSON.parse(String(config.data ?? '{}')) as { qrCode?: string }).qrCode
+      const ticket = fx.registrations.find((r) => r.qrCode === code)
+      const row = ticket && (fx.attendance[ticket.eventId] ?? []).find((r) => r.studentId === 'u1')
+      if (!row) throw Object.assign(new Error('Bilet bulunamadı'), { isAxiosError: true, config, response: { status: 400, data: { status: 400, errorCode: 'VERIFICATION_FAILED', message: 'Bilet doğrulanamadı.' }, headers: {}, config } })
+      Object.assign(row, { attended: true, checkedInAt: new Date().toISOString(), method: 'QR' })
+      return 'ACCESS GRANTED'
+    },
+  ],
+  [
+    'post',
+    /^\/events\/manage\/([^/]+)\/registrations\/([^/]+)\/check-in$/,
+    (m) => {
+      const row = (fx.attendance[m[1]!] ?? []).find((r) => r.studentId === m[2])
+      if (row) Object.assign(row, { attended: true, checkedInAt: new Date().toISOString(), method: 'MANUAL' })
+      return null
+    },
+  ],
+  [
+    'delete',
+    /^\/events\/manage\/([^/]+)\/registrations\/([^/]+)\/check-in$/,
+    (m) => {
+      const row = (fx.attendance[m[1]!] ?? []).find((r) => r.studentId === m[2])
+      if (row) Object.assign(row, { attended: false, checkedInAt: null, method: null })
+      return null
+    },
+  ],
+  [
+    'post',
+    /^\/events\/([^/]+)\/participation-request$/,
+    (m) => {
+      const e = fx.campusEvents.find((x) => x.id === m[1])!
+      const a = fx.availability(e.id)
+      const status = e.admission === 'APPROVAL_REQUIRED' ? 'PENDING' : a.remaining === 0 ? 'WAITLISTED' : 'APPROVED'
+      if (status === 'APPROVED') {
+        fx.registrations.unshift({
+          eventId: e.id,
+          eventTitle: e.title,
+          eventDescription: e.description,
+          eventDate: e.startsAt,
+          eventLocation: e.location,
+          qrCode: crypto.randomUUID(),
+          registrationTime: new Date().toISOString(),
+          attended: false,
+          registrationStatus: 'REGISTERED',
+          eventStatus: 'ACTIVE',
+        })
+      } else {
+        fx.participationRequests.unshift({ id: 'pr-' + Date.now(), eventId: e.id, eventTitle: e.title, status, requestDate: new Date().toISOString(), processedDate: null, message: null, rejectionReason: null })
+      }
+      const message =
+        status === 'APPROVED'
+          ? 'Kaydınız tamamlandı. Biletiniz e-posta adresinize gönderilecektir.'
+          : status === 'WAITLISTED'
+            ? 'Kontenjan dolu; bekleme listesine alındınız. Yer açılınca kaydınız otomatik yapılır.'
+            : 'Katılım isteğiniz alındı. Kulüp yetkilisi onayladıktan sonra biletiniz e-posta adresinize gönderilecektir.'
+      return { message, requestId: 'pr', status }
+    },
+  ],
+  [
+    'delete',
+    /^\/events\/([^/]+)\/participation-request$/,
+    (m) => {
+      for (const r of fx.participationRequests) if (r.eventId === m[1] && (r.status === 'PENDING' || r.status === 'WAITLISTED')) r.status = 'WITHDRAWN'
+      return null
+    },
+  ],
+  [
+    'delete',
+    /^\/events\/([^/]+)\/registration$/,
+    (m) => {
+      const r = fx.registrations.find((x) => x.eventId === m[1] && x.registrationStatus === 'REGISTERED')
+      if (r) r.registrationStatus = 'CANCELLED'
+      return null
+    },
+  ],
   [
     'put',
     /^\/clubs\/([^/]+)\/membership-requests\/([^/]+)\/(approve|reject|recommendation)$/,
@@ -199,7 +362,7 @@ const fixtureAdapter: AxiosAdapter = async (config: InternalAxiosRequestConfig) 
   const method = config.method ?? 'get'
   if (method !== 'get') {
     const hit = WRITE.filter(([verb]) => verb === method).map(([, re, handle]) => [url.match(re), handle] as const).find(([m]) => m)
-    return reply(200, hit ? hit[1](hit[0]!, config) : {})
+    return reply(200, hit ? await hit[1](hit[0]!, config) : {})
   }
   for (const [re, handle] of GET) {
     const m = url.match(re)

@@ -56,8 +56,11 @@ export function ApprovalItem({
     <li className="@container border-b border-rule py-6">
       <div className={GRID}>
         <div>
-          <p className="font-heavy">{label}</p>
+          <p className="font-semibold">{label}</p>
           <p className="tabular mt-0.5 text-sm text-ink-3">{formatInstant(r.createdAt, 'datetime')}</p>
+          <Badge tone={status.tone} className="mt-2">
+            {status.label}
+          </Badge>
         </div>
 
         <div className="min-w-0">
@@ -80,37 +83,38 @@ export function ApprovalItem({
           {r.rejectionReason && <p className="mt-1 text-md text-ink-2">Ret gerekçesi: {r.rejectionReason}</p>}
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 @lg:col-start-2 @lg:row-span-2 @lg:row-start-1 @lg:flex-col @lg:items-end @lg:text-right @4xl:col-start-3 @4xl:row-span-1">
-          <Badge tone={status.tone}>{status.label}</Badge>
-          {mode === 'decide' && (
-            <div className="flex items-center gap-4">
+        {mode && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 @lg:col-start-2 @lg:row-span-2 @lg:row-start-1 @lg:items-start @lg:justify-end @4xl:col-start-3 @4xl:row-span-1">
+            {mode === 'decide' && (
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setDialog('reject')}
+                  className="text-sm font-semibold text-ink-2 underline-offset-4 hover:text-danger hover:underline"
+                >
+                  Reddet
+                </button>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  loading={decide.isPending && dialog === null}
+                  onClick={() => (CONSEQUENTIAL.has(r.type) ? setDialog('approve') : run('approve', `${label} onaylandı`))}
+                >
+                  Onayla
+                </Button>
+              </div>
+            )}
+            {mode === 'withdraw' && (
               <button
                 type="button"
-                onClick={() => setDialog('reject')}
-                className="text-sm font-semibold text-ink-2 underline-offset-4 hover:text-danger hover:underline"
+                onClick={() => setDialog('withdraw')}
+                className="text-sm font-semibold text-ink-2 underline-offset-4 hover:text-ink hover:underline"
               >
-                Reddet
+                Geri çek
               </button>
-              <Button
-                size="sm"
-                variant="primary"
-                loading={decide.isPending && dialog === null}
-                onClick={() => (CONSEQUENTIAL.has(r.type) ? setDialog('approve') : run('approve', `${label} onaylandı`))}
-              >
-                Onayla
-              </Button>
-            </div>
-          )}
-          {mode === 'withdraw' && (
-            <button
-              type="button"
-              onClick={() => setDialog('withdraw')}
-              className="text-sm font-semibold text-ink-2 underline-offset-4 hover:text-ink hover:underline"
-            >
-              Geri çek
-            </button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       <ConfirmDialog
@@ -166,7 +170,7 @@ function Preview({ request: r }: { request: ApprovalRequest }) {
     case 'CLUB_ANNOUNCEMENT':
       return r.announcement ? (
         <div>
-          <p className="text-lg font-heavy">{r.announcement.title}</p>
+          <p className="text-lg font-semibold">{r.announcement.title}</p>
           <p className="mt-1 line-clamp-4 max-w-[64ch] whitespace-pre-line text-ink-2">{r.announcement.body}</p>
         </div>
       ) : (
@@ -211,8 +215,8 @@ function Preview({ request: r }: { request: ApprovalRequest }) {
       return (
         <div>
           <p className="text-lg">
-            <span className="font-heavy">{subject}</span>: {roleLabel(r.currentPosition)} →{' '}
-            <span className="font-heavy">{roleLabel(r.requestedPosition)}</span>
+            <span className="font-semibold">{subject}</span>: {roleLabel(r.currentPosition)} →{' '}
+            <span className="font-semibold">{roleLabel(r.requestedPosition)}</span>
           </p>
           <Note text={r.note} />
         </div>
@@ -221,7 +225,7 @@ function Preview({ request: r }: { request: ApprovalRequest }) {
       return (
         <div>
           <p className="text-lg">
-            <span className="font-heavy">{subject}</span> {roleLabel(r.currentPosition).toLocaleLowerCase('tr-TR')} görevinden ayrılmak
+            <span className="font-semibold">{subject}</span> {roleLabel(r.currentPosition).toLocaleLowerCase('tr-TR')} görevinden ayrılmak
             istiyor.
           </p>
           <Note text={r.note} />
@@ -231,7 +235,7 @@ function Preview({ request: r }: { request: ApprovalRequest }) {
       return (
         <div>
           <p className="text-lg">
-            <span className="font-heavy">{subject}</span> üyelikten çıkarılsın.
+            <span className="font-semibold">{subject}</span> üyelikten çıkarılsın.
           </p>
           <Note label="Gerekçe" text={r.note} />
           <Note label="Savunma" text={r.responseNote ?? 'Üye henüz savunma eklemedi.'} />

@@ -1,37 +1,54 @@
 import { useId } from 'react'
 import { Link } from 'react-router-dom'
+import { hasRole, useSession } from '@/lib/auth/session'
 import { usePageTitle } from '@/lib/usePageTitle'
-import { EmptyState, PageHeader, QueryBoundary } from '@/components/ui/States'
+import { EventApprovals } from '@/features/events/EventApprovals'
+import { useAdvisorQueue, usePresidentQueue } from '@/features/events/manage'
+import { EmptyState, PageHeader, QueryBoundary, Skeleton } from '@/components/ui/States'
 import { ApprovalItem } from './ApprovalItem'
 import { useClubs } from './api'
 import { ClubLogo } from './ClubMark'
-import { useApprovalInbox, type ApprovalRequest } from './manage'
+import { useApprovalInbox, useClubAccesses, type ApprovalRequest } from './manage'
 
 /**
  * Onay bekleyenler: başkanlığını yaptığınız kulüplerde başkan onayı, danışmanı olduğunuz kulüplerde danışman onayı
- * bekleyen istekler. Kulübe göre gruplu, en eski istek önce (backend sırası).
+ * bekleyen etkinlikler ve istekler. Etkinlikler önce, ardından kulübe göre gruplu istekler (en eski önce).
  */
 export function ApprovalsPage() {
   usePageTitle('Onay bekleyenler')
+  const session = useSession()
   const inbox = useApprovalInbox()
+  const accesses = useClubAccesses()
+  const presides = (accesses.data ?? []).some((a) => a.permissions.includes('APPROVE_AS_PRESIDENT'))
+  const advises = hasRole(session, 'ROLE_ACADEMICIAN') || (accesses.data ?? []).some((a) => a.advisor)
+  const presidentQueue = usePresidentQueue(presides)
+  const advisorQueue = useAdvisorQueue(advises)
   // Onay kaydı logo taşımaz; kulüp listesinden (önbellekte) alınır.
   const clubs = useClubs()
   const logos = new Map((clubs.data ?? []).map((c) => [c.id, c.logoUrl]))
+
+  const events = [...(presidentQueue.data ?? []), ...(advisorQueue.data ?? [])].length
+  const total = (inbox.data?.length ?? 0) + events
+  const loadingEvents = (presides && presidentQueue.isPending) || (advises && advisorQueue.isPending)
+
   return (
     <div className="mx-auto max-w-[80rem]">
       <PageHeader
         title="Onay bekleyenler"
-        meta={inbox.data ? (inbox.data.length > 0 ? `${inbox.data.length} istek kararınızı bekliyor.` : 'Kararınızı bekleyen istek yok.') : undefined}
+        meta={inbox.data && !loadingEvents ? (total > 0 ? `${total} kayıt kararınızı bekliyor.` : 'Kararınızı bekleyen kayıt yok.') : undefined}
       />
-      <div className="mt-10">
+      <div className="mt-10 flex flex-col gap-20">
+        {loadingEvents ? <Skeleton rows={2} /> : <EventApprovals president={presidentQueue.data ?? []} advisor={advisorQueue.data ?? []} />}
         <QueryBoundary query={inbox} what="Onay kutusu" skeletonRows={4}>
           {(list) =>
             list.length === 0 ? (
-              <EmptyState title="Her şey güncel">
-                Yönetim kurulunun hazırladığı duyurular, görev değişiklikleri ve kulüp bilgisi güncellemeleri onayınıza düştüğünde burada görünür.
-              </EmptyState>
+              events === 0 && !loadingEvents ? (
+                <EmptyState title="Her şey güncel">
+                  Etkinlikler, duyurular, görev değişiklikleri ve kulüp bilgisi güncellemeleri onayınıza düştüğünde burada görünür.
+                </EmptyState>
+              ) : null
             ) : (
-              <div className="flex flex-col gap-14">
+              <div className="flex flex-col gap-20">
                 {groupByClub(list).map(([clubId, items]) => (
                   <ClubGroup key={clubId} items={items} logoUrl={logos.get(clubId)} />
                 ))}

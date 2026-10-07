@@ -5,7 +5,7 @@
 import { localStamp, nowLocalIso } from '@/lib/time'
 import type { EnrolledCourse, Course, CourseStaff, Material, Announcement, CourseApplication, Term } from '@/features/courses/api'
 import type { MyAssignment, MyGrades } from '@/features/assignments/api'
-import type { MyRegistration, CampusEvent } from '@/features/events/api'
+import type { MyRegistration, CampusEvent, ParticipationRequest } from '@/features/events/api'
 import type { AppNotification } from '@/features/notifications/api'
 import type { GamificationSummary } from '@/features/gamification/api'
 import type { Me } from '@/features/me/useMe'
@@ -387,15 +387,125 @@ export const applications: CourseApplication[] = [
 ]
 
 export const registrations: MyRegistration[] = [
-  { eventId: 'e1', eventTitle: 'Arduino atölyesi', eventDescription: null, eventDate: at(1, 18, 30), eventLocation: 'B Blok 204', qrCode: null, registrationTime: ago(48), attended: false, registrationStatus: 'REGISTERED', eventStatus: 'ACTIVE' },
-  { eventId: 'e2', eventTitle: 'Kariyer günleri: yazılım', eventDescription: null, eventDate: at(4, 14), eventLocation: 'Kongre Merkezi', qrCode: null, registrationTime: ago(72), attended: false, registrationStatus: 'REGISTERED', eventStatus: 'ACTIVE' },
+  { eventId: 'e1', eventTitle: 'Arduino atölyesi', eventDescription: null, eventDate: at(1, 18, 30), eventLocation: 'B Blok 204', qrCode: '7f3c2a91-4b6e-4d1f-9a20-1c5e8b7d3e41', registrationTime: ago(48), attended: false, registrationStatus: 'REGISTERED', eventStatus: 'ACTIVE' },
+  { eventId: 'e2', eventTitle: 'Kariyer günleri: yazılım', eventDescription: null, eventDate: at(4, 14), eventLocation: 'Kongre Merkezi', qrCode: 'c08d5e17-92ab-4f3e-8d61-5a4b2f9c7e02', registrationTime: ago(72), attended: false, registrationStatus: 'REGISTERED', eventStatus: 'ACTIVE' },
+  { eventId: 'e9', eventTitle: 'Git ve GitHub atölyesi', eventDescription: null, eventDate: at(-9, 17), eventLocation: 'B Blok 104', qrCode: '1a2b3c4d-0000-4000-8000-00000000e9e9', registrationTime: ago(24 * 15), attended: true, registrationStatus: 'REGISTERED', eventStatus: 'COMPLETED' },
+  { eventId: 'e10', eventTitle: 'Bahar şenliği konseri', eventDescription: null, eventDate: at(-20, 20), eventLocation: 'Açık hava tiyatrosu', qrCode: null, registrationTime: ago(24 * 30), attended: false, registrationStatus: 'NO_SHOW', eventStatus: 'COMPLETED' },
 ]
 
 export const campusEvents: CampusEvent[] = [
-  { id: 'e1', title: 'Arduino atölyesi', description: null, startsAt: at(1, 18, 30), endsAt: at(1, 20, 30), location: 'B Blok 204', imageUrl: null, clubId: 'k1', clubName: 'Robotik Kulübü', organizerName: null, capacity: 40, status: 'ACTIVE' },
-  { id: 'e3', title: 'Yapay zekâ ve etik söyleşisi', description: null, startsAt: at(2, 15), endsAt: at(2, 17), location: 'Amfi 1', imageUrl: null, clubId: null, clubName: null, organizerName: 'Mühendislik Fakültesi', capacity: 200, status: 'ACTIVE' },
-  { id: 'e2', title: 'Kariyer günleri: yazılım', description: null, startsAt: at(4, 14), endsAt: at(4, 18), location: 'Kongre Merkezi', imageUrl: null, clubId: null, clubName: null, organizerName: 'Kariyer Merkezi', capacity: null, status: 'ACTIVE' },
-  { id: 'e4', title: 'Satranç turnuvası', description: null, startsAt: at(5, 13), endsAt: at(5, 19), location: 'Kütüphane salonu', imageUrl: null, clubId: 'k2', clubName: 'Satranç Kulübü', organizerName: null, capacity: 64, status: 'ACTIVE' },
+  {
+    id: 'e1',
+    title: 'Arduino atölyesi',
+    description: 'Başlangıç düzeyinde Arduino: devre kurma, sensör okuma ve servo motor sürme. Malzemeler kulüpten; dizüstü bilgisayarınızı getirin.',
+    startsAt: at(1, 18, 30),
+    endsAt: at(1, 20, 30),
+    speakers: 'Can Erdem, Ece Yalçın',
+    audience: 'ALL_STUDENTS',
+    admission: 'AUTO_CONFIRM',
+    location: 'B Blok 204',
+    imageUrl: null,
+    clubId: 'k1',
+    clubName: 'Robotik Kulübü',
+    organizerName: null,
+    capacity: 40,
+    registrationOpensAt: null,
+    registrationClosesAt: at(1, 12),
+    cancelUntil: at(1, 12),
+    status: 'ACTIVE',
+  },
+  {
+    id: 'e3',
+    title: 'Yapay zekâ ve etik söyleşisi',
+    description: 'Üretken yapay zekânın akademik dürüstlük, telif ve mahremiyet açısından sınırları. Söyleşinin ardından soru-cevap.',
+    startsAt: at(2, 15),
+    endsAt: at(2, 17),
+    speakers: 'Prof. Dr. Nil Ersoy',
+    audience: 'CAMPUS',
+    admission: 'AUTO_CONFIRM',
+    location: 'Amfi 1',
+    imageUrl: null,
+    clubId: null,
+    clubName: null,
+    organizerName: 'Mühendislik Fakültesi',
+    capacity: 200,
+    status: 'ACTIVE',
+  },
+  { id: 'e2', title: 'Kariyer günleri: yazılım', description: 'Yazılım şirketleriyle tanışma, CV inceleme masaları ve staj görüşmeleri.', startsAt: at(4, 14), endsAt: at(4, 18), audience: 'CAMPUS', admission: 'AUTO_CONFIRM', location: 'Kongre Merkezi', imageUrl: null, clubId: null, clubName: null, organizerName: 'Kariyer Merkezi', capacity: null, status: 'ACTIVE' },
+  {
+    id: 'e4',
+    title: 'Satranç turnuvası',
+    description: '5+3 hızlı satranç, İsviçre sistemi 7 tur. İlk üçe kupa.',
+    startsAt: at(5, 13),
+    endsAt: at(5, 19),
+    audience: 'MEMBERS_ONLY',
+    admission: 'APPROVAL_REQUIRED',
+    location: 'Kütüphane salonu',
+    imageUrl: null,
+    clubId: 'k2',
+    clubName: 'Satranç Kulübü',
+    organizerName: null,
+    capacity: 64,
+    status: 'ACTIVE',
+  },
+  {
+    id: 'e5',
+    title: 'Doğa yürüyüşü: Belgrad Ormanı',
+    description: 'Yaklaşık 12 km, orta zorlukta parkur. Servis kampüsten 08.00’de kalkar; su ve rahat ayakkabı şart.',
+    startsAt: at(6, 8),
+    endsAt: at(6, 17),
+    audience: 'ALL_STUDENTS',
+    admission: 'APPROVAL_REQUIRED',
+    location: 'Kampüs ana kapı',
+    imageUrl: null,
+    clubId: 'k5',
+    clubName: 'Dağcılık ve Doğa Sporları Kulübü',
+    organizerName: null,
+    capacity: 30,
+    cancelUntil: at(4, 18),
+    status: 'ACTIVE',
+  },
+  {
+    id: 'e6',
+    title: 'Fotoğraf yürüyüşü: Karaköy',
+    description: 'Sokak fotoğrafçılığı üzerine kısa bir anlatımın ardından birlikte çekim.',
+    startsAt: at(3, 10),
+    endsAt: at(3, 14),
+    audience: 'ALL_STUDENTS',
+    admission: 'AUTO_CONFIRM',
+    location: 'Karaköy iskelesi',
+    imageUrl: null,
+    clubId: 'k4',
+    clubName: 'Fotoğrafçılık Kulübü',
+    organizerName: null,
+    capacity: 20,
+    status: 'ACTIVE',
+  },
+]
+
+/** `GET /events/{id}/availability`: kayıtlı ve bekleyen sayıları. */
+const TAKEN: Record<string, [number, number]> = { e1: [32, 0], e3: [141, 0], e2: [388, 0], e4: [40, 0], e5: [30, 4], e6: [20, 2] }
+
+export function availability(eventId: string) {
+  const e = campusEvents.find((x) => x.id === eventId)!
+  const [registered, waitlisted] = TAKEN[eventId] ?? [0, 0]
+  return {
+    eventId,
+    audience: e.audience ?? 'ALL_STUDENTS',
+    admission: e.admission ?? 'AUTO_CONFIRM',
+    capacity: e.capacity,
+    registered,
+    waitlisted,
+    remaining: e.capacity == null ? null : Math.max(0, e.capacity - registered),
+    registrationOpen: true,
+    registrationOpensAt: e.registrationOpensAt ?? null,
+    registrationClosesAt: e.registrationClosesAt ?? null,
+    cancelUntil: e.cancelUntil ?? null,
+  }
+}
+
+export const participationRequests: ParticipationRequest[] = [
+  { id: 'pr1', eventId: 'e5', eventTitle: 'Doğa yürüyüşü: Belgrad Ormanı', status: 'WAITLISTED', requestDate: ago(26), processedDate: null, message: null, rejectionReason: null },
 ]
 
 export const notifications: AppNotification[] = [
@@ -561,7 +671,7 @@ export const clubAccesses: ClubAccess[] = [
     member: true,
     actingPresident: false,
     advisor: false,
-    permissions: ['VIEW_MEMBERS', 'VIEW_MANAGEMENT_DATA', 'PREPARE_ANNOUNCEMENT', 'PREPARE_EVENT'],
+    permissions: ['VIEW_MEMBERS', 'VIEW_MANAGEMENT_DATA', 'PREPARE_ANNOUNCEMENT', 'PREPARE_EVENT', 'MANAGE_EVENT_OPERATIONS'],
     clubName: 'Robotik Kulübü',
   },
   {
@@ -571,7 +681,7 @@ export const clubAccesses: ClubAccess[] = [
     member: true,
     actingPresident: true,
     advisor: false,
-    permissions: ['VIEW_MEMBERS', 'VIEW_MANAGEMENT_DATA', 'VIEW_DECISIONS', 'MANAGE_MEMBERSHIP_REQUESTS', 'PREPARE_ANNOUNCEMENT', 'APPROVE_AS_PRESIDENT', 'CREATE_EVENT'],
+    permissions: ['VIEW_MEMBERS', 'VIEW_MANAGEMENT_DATA', 'VIEW_DECISIONS', 'MANAGE_MEMBERSHIP_REQUESTS', 'PREPARE_ANNOUNCEMENT', 'APPROVE_AS_PRESIDENT', 'CREATE_EVENT', 'MANAGE_EVENT_OPERATIONS'],
     clubName: 'Satranç Kulübü',
   },
 ]
@@ -703,4 +813,82 @@ export const clubApprovals: Record<string, ApprovalRequest[]> = {
       announcement: { id: 'an-k2-0', clubId: 'k2', title: 'Dönem açılış buluşması', body: 'İlk buluşma çarşamba 18.00’de.', createdAt: ago(24 * 12), publishedAt: ago(24 * 11) },
     }),
   ],
+}
+
+// ——— Etkinlik yönetimi ———
+
+/** Yalnız yönetimin gördüğü etkinlikler (onay bekleyen, reddedilen). */
+export const managedEvents: CampusEvent[] = [
+  {
+    id: 'e7',
+    title: 'Simültane gösterisi',
+    description: 'Kulübün en güçlü oyuncusu aynı anda yirmi kişiyle oynuyor. İzleyiciler de gelebilir.',
+    startsAt: at(12, 17),
+    endsAt: at(12, 20),
+    audience: 'ALL_STUDENTS',
+    admission: 'AUTO_CONFIRM',
+    location: 'Kütüphane salonu',
+    imageUrl: null,
+    clubId: 'k2',
+    clubName: 'Satranç Kulübü',
+    organizerName: null,
+    capacity: 20,
+    status: 'PENDING_PRESIDENT',
+  },
+  {
+    id: 'e8',
+    title: 'Satranç dersi: açılışlar',
+    description: 'Başlangıç düzeyi, iki saatlik ders.',
+    startsAt: at(15, 18),
+    endsAt: at(15, 20),
+    audience: 'MEMBERS_ONLY',
+    admission: 'AUTO_CONFIRM',
+    location: null,
+    imageUrl: null,
+    clubId: 'k2',
+    clubName: 'Satranç Kulübü',
+    organizerName: null,
+    capacity: null,
+    status: 'REJECTED',
+    rejectionReason: 'Yer belirtilmemiş; salon rezervasyonunu ekleyin',
+  },
+]
+
+export const findEvent = (id: string) => campusEvents.find((e) => e.id === id) ?? managedEvents.find((e) => e.id === id)
+
+export const eventRequests: Record<string, { id: string; eventId: string; eventTitle: string; studentId: string; studentName: string; studentEmail: string; status: 'PENDING' | 'WAITLISTED' | 'APPROVED' | 'REJECTED'; requestDate: string; processedDate: string | null; message: string | null; rejectionReason: string | null }[]> = {
+  e4: [
+    { id: 'er1', eventId: 'e4', eventTitle: 'Satranç turnuvası', studentId: 'st7', studentName: 'Burcu Öz', studentEmail: 'burcu.oz@ogr.educonnect.local', status: 'PENDING', requestDate: ago(30), processedDate: null, message: 'Lisanslı oyuncuyum, ELO 1650.', rejectionReason: null },
+    { id: 'er2', eventId: 'e4', eventTitle: 'Satranç turnuvası', studentId: 'st8', studentName: 'Kaan Yıldız', studentEmail: 'kaan.yildiz@ogr.educonnect.local', status: 'PENDING', requestDate: ago(10), processedDate: null, message: null, rejectionReason: null },
+    { id: 'er3', eventId: 'e4', eventTitle: 'Satranç turnuvası', studentId: 'st9', studentName: 'Selin Ak', studentEmail: 'selin.ak@ogr.educonnect.local', status: 'WAITLISTED', requestDate: ago(5), processedDate: null, message: null, rejectionReason: null },
+  ],
+}
+
+export const attendance: Record<string, { studentId: string; firstName: string; lastName: string; studentNumber: string; status: 'REGISTERED' | 'CANCELLED' | 'NO_SHOW'; attended: boolean; checkedInAt: string | null; method: string | null }[]> = {
+  e1: [
+    { studentId: 'u1', firstName: 'Elif', lastName: 'Demir', studentNumber: '2023104012', status: 'REGISTERED', attended: false, checkedInAt: null, method: null },
+    { studentId: 'st2', firstName: 'Can', lastName: 'Erdem', studentNumber: '2022104077', status: 'REGISTERED', attended: true, checkedInAt: ago(1), method: 'MANUAL' },
+    { studentId: 'st7', firstName: 'Burcu', lastName: 'Öz', studentNumber: '2024104031', status: 'REGISTERED', attended: false, checkedInAt: null, method: null },
+    { studentId: 'st8', firstName: 'Kaan', lastName: 'Yıldız', studentNumber: '2024104090', status: 'CANCELLED', attended: false, checkedInAt: null, method: null },
+  ],
+}
+
+export function attendanceReport(eventId: string) {
+  const e = findEvent(eventId)!
+  const rows = attendance[eventId] ?? []
+  return {
+    eventId,
+    title: e.title,
+    status: e.status,
+    startsAt: e.startsAt,
+    registered: rows.filter((r) => r.status !== 'CANCELLED').length,
+    attended: rows.filter((r) => r.attended).length,
+    noShow: rows.filter((r) => r.status === 'NO_SHOW').length,
+    cancelled: rows.filter((r) => r.status === 'CANCELLED').length,
+    rows: rows.map((r) => ({ ...r })),
+  }
+}
+
+export const eventChanges: Record<string, { id: string; kind: 'EDITED' | 'RESUBMITTED' | 'POSTPONED' | 'RELOCATED' | 'CANCELLED'; details: string | null; reason: string | null; createdAt: string }[]> = {
+  e1: [{ id: 'ch1', kind: 'RELOCATED', details: 'B Blok 104 → B Blok 204', reason: 'Laboratuvar daha geniş.', createdAt: ago(20) }],
 }

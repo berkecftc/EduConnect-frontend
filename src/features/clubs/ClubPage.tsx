@@ -70,7 +70,7 @@ function ClubBody({ club: c }: { club: ClubDetails }) {
   // Duyurular üyelere ve danışmana açık; 403 gelirse sekme hiç görünmez (F-34).
   const announcements = useClubAnnouncements(c.id, insider)
   const showAnnouncements = insider && !announcements.isError
-  const manages = can(access, 'MANAGE_MEMBERSHIP_REQUESTS', 'REVIEW_MEMBERSHIP_REQUESTS', 'PREPARE_ANNOUNCEMENT', 'VIEW_DECISIONS', 'APPROVE_AS_PRESIDENT', 'ADVISE')
+  const manages = can(access, 'MANAGE_MEMBERSHIP_REQUESTS', 'REVIEW_MEMBERSHIP_REQUESTS', 'PREPARE_ANNOUNCEMENT', 'VIEW_DECISIONS', 'APPROVE_AS_PRESIDENT', 'ADVISE', 'CREATE_EVENT', 'PREPARE_EVENT', 'MANAGE_EVENT_OPERATIONS')
 
   return (
     <>
@@ -94,7 +94,12 @@ function ClubBody({ club: c }: { club: ClubDetails }) {
           </p>
           <Links club={c} />
         </div>
-        <MembershipBoard club={c} student={student} membershipsLoading={memberships.isPending && student} />
+        <MembershipBoard
+          club={c}
+          student={student}
+          membershipsLoading={memberships.isPending && student}
+          acting={!!access?.actingPresident && access.position !== 'PRESIDENT' && access.position !== 'ROLE_CLUB_OFFICIAL'}
+        />
       </section>
 
       {c.status === 'CLOSED' && (
@@ -178,7 +183,18 @@ function Links({ club: c }: { club: ClubDetails }) {
  * Üyelik paneli (tarife panosu): büyük üye sayısı; altında sizin durumunuz ve tek eylem.
  * Üyeyseniz görev, geçerlilik, yenileme ve ayrılma; başvurunuz varsa geri çekme; değilse üye olma.
  */
-function MembershipBoard({ club: c, student, membershipsLoading }: { club: ClubDetails; student: boolean; membershipsLoading: boolean }) {
+function MembershipBoard({
+  club: c,
+  student,
+  membershipsLoading,
+  acting,
+}: {
+  club: ClubDetails
+  student: boolean
+  membershipsLoading: boolean
+  /** Başkanlık boş ve kişi başkan yetkilerini vekâleten kullanıyor (F-85 `actingPresident`). */
+  acting: boolean
+}) {
   const { data: me } = useMe()
   const memberships = useMyMemberships(student)
   const requests = useMyMembershipRequests(student)
@@ -211,6 +227,7 @@ function MembershipBoard({ club: c, student, membershipsLoading }: { club: ClubD
             ) : membership ? (
               <>
                 <p className="text-lg font-heavy">{roleLabel(membership.clubRole)}</p>
+                {acting && <p className="text-md text-ink-2">Başkanlık boş; başkan yetkilerini vekâleten kullanıyorsunuz.</p>}
                 {membership.validUntil && (
                   <p className={renewalDue(membership, today) ? 'font-semibold text-warning' : 'text-ink-2'}>
                     {formatLocal(membership.validUntil, 'date')} tarihine kadar geçerli

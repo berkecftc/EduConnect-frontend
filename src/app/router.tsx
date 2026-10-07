@@ -13,7 +13,7 @@ function page<M extends Record<string, unknown>>(load: () => Promise<M>, name: k
 }
 
 /** Henüz yeni tasarıma taşınmamış rotalar; menüden açılabilsin diye yer tutar. */
-const PENDING = ['clubs/advised', 'clubs/new', 'clubs/:clubId/*', 'events/*', 'me/*', 'posts/*', 'leaderboard', 'notifications', 'profile', 'settings/*', 'manage/*']
+const PENDING = ['clubs/advised', 'clubs/new', 'clubs/:clubId/*', 'events/:eventId/*', 'me/*', 'posts/*', 'leaderboard', 'notifications', 'profile', 'settings/*', 'manage/*']
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -50,6 +50,11 @@ export const router = createBrowserRouter([
       { path: 'clubs/approvals', ...page(() => import('@/features/clubs/ApprovalsPage'), 'ApprovalsPage') },
       { path: 'clubs/mine', ...page(() => import('@/features/clubs/MyClubsPage'), 'MyClubsPage') },
       { path: 'clubs/:clubId', ...page(() => import('@/features/clubs/ClubPage'), 'ClubPage') },
+      { path: 'events', ...page(() => import('@/features/events/EventsPage'), 'EventsPage') },
+      { path: 'events/:eventId', ...page(() => import('@/features/events/EventPage'), 'EventPage') },
+      { path: 'events/:eventId/yonetim', ...page(() => import('@/features/events/EventManagePage'), 'EventManagePage') },
+      { path: 'clubs/:clubId/events/new', ...page(() => import('@/features/events/EventCreatePage'), 'EventCreatePage') },
+      { path: 'me/tickets', ...page(() => import('@/features/events/TicketsPage'), 'TicketsPage') },
       { path: 'assignments', ...page(() => import('@/features/assignments/AssignmentsPage'), 'AssignmentsPage') },
       ...PENDING.map((path) => ({ path, element: <NotBuiltPage /> })),
       { path: '*', element: <NotFoundPage /> },

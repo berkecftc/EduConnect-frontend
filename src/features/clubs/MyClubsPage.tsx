@@ -77,7 +77,7 @@ export function MyClubsPage() {
       </div>
 
       <div className="mt-16 grid gap-14 lg:grid-cols-12 lg:gap-10">
-        <div className="flex min-w-0 flex-col gap-14 lg:col-span-7">
+        <div className="flex min-w-0 flex-col gap-20 lg:col-span-7">
           <Panel title="Üyelik başvurularım">{requests.isPending ? <Skeleton rows={2} /> : <Requests list={requests.data ?? []} />}</Panel>
           {ended.length > 0 && (
             <Panel title="Üyelik geçmişim">
@@ -85,7 +85,7 @@ export function MyClubsPage() {
                 {ended.map((m) => (
                   <li
                     key={`${m.clubId}-${m.endedAt}`}
-                    className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-rule py-3.5 first:pt-0"
+                    className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-rule py-3.5 first:pt-0"
                   >
                     <span className="min-w-0">
                       <Link to={`/clubs/${m.clubId}`} className="font-semibold underline-offset-4 hover:underline">
@@ -199,9 +199,12 @@ function Requests({ list }: { list: MembershipRequest[] }) {
         {sorted.map((r) => (
           <li key={r.id} className="grid gap-x-6 gap-y-1 border-b border-rule py-3.5 first:pt-0 sm:grid-cols-[minmax(0,1fr)_auto]">
             <span className="min-w-0">
-              <Link to={`/clubs/${r.clubId}`} className="font-semibold underline-offset-4 hover:underline">
-                {r.clubName}
-              </Link>
+              <span className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <Link to={`/clubs/${r.clubId}`} className="font-semibold underline-offset-4 hover:underline">
+                  {r.clubName}
+                </Link>
+                <Badge tone={REQUEST_STATUS[r.status].tone}>{REQUEST_STATUS[r.status].label}</Badge>
+              </span>
               <span className="block text-sm text-ink-3">
                 {r.processedDate
                   ? `Başvuru ${formatInstant(r.requestDate, 'datetime')}, karar ${formatInstant(r.processedDate, 'datetime')}`
@@ -210,7 +213,6 @@ function Requests({ list }: { list: MembershipRequest[] }) {
               {r.rejectionReason && <span className="mt-1 block text-md text-ink-2">Gerekçe: {r.rejectionReason}</span>}
             </span>
             <span className="flex items-center gap-4 sm:flex-col sm:items-end">
-              <Badge tone={REQUEST_STATUS[r.status].tone}>{REQUEST_STATUS[r.status].label}</Badge>
               {r.status === 'PENDING' && (
                 <button
                   type="button"

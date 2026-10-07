@@ -112,7 +112,7 @@ function AssignmentBody({ assignment: a, course }: { assignment: MyAssignment; c
 
       {/* 3. İçerik: solda açıklama, teslimim ve teslim formu; sağda kurallar. */}
       <div className="mt-16 grid gap-14 lg:grid-cols-12 lg:gap-10">
-        <div className="flex min-w-0 flex-col gap-14 lg:col-span-8">
+        <div className="flex min-w-0 flex-col gap-20 lg:col-span-8">
           {(a.description || a.fileUrl) && (
             <Panel title="Açıklama">
               {a.description && <p className="max-w-[68ch] text-lg whitespace-pre-line text-ink-2">{a.description}</p>}

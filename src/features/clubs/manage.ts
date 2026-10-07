@@ -231,3 +231,7 @@ export function useRemoveAnnouncement(clubId: string) {
     onSuccess: () => void qc.invalidateQueries({ queryKey: clubKeys.announcements(clubId) }),
   })
 }
+
+/** Onay sırası sizde mi: başkan onayındakinde başkan yetkisi, danışman onayındakinde danışmanlık. */
+export const isMyTurn = (r: ApprovalRequest, access: ClubAccess | undefined) =>
+  (r.status === 'PENDING_PRESIDENT' && can(access, 'APPROVE_AS_PRESIDENT')) || (r.status === 'PENDING_ADVISOR' && !!access?.advisor)

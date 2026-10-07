@@ -85,7 +85,7 @@ function StudentToday() {
 
       {/* 2. İçerik: solda yaklaşanlar ve kampüs, sağda notlar ve bildirimler. Bütün bölümler aynı başlık düzeyinde. */}
       <div className="mt-14 grid gap-14 lg:grid-cols-12 lg:gap-10">
-        <div className="flex min-w-0 flex-col gap-14 lg:col-span-8">
+        <div className="flex min-w-0 flex-col gap-20 lg:col-span-8">
           <Panel
             title={day ? formatLocal(`${day}T12:00:00`, 'long') : 'Yaklaşanlar'}
             action={
@@ -123,7 +123,7 @@ function StudentToday() {
           </Panel>
         </div>
 
-        <aside className="flex flex-col gap-14 lg:col-span-4">
+        <aside className="flex flex-col gap-20 lg:col-span-4">
           <Panel title="Notlarım" to="/courses" linkLabel="Derslerim">
             {courses.isPending ? (
               <Skeleton rows={3} />
