@@ -2,6 +2,8 @@ import { formatLocal, greeting, nowLocalIso } from '@/lib/time'
 import { hasPermission, hasRole, useSession } from '@/lib/auth/session'
 import { buildNav } from '@/components/layout/nav'
 import { useAcademicianRequests, useChangeRequests, useStudentRequests } from '@/features/manage/verification'
+import { useAppealQueue, useQueue, useReports } from '@/features/manage/moderation'
+import { useCampusEvents } from '@/features/events/manage'
 import { useRecentNotifications } from '@/features/notifications/api'
 import { Link } from 'react-router-dom'
 import { Panel } from '@/components/ui/Panel'
@@ -23,15 +25,34 @@ export function StaffToday() {
   const students = useStudentRequests(verifiesStudents)
   const academicians = useAcademicianRequests(verifiesStaff)
   const changes = useChangeRequests('PENDING', verifiesStudents || verifiesStaff)
+  const moderates = admin || hasPermission(session, 'PERM_MODERATOR')
+  const queuePosts = useQueue('POST', 0, 1, moderates)
+  const queueComments = useQueue('COMMENT', 0, 1, moderates)
+  const reports = useReports(0, 1, moderates)
+  const appeals = useAppealQueue(0, 1, moderates)
+  const publishes = admin || hasPermission(session, 'PERM_CAMPUS_PUBLISHER')
+  const campus = useCampusEvents(publishes)
   const notifications = useRecentNotifications(5)
   const sections = session ? (buildNav(session).find((g) => g.line === 'yonetim')?.items ?? []) : []
 
+  // Şerit en fazla dört hücre: iki doğrulama yetkisi birlikteyse başvurular tek hücrede toplanır.
   const items: WorkItem[] = []
-  if (verifiesStudents) {
+  if (verifiesStudents && verifiesStaff) {
+    const s = students.data?.length
+    const a = academicians.data?.length
+    const n = s === undefined || a === undefined ? undefined : s + a
+    items.push({
+      key: 'basvuru',
+      to: a && !s ? '/manage/academicians' : '/manage/students',
+      value: n,
+      label: 'kayıt başvurusu',
+      note: n ? `${s} öğrenci, ${a} akademisyen` : undefined,
+      urgent: !!n,
+    })
+  } else if (verifiesStudents) {
     const n = students.data?.length
     items.push({ key: 'ogrenci', to: '/manage/students', value: n, label: 'öğrenci başvurusu', urgent: !!n })
-  }
-  if (verifiesStaff) {
+  } else if (verifiesStaff) {
     const n = academicians.data?.length
     items.push({ key: 'akademisyen', to: '/manage/academicians', value: n, label: 'akademisyen başvurusu', urgent: !!n })
   }
@@ -39,10 +60,33 @@ export function StaffToday() {
     const n = changes.data?.length
     items.push({ key: 'profil', to: '/manage/change-requests', value: n, label: 'profil talebi', urgent: !!n })
   }
+  if (moderates) {
+    const parts = [queuePosts, queueComments, reports, appeals].map((q) => q.data?.totalElements)
+    const ready = parts.every((p) => p !== undefined)
+    const [p, c, r, ap] = parts as number[]
+    const n = ready ? p! + c! + r! + ap! : undefined
+    const note =
+      ready && n
+        ? [p! + c! ? `${p! + c!} inceleme` : '', r ? `${r} şikâyet` : '', ap ? `${ap} itiraz` : ''].filter(Boolean).join(', ')
+        : undefined
+    items.push({
+      key: 'moderasyon',
+      to: r ? '/manage/moderation?sekme=sikayetler' : '/manage/moderation',
+      value: n,
+      label: 'moderasyon kaydı',
+      note,
+      urgent: !!n,
+    })
+  }
+  if (publishes) {
+    const n = campus.data?.filter((e) => e.status === 'ACTIVE' && (e.endsAt ?? e.startsAt) >= now).length
+    items.push({ key: 'kampus', to: '/manage/campus-events', value: n, label: 'yaklaşan kampüs etkinliği', urgent: false })
+  }
 
   // Şeritte bağlantısı olmayan yönetim bölümleri (ör. yöneticinin dönemler, akademik yapı bölümleri).
-  const others = sections.filter((s) => !items.some((it) => it.to === s.to))
-  const total = items.reduce((n, it) => n + (it.value ?? 0), 0)
+  const others = sections.filter((s) => !items.some((it) => it.to?.split('?')[0] === s.to))
+  // Kampüs etkinliği karar beklemez; özete sayılmaz.
+  const total = items.reduce((n, it) => n + (it.key === 'kampus' ? 0 : (it.value ?? 0)), 0)
   const loading = items.some((it) => it.value === undefined)
   const summary =
     items.length === 0

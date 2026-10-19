@@ -5,7 +5,10 @@
  */
 import type { InternalAxiosRequestConfig } from 'axios'
 import type { AffiliationStatus, ManagedAccount, StaffAccount } from '@/features/manage/accounts'
+import type { AppealItem, ModerationRecord, QueueItem, ReportItem } from '@/features/manage/moderation'
 import type { AcademicianRequest, ChangeRequest, StudentRequest } from '@/features/manage/verification'
+import { localStamp } from '@/lib/time'
+import * as fx from './fixtures'
 
 type Handler = (m: RegExpMatchArray, config: InternalAxiosRequestConfig) => unknown
 
@@ -280,6 +283,178 @@ const flatten = (b: GrantBody): StaffAccount['grants'] =>
       : [{ permission: g.permission, facultyId: null }],
   )
 
+// ——— Moderasyon (post-service VIA_DTO sayfası) ———
+
+const queue: QueueItem[] = [
+  {
+    targetType: 'POST',
+    id: 'p20',
+    postId: 'p20',
+    title: 'Hoca ödev puanlarını adaletsiz veriyor',
+    content:
+      'BİL 301’de bu hafta verilen puanlar çok tutarsız. Aynı kodu yazan iki kişiden biri 90 diğeri 40 aldı. Bu hocanın derslerini almayın, tam bir rezalet.',
+    authorId: 'st31',
+    authorName: 'Tolga Yıldız',
+    status: 'IN_REVIEW',
+    flag: 'Otomatik kontrol zorbalık veya hakaret şüphesi bildirdi.',
+    submittedAt: ago(3),
+  },
+  {
+    targetType: 'POST',
+    id: 'p21',
+    postId: 'p21',
+    title: 'Satılık ikinci el çizim tableti',
+    content: 'Az kullanılmış çizim tableti, kutusuyla. Fiyat için mesaj atın.',
+    authorId: 'st32',
+    authorName: 'Ilgın Güneş',
+    status: 'IN_REVIEW',
+    flag: 'Otomatik kontrol karar veremedi.',
+    submittedAt: ago(9),
+  },
+  {
+    targetType: 'COMMENT',
+    id: 'cm30',
+    postId: 'p1',
+    title: null,
+    content: 'Bu soruyu soran herkes dersten kalsın zaten, kitapta yazıyor.',
+    authorId: 'st33',
+    authorName: 'Oğuz Kurt',
+    status: 'IN_REVIEW',
+    flag: 'Otomatik kontrol zorbalık veya hakaret şüphesi bildirdi.',
+    submittedAt: ago(5),
+  },
+]
+
+const reports: ReportItem[] = [
+  {
+    id: 'r1',
+    targetType: 'COMMENT',
+    targetId: 'cm31',
+    postId: 'p4',
+    reason: 'HARASSMENT',
+    reasonLabel: 'Taciz',
+    sensitive: true,
+    details: 'Bana özelden de yazıyor; burada da adımı verip alay ediyor.',
+    reporterId: 'st7',
+    status: 'OPEN',
+    openReportsOnTarget: 1,
+    targetStatus: 'PUBLISHED',
+    targetContent: 'Burcu yine kütüphanede yer kapmış, herkes biliyor ne yaptığını. Kendisine bir bakın.',
+    createdAt: ago(2),
+  },
+  {
+    id: 'r2',
+    targetType: 'POST',
+    targetId: 'p22',
+    postId: 'p22',
+    reason: 'ACADEMIC_INTEGRITY',
+    reasonLabel: 'Akademik dürüstlük',
+    sensitive: false,
+    details: 'Ara sınav sorularının çözümleri paylaşılmış.',
+    reporterId: 'st3',
+    status: 'OPEN',
+    openReportsOnTarget: 2,
+    targetStatus: 'PUBLISHED',
+    targetContent: 'Geçen haftaki ara sınavın bütün çözümleri ekte; bu dönem de aynı sorular gelir.',
+    createdAt: ago(20),
+  },
+  {
+    id: 'r3',
+    targetType: 'POST',
+    targetId: 'p3',
+    postId: 'p3',
+    reason: 'SPAM',
+    reasonLabel: 'İstenmeyen içerik',
+    sensitive: false,
+    details: null,
+    reporterId: 'st9',
+    status: 'OPEN',
+    openReportsOnTarget: 1,
+    targetStatus: 'PUBLISHED',
+    targetContent: 'Bahar dönemindeki robot yarışması için takım seçmeleri gelecek hafta laboratuvarda.',
+    createdAt: ago(30),
+  },
+]
+
+const appealQueue: AppealItem[] = [
+  {
+    id: 'ap-m1',
+    targetType: 'POST',
+    targetId: 'p6',
+    postId: 'p6',
+    appellantId: 'u1',
+    statement: 'Paylaştığım sorular hocanın dönem başında herkese dağıttığı örnek sorulardı, gerçek sınav soruları değil.',
+    appealedAction: 'HIDDEN',
+    status: 'OPEN',
+    decisionNote: null,
+    decidedAt: null,
+    createdAt: ago(26),
+    targetContent: 'Geçen yılın ara sınav sorularını paylaşıyorum.',
+  },
+]
+
+const history: Record<string, ModerationRecord[]> = {
+  p6: [
+    {
+      id: 'h1',
+      targetType: 'POST',
+      targetId: 'p6',
+      postId: 'p6',
+      action: 'HIDDEN',
+      actorType: 'SCOPE_OWNER',
+      actorId: 's1',
+      reason: 'Sınav soruları paylaşılamaz (akademik dürüstlük).',
+      createdAt: ago(24 * 9),
+    },
+  ],
+  p20: [
+    {
+      id: 'h2',
+      targetType: 'POST',
+      targetId: 'p20',
+      postId: 'p20',
+      action: 'SENT_TO_REVIEW',
+      actorType: 'AUTOMATIC',
+      actorId: null,
+      reason: 'Zorbalık veya hakaret şüphesi.',
+      createdAt: ago(3),
+    },
+  ],
+}
+
+/** VIA_DTO sayfası: `{content, page:{…}}`. */
+function paged<T>(all: T[], config: InternalAxiosRequestConfig) {
+  const { page = 0, size = 20 } = (config.params ?? {}) as { page?: number; size?: number }
+  return {
+    content: all.slice(page * size, page * size + size),
+    page: { size, number: page, totalElements: all.length, totalPages: Math.ceil(all.length / size) },
+  }
+}
+
+const record = (targetType: 'POST' | 'COMMENT', targetId: string, action: string, reason: string | null) =>
+  (history[targetId] ??= []).unshift({
+    id: 'h-' + Date.now(),
+    targetType,
+    targetId,
+    postId: targetId,
+    action,
+    actorType: 'MODERATOR',
+    actorId: STAFF.id,
+    reason,
+    createdAt: new Date().toISOString(),
+  })
+
+// ——— Kampüs etkinlikleri ———
+
+/** Bitiş verilmeden ertelenen etkinlik süresini korur (backend: yeni başlangıç + eski süre). */
+export function keepDuration(startsAt: string, endsAt: string | null | undefined, newStart: string) {
+  if (!endsAt) return null
+  const ms = localStamp(endsAt) - localStamp(startsAt)
+  return new Date(localStamp(newStart) + ms).toISOString().slice(0, 19)
+}
+
+const campusList = () => fx.campusEvents.filter((e) => !e.clubId)
+
 // ——— Tablolar ———
 
 export const GET: [RegExp, Handler][] = [
@@ -311,9 +486,118 @@ export const GET: [RegExp, Handler][] = [
     },
   ],
   [/^\/auth\/admin\/staff-accounts$/, () => staffAccounts.map((s) => ({ ...s, grants: [...s.grants] }))],
+  [
+    /^\/posts\/moderation\/queue$/,
+    (_m, config) =>
+      paged(
+        queue.filter((q) => q.targetType === ((config.params as { type?: string } | undefined)?.type ?? 'POST')),
+        config,
+      ),
+  ],
+  [
+    /^\/posts\/moderation\/reports$/,
+    (_m, config) =>
+      paged(
+        [...reports].sort((a, b) => Number(b.sensitive) - Number(a.sensitive)),
+        config,
+      ),
+  ],
+  [/^\/posts\/moderation\/appeals$/, (_m, config) => paged(appealQueue, config)],
+  [/^\/posts\/moderation\/history$/, (_m, config) => [...(history[(config.params as { targetId: string }).targetId] ?? [])]],
+  [/^\/events\/campus$/, () => campusList().map((e) => ({ ...e }))],
 ]
 
 export const WRITE: [string, RegExp, Handler][] = [
+  [
+    'post',
+    /^\/posts\/moderation\/(posts|comments)\/([^/]+)\/(decision|remove|restore)$/,
+    (m, config) => {
+      const type = m[1] === 'posts' ? 'POST' : 'COMMENT'
+      const b = body<{ action?: 'APPROVE' | 'REJECT'; reason: string | null }>(config)
+      if (m[3] === 'decision') {
+        if (b.action === 'REJECT' && !b.reason) fail(config, 400, 'REASON_REQUIRED', 'Reddetme gerekçesi zorunludur.')
+        queue.splice(
+          queue.findIndex((q) => q.id === m[2]),
+          1,
+        )
+        record(type, m[2]!, b.action === 'APPROVE' ? 'PUBLISHED' : 'REJECTED', b.reason)
+      } else {
+        for (let i = reports.length - 1; i >= 0; i--) if (reports[i]!.targetId === m[2]) reports.splice(i, 1)
+        record(type, m[2]!, m[3] === 'remove' ? 'REMOVED' : 'RESTORED', b.reason)
+      }
+      return null
+    },
+  ],
+  [
+    'post',
+    /^\/posts\/moderation\/reports\/([^/]+)\/dismiss$/,
+    (m, config) => {
+      const i = reports.findIndex((r) => r.id === m[1])
+      record(reports[i]!.targetType, reports[i]!.targetId, 'REPORT_DISMISSED', body<{ reason: string }>(config).reason)
+      reports.splice(i, 1)
+      return null
+    },
+  ],
+  [
+    'post',
+    /^\/posts\/moderation\/appeals\/([^/]+)\/decision$/,
+    (m, config) => {
+      const i = appealQueue.findIndex((a) => a.id === m[1])
+      const a = appealQueue[i]!
+      const b = body<{ outcome: 'ACCEPT' | 'REJECT'; reason: string }>(config)
+      record(a.targetType, a.targetId, b.outcome === 'ACCEPT' ? 'APPEAL_ACCEPTED' : 'APPEAL_REJECTED', b.reason)
+      appealQueue.splice(i, 1)
+      return { ...a, status: b.outcome === 'ACCEPT' ? 'ACCEPTED' : 'REJECTED', decisionNote: b.reason, decidedAt: new Date().toISOString() }
+    },
+  ],
+  [
+    'post',
+    /^\/events\/campus$/,
+    async (_m, config) => {
+      const d = JSON.parse(await ((config.data as FormData).get('data') as Blob).text()) as Record<string, unknown>
+      const e = {
+        ...fx.campusEvents.find((x) => !x.clubId)!,
+        ...d,
+        id: 'e-' + Date.now(),
+        audience: 'CAMPUS' as const,
+        clubId: null,
+        clubName: null,
+        imageUrl: null,
+        status: 'ACTIVE' as const,
+        endsAt: (d.endsAt as string | null) ?? null,
+      }
+      fx.campusEvents.push(e as (typeof fx.campusEvents)[number])
+      return e
+    },
+  ],
+  [
+    'post',
+    /^\/events\/manage\/([^/]+)\/(postpone|relocate|cancel)$/,
+    (m, config) => {
+      // Kulüp etkinliği ertelenince onaya döner; kampüs etkinliği yayında kalır.
+      const e = fx.findEvent(m[1]!)!
+      const b = body<{ startsAt: string | null; endsAt: string | null; location: string | null; reason: string }>(config)
+      const kind = m[2] === 'postpone' ? 'POSTPONED' : m[2] === 'relocate' ? 'RELOCATED' : 'CANCELLED'
+      const details =
+        m[2] === 'postpone'
+          ? `${e.startsAt.slice(0, 16)} → ${b.startsAt?.slice(0, 16)}`
+          : m[2] === 'relocate'
+            ? `${e.location ?? '–'} → ${b.location}`
+            : null
+      if (m[2] === 'postpone')
+        Object.assign(e, { startsAt: b.startsAt, endsAt: b.endsAt ?? keepDuration(e.startsAt, e.endsAt, b.startsAt!), status: e.clubId ? 'PENDING' : 'ACTIVE' })
+      if (m[2] === 'relocate') e.location = b.location
+      if (m[2] === 'cancel') Object.assign(e, { status: 'CANCELLED', cancellationReason: b.reason })
+      ;(fx.eventChanges[e.id] ??= []).unshift({
+        id: 'ch-' + Date.now(),
+        kind,
+        details,
+        reason: b.reason,
+        createdAt: new Date().toISOString(),
+      })
+      return e
+    },
+  ],
   [
     'post',
     /^\/auth\/verification\/students\/([^/]+)\/(approve|reject)$/,

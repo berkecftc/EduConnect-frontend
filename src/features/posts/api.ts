@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
-import type { SpringPage } from '@/features/notifications/api'
+import { toPaged, type Paged as SpringPage } from '@/lib/api/page'
 
 /** Topluluk akışı (F-67…F-72). */
 
@@ -100,7 +100,7 @@ export function useFeed(f: FeedFilter) {
         if (f.category) params.category = f.category
         if (f.official) params.official = true
       }
-      return (await api.get<SpringPage<Post>>(url, { params })).data
+      return toPaged((await api.get<SpringPage<Post>>(url, { params })).data)
     },
     getNextPageParam: (last) => (last.last ? undefined : last.number + 1),
   })
@@ -115,7 +115,7 @@ export function useComments(postId: string) {
     queryKey: postKeys.comments(postId),
     initialPageParam: 0,
     queryFn: async ({ pageParam }) =>
-      (await api.get<SpringPage<PostComment>>(`/posts/${postId}/comments`, { params: { page: pageParam, size: 20 } })).data,
+      toPaged((await api.get<SpringPage<PostComment>>(`/posts/${postId}/comments`, { params: { page: pageParam, size: 20 } })).data),
     getNextPageParam: (last) => (last.last ? undefined : last.number + 1),
   })
 }

@@ -359,7 +359,7 @@ const WRITE: [string, RegExp, Handler][] = [
       const body = JSON.parse(String(config.data)) as { startsAt: string | null; endsAt: string | null; location: string | null; reason: string }
       const kind = m[2] === 'postpone' ? 'POSTPONED' : m[2] === 'relocate' ? 'RELOCATED' : 'CANCELLED'
       const details = m[2] === 'postpone' ? `${e.startsAt.slice(0, 16)} → ${body.startsAt?.slice(0, 16)}` : m[2] === 'relocate' ? `${e.location ?? '–'} → ${body.location}` : null
-      if (m[2] === 'postpone') Object.assign(e, { startsAt: body.startsAt, endsAt: body.endsAt ?? e.endsAt, status: 'PENDING' })
+      if (m[2] === 'postpone') Object.assign(e, { startsAt: body.startsAt, endsAt: body.endsAt ?? mx.keepDuration(e.startsAt, e.endsAt, body.startsAt!), status: 'PENDING' })
       if (m[2] === 'relocate') e.location = body.location
       if (m[2] === 'cancel') Object.assign(e, { status: 'CANCELLED', cancellationReason: body.reason })
       ;(fx.eventChanges[e.id] ??= []).unshift({ id: 'ch-' + Date.now(), kind, details, reason: body.reason, createdAt: new Date().toISOString() })
@@ -655,7 +655,7 @@ export function PreviewPage() {
         roles: [role],
         primaryRole: role,
         pendingRequests: [],
-        permissions: manager === 'staff' ? ['PERM_STUDENT_VERIFIER', 'PERM_STAFF_VERIFIER', 'PERM_ACCOUNT_MANAGER'] : [],
+        permissions: manager === 'staff' ? ['PERM_STUDENT_VERIFIER', 'PERM_STAFF_VERIFIER', 'PERM_ACCOUNT_MANAGER', 'PERM_MODERATOR', 'PERM_CAMPUS_PUBLISHER'] : [],
         expiresAt: Date.now() + 24 * 3_600_000,
       },
       { persist: false },

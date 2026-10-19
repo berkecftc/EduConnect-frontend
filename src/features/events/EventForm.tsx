@@ -31,6 +31,7 @@ export function EventForm({
   busy,
   failure,
   withPoster,
+  campus = false,
   extra,
   onSubmit,
 }: {
@@ -39,6 +40,8 @@ export function EventForm({
   busy: boolean
   failure: ApiError | null
   withPoster: boolean
+  /** Kampüs etkinliği: düzenleyen birim sorulur, kitle seçimi yok (herkese açık). */
+  campus?: boolean
   /** Formun sonuna eklenecek alan (ör. düzeltme notu). */
   extra?: ReactNode
   onSubmit: (draft: EventDraft, poster: File | null) => void
@@ -57,6 +60,7 @@ export function EventForm({
   const submit = (ev: React.FormEvent) => {
     ev.preventDefault()
     const next = validateDraft(d, nowLocalIso())
+    if (campus && !d.organizerName.trim()) next.organizerName = 'Düzenleyen birimi yazın.'
     setErrors(next)
     if (Object.keys(next).length === 0) onSubmit(d, poster)
     // Hata varsa odak ilk hatalı alana: klavye ve ekran okuyucu kullanıcısı nerede olduğunu bilsin.
@@ -72,6 +76,11 @@ export function EventForm({
         <Field label="Açıklama" hint="İsteğe bağlı.">
           <Textarea rows={5} {...text('description')} />
         </Field>
+        {campus && (
+          <Field label="Düzenleyen" required error={err('organizerName')} hint="Etkinlik sayfasında ve kartlarda görünür. Ör. Kariyer Merkezi">
+            <Input maxLength={200} {...text('organizerName')} />
+          </Field>
+        )}
         <Field label="Konuşmacılar" hint="İsteğe bağlı. Ör. Prof. Dr. Nil Ersoy, Can Erdem">
           <Input maxLength={2000} {...text('speakers')} />
         </Field>
@@ -91,17 +100,26 @@ export function EventForm({
         </Field>
       </FormSection>
 
-      <FormSection title="Katılım" hint="Kontenjan dolunca yeni katılımcılar bekleme listesine alınır.">
-        <ChoiceGroup
-          layout="rows"
-          label="Kimler katılabilir"
-          value={d.audience}
-          onChange={set('audience')}
-          choices={[
-            { value: 'ALL_STUDENTS', title: 'Tüm öğrenciler' },
-            { value: 'MEMBERS_ONLY', title: 'Yalnız kulüp üyeleri' },
-          ]}
-        />
+      <FormSection
+        title="Katılım"
+        hint={
+          campus
+            ? 'Kampüs etkinliği herkese açıktır. Kontenjan dolunca yeni katılımcılar bekleme listesine alınır.'
+            : 'Kontenjan dolunca yeni katılımcılar bekleme listesine alınır.'
+        }
+      >
+        {!campus && (
+          <ChoiceGroup
+            layout="rows"
+            label="Kimler katılabilir"
+            value={d.audience}
+            onChange={set('audience')}
+            choices={[
+              { value: 'ALL_STUDENTS', title: 'Tüm öğrenciler' },
+              { value: 'MEMBERS_ONLY', title: 'Yalnız kulüp üyeleri' },
+            ]}
+          />
+        )}
         <ChoiceGroup
           layout="rows"
           label="Kabul"

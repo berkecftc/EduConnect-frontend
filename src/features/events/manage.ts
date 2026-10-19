@@ -19,6 +19,8 @@ export type EventDraft = {
   registrationOpensAt: string
   registrationClosesAt: string
   cancelUntil: string
+  /** Yalnız kampüs etkinliğinde: düzenleyen birim (ör. Kariyer Merkezi). */
+  organizerName: string
 }
 
 /** Boş metni null'a, saatleri bölgesiz ISO'ya, kontenjanı sayıya çevirir. */
@@ -50,6 +52,32 @@ export function useCreateEvent() {
       form.append('data', new Blob([JSON.stringify({ ...draftToPayload(draft), clubName })], { type: 'application/json' }))
       if (poster) form.append('poster', poster)
       return (await api.post<CampusEvent>('/events/manage', form)).data
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['events'] }),
+  })
+}
+
+/** Kampüs etkinlikleri (PERM_CAMPUS_PUBLISHER, F-64): kulüp dışı, onaysız yayımlanır; bütün durumlar, yeniden eskiye. */
+export function useCampusEvents(enabled = true) {
+  return useQuery({
+    queryKey: ['events', 'campus'],
+    enabled,
+    queryFn: async () => (await api.get<CampusEvent[]>('/events/campus')).data,
+  })
+}
+
+/** Kampüs etkinliği oluştur: multipart `data` (kitle CAMPUS, düzenleyen birim zorunlu) + isteğe bağlı afiş. */
+export function useCreateCampusEvent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ draft, poster }: { draft: EventDraft; poster: File | null }) => {
+      // Kitle sunucuda CAMPUS olur; gönderilmez.
+      const rest: Partial<ReturnType<typeof draftToPayload>> = draftToPayload(draft)
+      delete rest.audience
+      const form = new FormData()
+      form.append('data', new Blob([JSON.stringify({ ...rest, organizerName: draft.organizerName.trim() })], { type: 'application/json' }))
+      if (poster) form.append('poster', poster)
+      return (await api.post<CampusEvent>('/events/campus', form)).data
     },
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['events'] }),
   })
@@ -251,6 +279,7 @@ export function eventToDraft(e: CampusEvent): EventDraft {
     registrationOpensAt: local(e.registrationOpensAt),
     registrationClosesAt: local(e.registrationClosesAt),
     cancelUntil: local(e.cancelUntil),
+    organizerName: e.organizerName ?? '',
   }
 }
 
@@ -284,4 +313,5 @@ export const EMPTY_DRAFT: EventDraft = {
   registrationOpensAt: '',
   registrationClosesAt: '',
   cancelUntil: '',
+  organizerName: '',
 }

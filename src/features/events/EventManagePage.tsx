@@ -8,6 +8,7 @@ import { cn } from '@/lib/cn'
 import { formatNumber } from '@/lib/format'
 import { formatInstant, formatLocalRange, toLocalIso } from '@/lib/time'
 import { usePageTitle } from '@/lib/usePageTitle'
+import { hasPermission, hasRole, useSession } from '@/lib/auth/session'
 import { can, useClubAccess, type ClubAccess } from '@/features/clubs/manage'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -55,16 +56,19 @@ export function EventManagePage() {
 
 function ManageBody({ event: e }: { event: CampusEvent }) {
   const access = useClubAccess(e.clubId ?? '', !!e.clubId)
+  const session = useSession()
+  // Kulübü olmayan (kampüs) etkinliği kampüs yayıncısı ve yönetici yönetir (F-64).
+  const publisher = !e.clubId && (hasRole(session, 'ROLE_ADMIN') || hasPermission(session, 'PERM_CAMPUS_PUBLISHER'))
   const requestsOpen = (e.status === 'ACTIVE' || e.status === 'COMPLETED') && e.admission === 'APPROVAL_REQUIRED'
   const requests = useEventRequests(e.id, requestsOpen)
   const pendingRequests = (requests.data ?? []).filter((r) => r.status === 'PENDING').length
   if (e.clubId && access.isPending) return <Skeleton rows={4} />
   const a = access.data
-  const operates = can(a, 'MANAGE_EVENT_OPERATIONS', 'CREATE_EVENT', 'PREPARE_EVENT', 'APPROVE_AS_PRESIDENT', 'ADVISE')
+  const operates = publisher || can(a, 'MANAGE_EVENT_OPERATIONS', 'CREATE_EVENT', 'PREPARE_EVENT', 'APPROVE_AS_PRESIDENT', 'ADVISE')
   if (!operates) {
     return (
       <EmptyState title="Bu etkinliği yönetemezsiniz">
-        Etkinlik yönetimi düzenleyen kulübün yönetimine açıktır.{' '}
+        {e.clubId ? 'Etkinlik yönetimi düzenleyen kulübün yönetimine açıktır.' : 'Kampüs etkinliklerini kampüs etkinliği yetkisi olan görevliler yönetir.'}{' '}
         <Link to={`/events/${e.id}`} className="font-semibold underline-offset-4 hover:underline">
           Etkinlik sayfasına dön
         </Link>
@@ -79,9 +83,13 @@ function ManageBody({ event: e }: { event: CampusEvent }) {
     <>
       <p className="flex items-center gap-3 text-md">
         <span aria-hidden className="h-5 w-[4px] bg-etkinlik" />
-        {e.clubId && (
+        {e.clubId ? (
           <Link to={`/clubs/${e.clubId}?sekme=yonetim`} className="font-semibold underline-offset-4 hover:underline">
             {e.clubName}
+          </Link>
+        ) : (
+          <Link to="/manage/campus-events" className="font-semibold underline-offset-4 hover:underline">
+            Kampüs etkinlikleri
           </Link>
         )}
         <span className="text-ink-3">Etkinlik yönetimi</span>
@@ -114,7 +122,7 @@ function ManageBody({ event: e }: { event: CampusEvent }) {
           tabs={[
             ...(live ? [{ value: 'katilimcilar', label: 'Katılımcılar', content: <Attendance event={e} /> }] : []),
             ...(live && e.admission === 'APPROVAL_REQUIRED' ? [{ value: 'istekler', label: 'Katılım istekleri', count: pendingRequests || undefined, content: <Requests eventId={e.id} /> }] : []),
-            { value: 'degisiklikler', label: 'Değişiklikler', content: <Changes event={e} access={a} /> },
+            { value: 'degisiklikler', label: 'Değişiklikler', content: <Changes event={e} access={a} publisher={publisher} /> },
             ...(editable ? [{ value: 'duzenle', label: 'Düzenle', content: <Edit event={e} /> }] : []),
           ]}
         />
@@ -369,16 +377,24 @@ function RequestRow({ eventId, request: r }: { eventId: string; request: Managed
 type ChangeKind = 'postpone' | 'relocate' | 'cancel'
 
 /** Yayımlanmış etkinlikte başkan erteler ya da yerini değiştirir; başkan ve danışman iptal eder. Geçmiş altta. */
-function Changes({ event: e, access }: { event: CampusEvent; access?: ClubAccess }) {
+function Changes({ event: e, access, publisher }: { event: CampusEvent; access?: ClubAccess; publisher: boolean }) {
   const changes = useEventChanges(e.id, true)
   const change = useChangeEvent(e.id)
   const [dialog, setDialog] = useState<ChangeKind | null>(null)
   const [form, setForm] = useState({ startsAt: '', endsAt: '', location: '', reason: '' })
   const [failure, setFailure] = useState<ApiError | null>(null)
-  const president = can(access, 'APPROVE_AS_PRESIDENT')
+  // Kulüp etkinliğinde başkan (iptalde danışman da), kampüs etkinliğinde yayıncı. Ertelenen kampüs etkinliği onaya düşmez.
+  const president = publisher || can(access, 'APPROVE_AS_PRESIDENT')
   const changeable = e.status === 'ACTIVE'
   const actions: { kind: ChangeKind; label: string; allowed: boolean; hint: string }[] = [
-    { kind: 'postpone', label: 'Ertele', allowed: president, hint: 'Yeni tarih verin. Etkinlik yeniden danışman onayına düşer, kayıtlılara e-posta gider.' },
+    {
+      kind: 'postpone',
+      label: 'Ertele',
+      allowed: president,
+      hint: publisher
+        ? 'Yeni tarih verin; kayıtlılara e-posta gider.'
+        : 'Yeni tarih verin. Etkinlik yeniden danışman onayına düşer, kayıtlılara e-posta gider.',
+    },
     { kind: 'relocate', label: 'Yeri değiştir', allowed: president, hint: 'Kayıtlılara yeni yer e-postayla bildirilir.' },
     { kind: 'cancel', label: 'İptal et', allowed: president || can(access, 'ADVISE'), hint: 'Kayıtlılara gerekçeyle birlikte e-posta gider. Geri alınamaz.' },
   ]
@@ -407,7 +423,7 @@ function Changes({ event: e, access }: { event: CampusEvent; access?: ClubAccess
       },
       {
         onSuccess: () => {
-          toast.success(dialog === 'postpone' ? 'Etkinlik ertelendi, danışman onayına gönderildi' : dialog === 'relocate' ? 'Etkinliğin yeri değişti' : 'Etkinlik iptal edildi')
+          toast.success(dialog === 'postpone' ? (publisher ? 'Etkinlik ertelendi; kayıtlılara e-posta gitti' : 'Etkinlik ertelendi, danışman onayına gönderildi') : dialog === 'relocate' ? 'Etkinliğin yeri değişti' : 'Etkinlik iptal edildi')
           setDialog(null)
         },
         onError: (err) => setFailure(toApiError(err)),

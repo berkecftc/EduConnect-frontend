@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toPaged, type Paged } from '@/lib/api/page'
 import { useNavigate } from 'react-router-dom'
 import { api } from '@/lib/api/client'
 import { LINES } from '@/design/lines'
@@ -26,7 +27,8 @@ export type AppNotification = {
 }
 
 /** Spring `Page` (DIRECT) biçiminin kullandığımız kısmı. */
-export type SpringPage<T> = { content: T[]; totalElements: number; totalPages: number; number: number; last: boolean }
+/** Sayfalı yanıt; ortak biçim `@/lib/api/page`'te. */
+export type SpringPage<T> = Paged<T>
 
 /** `GET /api/notifications/preferences` öğesi: zorunlu kategoride e-posta kapatılamaz. */
 export type NotificationPreference = { category: NotificationCategory; label: string; mandatory: boolean; emailEnabled: boolean }
@@ -66,7 +68,7 @@ export function useUnreadCount() {
 export function useRecentNotifications(size = 5) {
   return useQuery({
     queryKey: ['notifications', 'recent', size],
-    queryFn: async () => (await api.get<SpringPage<AppNotification>>('/notifications', { params: { page: 0, size } })).data.content,
+    queryFn: async () => toPaged((await api.get<SpringPage<AppNotification>>('/notifications', { params: { page: 0, size } })).data).content,
   })
 }
 
@@ -78,7 +80,7 @@ export function useNotifications(unreadOnly: boolean) {
     queryKey: notificationKeys.list(unreadOnly),
     initialPageParam: 0,
     queryFn: async ({ pageParam }) =>
-      (await api.get<SpringPage<AppNotification>>('/notifications', { params: { unreadOnly, page: pageParam, size: PAGE_SIZE } })).data,
+      toPaged((await api.get<SpringPage<AppNotification>>('/notifications', { params: { unreadOnly, page: pageParam, size: PAGE_SIZE } })).data),
     getNextPageParam: (last) => (last.last ? undefined : last.number + 1),
   })
 }
