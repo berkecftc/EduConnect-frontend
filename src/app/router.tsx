@@ -60,6 +60,7 @@ export const router = createBrowserRouter([
       { path: 'events', ...page(() => import('@/features/events/EventsPage'), 'EventsPage') },
       { path: 'events/:eventId', ...page(() => import('@/features/events/EventPage'), 'EventPage') },
       { path: 'events/:eventId/yonetim', ...page(() => import('@/features/events/EventManagePage'), 'EventManagePage') },
+      { path: 'clubs/:clubId/kayitlar', ...page(() => import('@/features/clubs/ClubRecordsPage'), 'ClubRecordsPage') },
       { path: 'clubs/:clubId/events/new', ...page(() => import('@/features/events/EventCreatePage'), 'EventCreatePage') },
       { path: 'me/tickets', ...page(() => import('@/features/events/TicketsPage'), 'TicketsPage') },
       { path: 'posts', ...page(() => import('@/features/posts/PostsPage'), 'PostsPage') },

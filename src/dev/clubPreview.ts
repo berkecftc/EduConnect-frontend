@@ -2,7 +2,9 @@
  * Öğrenci önizlemesi, kulüp yönetimi: Elif Demir Satranç Kulübü'nün başkanı (görev verme, üyelikten çıkarma,
  * kulüp bilgileri, logo, danışman önerme, kapatma talebi), Robotik'te etkinlik koordinatörü (istifa).
  * Bir kurucu daveti ve reddedilmiş eski bir kuruluş başvurusu var. Satranç'ta seçim açılabilir (açılınca birkaç üye aday
- * olmuş sayılır, oylama bitince diğer üyelerin oyları eklenir); Robotik'te oylama sürüyor ve Elif henüz oy vermedi. Üye ve önerilen danışman adları, backend'in
+ * olmuş sayılır, oylama bitince diğer üyelerin oyları eklenir); Robotik'te oylama sürüyor ve Elif henüz oy vermedi.
+ * Satranç'ın kayıtları: üç tutanak, bütçeler, gelir-gider (biri danışman onayında), bir sponsorluk, geçen yılın
+ * raporları, karar günlüğü ve görev geçmişi. Üye ve önerilen danışman adları, backend'in
  * bu alanları dolduracağı varsayımıyla gelir. Bellekte tutulur; yalnız `/onizleme` (öğrenci) içindir.
  */
 import type { InternalAxiosRequestConfig } from 'axios'
@@ -12,6 +14,16 @@ import type { ClubCategory, ClubMember } from '@/features/clubs/api'
 import type { AdvisorChange, ProfileDraft } from '@/features/clubs/governance'
 import type { Election, ElectionBallot, ElectionCandidate } from '@/features/clubs/elections'
 import type { ApprovalRequest } from '@/features/clubs/manage'
+import type {
+  Budget,
+  DecisionLogEntry,
+  FinanceEntry,
+  Meeting,
+  PositionTerm,
+  Report,
+  ReportSnapshot,
+  Sponsorship,
+} from '@/features/clubs/records'
 import * as fx from './fixtures'
 
 type Handler = (m: RegExpMatchArray, config: InternalAxiosRequestConfig) => unknown
@@ -271,6 +283,367 @@ function findElection(config: InternalAxiosRequestConfig, clubId: string, id: st
 const running = (clubId: string) =>
   (elections[clubId] ?? []).some((e) => e.status === 'CANDIDACY' || e.status === 'VOTING' || e.status === 'AWAITING_APPROVAL')
 
+// ——— Kulüp kayıtları (Satranç) ———
+
+const day = (hoursAgo: number) => ago(hoursAgo).slice(0, 10)
+const localAt = (hoursAgo: number, hh: number) => `${day(hoursAgo)}T${String(hh).padStart(2, '0')}:00:00`
+const yearOf = (d: string) => {
+  const [y, m, dd] = d.slice(0, 10).split('-').map(Number) as [number, number, number]
+  return m > 9 || (m === 9 && dd > 30) ? y + 1 : y
+}
+const label = (y: number) => `${y - 1}-${y}`
+
+const meetingOf = (
+  id: string,
+  hoursAgo: number,
+  agenda: string,
+  minutes: string,
+  attendeeIds: string[],
+  decisions: string[],
+  numbers: number[],
+  location: string | null = 'Kütüphane salonu',
+): Meeting => {
+  const at = localAt(hoursAgo, 18)
+  const y = yearOf(at)
+  return {
+    id,
+    meetingAt: at,
+    academicYear: y,
+    academicYearLabel: label(y),
+    location,
+    agenda,
+    minutes,
+    attendeeIds,
+    boardSize: 2,
+    quorumMet: attendeeIds.filter((x) => x === 'u1' || x === 'st5').length * 2 > 2,
+    decisions: decisions.map((text, i) => ({
+      id: `${id}-d${i}`,
+      order: i + 1,
+      text,
+      number: numbers[i] ?? null,
+      label: numbers[i] ? `${label(y)}/${numbers[i]}` : null,
+    })),
+    preparedBy: 'u1',
+    createdAt: ago(hoursAgo - 20),
+    approvedAt: ago(hoursAgo - 22),
+    status: 'APPROVED',
+  }
+}
+
+export const meetings: Record<string, Meeting[]> = {
+  k2: [
+    meetingOf(
+      'mt1',
+      24 * 8,
+      'Hızlı satranç turnuvasının hazırlığı. Yeni dönem üye kampanyası.',
+      'Turnuva için kütüphane salonu cumartesi günü ayrıldı; tahtalar kulüpten, saatler bölümden ödünç alınacak. Deniz Kara üye kampanyası için tanıtım masası önerdi; kabul edildi.',
+      ['u1', 'st5', 'st6'],
+      ['Hızlı satranç turnuvası cumartesi 13.00’te kütüphane salonunda yapılacak.', 'Tanıtım haftasında iki gün stant açılacak.'],
+      [1, 2],
+    ),
+    meetingOf(
+      'mt2',
+      24 * 50,
+      'Dönem sonu değerlendirmesi. Lig takımlarının belirlenmesi.',
+      'Bahar döneminde 3 turnuva, 11 ders yapıldı. Lig için A ve B takımları belirlendi; B takımının kaptanı Selin Ak.',
+      ['u1', 'st5'],
+      ['Üniversiteler arası lige iki takımla katılınacak.', 'B takımının kaptanı Selin Ak olacak.'],
+      [5, 6],
+    ),
+    meetingOf(
+      'mt3',
+      24 * 140,
+      'Bahar dönemi etkinlik takvimi.',
+      'Her çarşamba serbest oyun, ayda bir hızlı turnuva. Simültane gösterisi nisan sonunda.',
+      ['u1', 'st6'],
+      ['Bahar takvimi kabul edildi.'],
+      [3],
+    ),
+  ],
+}
+
+export const budgets: Record<string, Budget[]> = {
+  k2: [
+    {
+      id: 'bd2',
+      academicYear: yearOf(day(0)),
+      academicYearLabel: label(yearOf(day(0))),
+      plannedIncome: 7000,
+      plannedExpense: 6000,
+      description:
+        'Aidatlar 3.500 ₺, sponsorluk 2.000 ₺, turnuva katılım ücretleri 1.500 ₺. Giderler: ödüller 2.500 ₺, lig yol giderleri 2.500 ₺, malzeme 1.000 ₺.',
+      preparedBy: 'u1',
+      createdAt: ago(24 * 18),
+      approvedAt: ago(24 * 15),
+      status: 'APPROVED',
+    },
+    {
+      id: 'bd1',
+      academicYear: yearOf(day(0)) - 1,
+      academicYearLabel: label(yearOf(day(0)) - 1),
+      plannedIncome: 5000,
+      plannedExpense: 4500,
+      description: null,
+      preparedBy: 'st41',
+      createdAt: ago(24 * 380),
+      approvedAt: ago(24 * 375),
+      status: 'APPROVED',
+    },
+  ],
+}
+
+const entry = (
+  id: string,
+  type: FinanceEntry['type'],
+  amount: number,
+  description: string,
+  hoursAgo: number,
+  extra: Partial<FinanceEntry> = {},
+): FinanceEntry => ({
+  id,
+  type,
+  amount,
+  description,
+  occurredOn: day(hoursAgo),
+  academicYear: yearOf(day(hoursAgo)),
+  hasDocument: false,
+  documentName: null,
+  budgetExceeded: false,
+  sponsorshipId: null,
+  preparedBy: 'u1',
+  createdAt: ago(hoursAgo),
+  approvedAt: ago(hoursAgo - 2),
+  status: 'APPROVED',
+  ...extra,
+})
+
+export const entries: Record<string, FinanceEntry[]> = {
+  k2: [
+    entry('fe1', 'INCOME', 2050, 'Güz dönemi üye aidatları', 24 * 12),
+    entry('fe2', 'EXPENSE', 1200, 'Hızlı turnuva ödülleri', 24 * 6, { hasDocument: true, documentName: 'odul-faturasi.pdf' }),
+    entry('fe3', 'EXPENSE', 3200, 'Turnuva saatleri (10 adet)', 30, {
+      approvedAt: null,
+      status: 'PENDING_ADVISOR',
+      hasDocument: true,
+      documentName: 'saat-teklifi.pdf',
+    }),
+    entry('fe4', 'INCOME', 2000, 'Kuzey Kitabevi sponsorluğu', 24 * 40, { sponsorshipId: 'sp1' }),
+    entry('fe5', 'EXPENSE', 2700, 'Lig yol giderleri', 24 * 70, { hasDocument: true, documentName: 'otobus-bileti.pdf' }),
+    entry('fe6', 'INCOME', 1800, 'Bahar dönemi aidatları', 24 * 200),
+    entry('fe7', 'EXPENSE', 950, 'Satranç takımları', 24 * 210),
+  ],
+}
+
+export const sponsorships: Record<string, Sponsorship[]> = {
+  k2: [
+    {
+      id: 'sp1',
+      sponsorName: 'Kuzey Kitabevi',
+      description: 'Bahar ligi süresince turnuva ödülleri ve afişlerde kitabevinin adı.',
+      cashAmount: 2000,
+      inKind: '15 satranç kitabı',
+      startsOn: day(24 * 42),
+      endsOn: day(-24 * 120),
+      hasDocument: true,
+      documentName: 'sponsorluk-sozlesmesi.pdf',
+      preparedBy: 'u1',
+      createdAt: ago(24 * 42),
+      approvedAt: ago(24 * 40),
+      status: 'APPROVED',
+    },
+  ],
+}
+
+const snapshotOf = (y: number): ReportSnapshot => {
+  const approved = (entries.k2 ?? []).filter((e) => e.academicYear === y && e.status === 'APPROVED')
+  const sum = (t: FinanceEntry['type']) => approved.filter((e) => e.type === t).reduce((a, e) => a + e.amount, 0)
+  const budget = (budgets.k2 ?? []).find((b) => b.academicYear === y && b.status === 'APPROVED')
+  const ms = (meetings.k2 ?? []).filter((m) => m.academicYear === y && m.status === 'APPROVED')
+  return {
+    activeMembers: 41,
+    endedMemberships: y === yearOf(day(0)) ? 1 : 6,
+    announcements: y === yearOf(day(0)) ? 2 : 14,
+    meetings: ms.length,
+    decisions: ms.reduce((a, m) => a + m.decisions.length, 0),
+    plannedIncome: budget?.plannedIncome ?? null,
+    plannedExpense: budget?.plannedExpense ?? null,
+    income: sum('INCOME'),
+    expense: sum('EXPENSE'),
+    balance: sum('INCOME') - sum('EXPENSE'),
+    events: y === yearOf(day(0)) ? 2 : 9,
+    completedEvents: y === yearOf(day(0)) ? 1 : 8,
+    cancelledEvents: y === yearOf(day(0)) ? 0 : 1,
+    registrations: y === yearOf(day(0)) ? 34 : 212,
+    attendances: y === yearOf(day(0)) ? 21 : 168,
+  }
+}
+
+const lastYear = yearOf(day(0)) - 1
+export const reports: Record<string, Report[]> = {
+  k2: [
+    {
+      id: 'rp1',
+      clubId: 'k2',
+      type: 'ACTIVITY',
+      academicYear: lastYear,
+      academicYearLabel: label(lastYear),
+      status: 'APPROVED',
+      body: 'Yıl boyunca 9 etkinlik düzenlendi; ikisi üniversiteler arası lig maçıydı. Haftalık serbest oyun akşamları ortalama 18 kişiyle sürdü. Simültane gösterisi 60 izleyiciye ulaştı.',
+      financeNote: 'Giderler bütçenin altında kaldı; lig yol giderleri sponsorlukla karşılandı.',
+      recommendations: null,
+      snapshot: null,
+      requestId: 'ap-rp1',
+      createdAt: ago(24 * 60),
+      updatedAt: ago(24 * 55),
+      submittedAt: ago(24 * 50),
+      approvedAt: ago(24 * 45),
+    },
+    {
+      id: 'rp2',
+      clubId: 'k2',
+      type: 'AUDIT',
+      academicYear: lastYear,
+      academicYearLabel: label(lastYear),
+      status: 'SUBMITTED',
+      body: 'Gelir ve gider kayıtları belgeleriyle karşılaştırıldı; tutarsızlık bulunmadı. Üç toplantı tutanağı imzalı ve karar defterine işlenmiş.',
+      financeNote: null,
+      recommendations: 'Malzeme alımlarında en az iki teklif alınması önerilir.',
+      snapshot: null,
+      requestId: 'ap-rp2',
+      createdAt: ago(24 * 40),
+      updatedAt: ago(24 * 36),
+      submittedAt: ago(24 * 35),
+      approvedAt: null,
+    },
+  ],
+}
+reports.k2![0]!.snapshot = snapshotOf(lastYear)
+
+const log = (id: string, hoursAgo: number, action: string, requestType: string | null, detail: string | null = null): DecisionLogEntry => ({
+  id,
+  requestId: null,
+  requestType,
+  action,
+  actorId: null,
+  subjectUserId: null,
+  detail,
+  createdAt: ago(hoursAgo),
+})
+
+export const decisionLog: Record<string, DecisionLogEntry[]> = {
+  k2: [
+    log('lg1', 20, 'SUBMITTED', 'CLUB_ANNOUNCEMENT'),
+    log('lg2', 30, 'SUBMITTED', 'CLUB_FINANCE_ENTRY'),
+    log('lg3', 30, 'PRESIDENT_APPROVED', 'ROLE_CHANGE'),
+    log('lg4', 24 * 6, 'APPROVED', 'CLUB_FINANCE_ENTRY'),
+    log('lg5', 24 * 8, 'APPROVED', 'CLUB_MEETING_MINUTES', '2 karar deftere işlendi'),
+    log('lg6', 24 * 12, 'MEMBERSHIP_APPROVED', null),
+    log('lg7', 24 * 15, 'APPROVED', 'CLUB_BUDGET'),
+    log('lg8', 24 * 35, 'SUBMITTED', 'CLUB_AUDIT_REPORT'),
+    log('lg9', 24 * 45, 'APPROVED', 'CLUB_ACTIVITY_REPORT'),
+    log('lg10', 24 * 60, 'MEMBER_LEFT', null),
+    log('lg11', 24 * 330, 'BOARD_HANDOVER', null, '3 görev seçimle devredildi'),
+    log('lg12', 24 * 340, 'ELECTION_VOTING_STARTED', null),
+    log('lg13', 24 * 352, 'ELECTION_OPENED', null),
+  ],
+}
+
+const term = (
+  studentId: string,
+  firstName: string,
+  lastName: string,
+  position: string,
+  positionName: string,
+  startedAgo: number,
+  endedAgo: number | null,
+  endReason: string | null = null,
+): PositionTerm => ({
+  clubId: 'k2',
+  clubName: 'Satranç Kulübü',
+  studentId,
+  firstName,
+  lastName,
+  position,
+  positionName,
+  startedAt: ago(startedAgo),
+  endedAt: endedAgo == null ? null : ago(endedAgo),
+  endReason,
+})
+
+export const positionHistory: Record<string, PositionTerm[]> = {
+  k2: [
+    term('u1', 'Elif', 'Demir', 'ROLE_CLUB_OFFICIAL', 'Kulüp Başkanı', 24 * 330, null),
+    term('st5', 'Deniz', 'Kara', 'ROLE_VICE_PRESIDENT', 'Başkan Yardımcısı', 24 * 300, null),
+    term('st6', 'Oğuz', 'Tan', 'ROLE_MEMBERSHIP_OFFICER', 'Üyelik Sorumlusu', 24 * 200, null),
+    term('st5', 'Deniz', 'Kara', 'ROLE_BOARD_MEMBER', 'Yönetim Kurulu Üyesi', 24 * 330, 24 * 300, 'CHANGED'),
+    term('st6', 'Oğuz', 'Tan', 'ROLE_BOARD_MEMBER', 'Yönetim Kurulu Üyesi', 24 * 330, 24 * 200, 'CHANGED'),
+    term('st10', 'Arda', 'Kılıç', 'ROLE_AUDITOR', 'Denetim Kurulu Üyesi', 24 * 330, 24 * 90, 'RESIGNED'),
+    term('st40', 'Melis', 'Kurt', 'ROLE_CLUB_OFFICIAL', 'Kulüp Başkanı', 24 * 700, 24 * 330, 'HANDOVER'),
+    term('u1', 'Elif', 'Demir', 'ROLE_BOARD_MEMBER', 'Yönetim Kurulu Üyesi', 24 * 700, 24 * 330, 'HANDOVER'),
+    term('st41', 'Kaan', 'Er', 'ROLE_TREASURER', 'Sayman', 24 * 600, 24 * 330, 'HANDOVER'),
+  ],
+}
+
+export const pastPresidents: Record<string, ClubMember[]> = {
+  k2: [
+    {
+      studentId: 'st40',
+      firstName: 'Melis',
+      lastName: 'Kurt',
+      role: 'ROLE_CLUB_OFFICIAL',
+      isActive: false,
+      termStartDate: ago(24 * 700),
+      termEndDate: ago(24 * 330),
+    },
+    {
+      studentId: 'st42',
+      firstName: 'Barış',
+      lastName: 'Yılmaz',
+      role: 'ROLE_CLUB_OFFICIAL',
+      isActive: false,
+      termStartDate: ago(24 * 1100),
+      termEndDate: ago(24 * 700),
+    },
+  ],
+}
+
+const previewDocument = () => new Blob(['%PDF-1.4\n% EduConnect önizleme belgesi\n'], { type: 'application/pdf' })
+
+/** Faaliyet raporunu ya da denetim raporunu bulur ya da taslak olarak açar. */
+function draftOf(clubId: string, type: Report['type'], y: number, config: InternalAxiosRequestConfig): Report {
+  const list = (reports[clubId] ??= [])
+  let r = list.find((x) => x.type === type && x.academicYear === y)
+  if (r && r.status !== 'DRAFT') fail(config, 409, 'REPORT_LOCKED', 'Gönderilmiş rapor düzenlenemez.')
+  if (!r) {
+    r = {
+      id: nextId('rp'),
+      clubId,
+      type,
+      academicYear: y,
+      academicYearLabel: label(y),
+      status: 'DRAFT',
+      body: null,
+      financeNote: null,
+      recommendations: null,
+      snapshot: null,
+      requestId: null,
+      createdAt: now(),
+      updatedAt: null,
+      submittedAt: null,
+      approvedAt: null,
+    }
+    list.push(r)
+  }
+  r.updatedAt = now()
+  return r
+}
+
+const yearParam = (config: InternalAxiosRequestConfig) =>
+  Number((config.params as { academicYear?: number } | undefined)?.academicYear ?? yearOf(day(0)))
+
+/** Danışman onayındaki gelir-gider kaydı (saat alımı) kulüp kararlarında görünür. */
+submit('k2', { type: 'CLUB_FINANCE_ENTRY', status: 'PENDING_ADVISOR', createdAt: ago(30), financeEntry: entries.k2![2]! })
+
 // ——— Onay kayıtları ———
 
 function submit(clubId: string, r: Partial<ApprovalRequest> & Pick<ApprovalRequest, 'type' | 'status'>): ApprovalRequest {
@@ -318,6 +691,66 @@ export const GET: [RegExp, Handler][] = [
   [/^\/clubs\/my-creation-requests$/, () => creations.map((r) => ({ ...r, founders: r.founders.map((f) => ({ ...f })) }))],
   [/^\/clubs\/([^/]+)\/advisor-change-requests$/, (m) => (advisorChanges[m[1]!] ?? []).map((r) => ({ ...r }))],
   [/^\/clubs\/([^/]+)\/elections$/, (m) => (elections[m[1]!] ?? []).map(electionView)],
+  [
+    /^\/clubs\/([^/]+)\/meetings$/,
+    (m, config) => (meetings[m[1]!] ?? []).filter((x) => x.academicYear === yearParam(config)).map((x) => ({ ...x })),
+  ],
+  [
+    /^\/clubs\/([^/]+)\/decision-book$/,
+    (m, config) =>
+      (meetings[m[1]!] ?? [])
+        .filter((x) => x.academicYear === yearParam(config) && x.status === 'APPROVED')
+        .flatMap((x) =>
+          x.decisions
+            .filter((d) => d.number != null)
+            .map((d) => ({
+              number: d.number!,
+              label: d.label!,
+              text: d.text,
+              meetingId: x.id,
+              meetingAt: x.meetingAt,
+              approvedAt: x.approvedAt,
+            })),
+        ),
+  ],
+  [
+    /^\/clubs\/([^/]+)\/finance\/summary$/,
+    (m, config) => {
+      const y = yearParam(config)
+      const all = (entries[m[1]!] ?? []).filter((e) => e.status === 'APPROVED')
+      const total = (list: FinanceEntry[], t: FinanceEntry['type']) => list.filter((e) => e.type === t).reduce((a, e) => a + e.amount, 0)
+      const inYear = all.filter((e) => e.academicYear === y)
+      const budget = (budgets[m[1]!] ?? []).find((b) => b.academicYear === y && b.status === 'APPROVED') ?? null
+      return {
+        academicYear: y,
+        academicYearLabel: label(y),
+        budget,
+        income: total(inYear, 'INCOME'),
+        expense: total(inYear, 'EXPENSE'),
+        balance: total(inYear, 'INCOME') - total(inYear, 'EXPENSE'),
+        overallBalance: total(all, 'INCOME') - total(all, 'EXPENSE'),
+      }
+    },
+  ],
+  [/^\/clubs\/([^/]+)\/finance\/budgets$/, (m) => (budgets[m[1]!] ?? []).map((x) => ({ ...x }))],
+  [
+    /^\/clubs\/([^/]+)\/finance\/entries$/,
+    (m, config) =>
+      (entries[m[1]!] ?? [])
+        .filter((e) => e.academicYear === yearParam(config))
+        .sort((a, b) => b.occurredOn.localeCompare(a.occurredOn))
+        .map((x) => ({ ...x })),
+  ],
+  [/^\/clubs\/([^/]+)\/finance\/(entries|sponsorships)\/([^/]+)\/document$/, () => previewDocument()],
+  [/^\/clubs\/([^/]+)\/finance\/sponsorships$/, (m) => (sponsorships[m[1]!] ?? []).map((x) => ({ ...x }))],
+  [/^\/clubs\/([^/]+)\/reports\/preview\/(\d+)$/, (m) => snapshotOf(Number(m[2]))],
+  [
+    /^\/clubs\/([^/]+)\/reports$/,
+    (m, config) => (reports[m[1]!] ?? []).filter((r) => r.academicYear === yearParam(config)).map((x) => ({ ...x })),
+  ],
+  [/^\/clubs\/([^/]+)\/decision-log$/, (m) => (decisionLog[m[1]!] ?? []).map((x) => ({ ...x }))],
+  [/^\/clubs\/([^/]+)\/position-history$/, (m) => (positionHistory[m[1]!] ?? []).map((x) => ({ ...x }))],
+  [/^\/clubs\/([^/]+)\/past-presidents$/, (m) => (pastPresidents[m[1]!] ?? []).map((x) => ({ ...x }))],
   [/^\/clubs\/(k2)$/, (m) => ({ ...fx.clubDetail(m[1]!)!, members: members[m[1]!]!.map((x) => ({ ...x })) })],
   [
     /^\/users\/search\/academicians$/,
@@ -652,6 +1085,200 @@ export const WRITE: [string, RegExp, Handler][] = [
         fail(config, 409, 'ELECTION_LOCKED', 'Oylaması kapanmış seçim bu yolla iptal edilemez.')
       Object.assign(e, { status: 'CANCELLED', completedAt: now() })
       return electionView(e)
+    },
+  ],
+  [
+    'post',
+    /^\/clubs\/([^/]+)\/meetings$/,
+    (m, config) => {
+      const clubId = m[1]!
+      const b = body<{
+        meetingAt: string
+        location: string | null
+        agenda: string
+        minutes: string
+        attendeeIds: string[]
+        decisions: string[]
+        note: string | null
+      }>(config)
+      const y = yearOf(b.meetingAt)
+      const used = (meetings[clubId] ?? []).filter((x) => x.academicYear === y).flatMap((x) => x.decisions.map((d) => d.number ?? 0))
+      let next = Math.max(0, ...used)
+      const id = nextId('mt')
+      const publishes = presides(clubId)
+      const saved: Meeting = {
+        id,
+        meetingAt: b.meetingAt,
+        academicYear: y,
+        academicYearLabel: label(y),
+        location: b.location,
+        agenda: b.agenda,
+        minutes: b.minutes,
+        attendeeIds: b.attendeeIds,
+        boardSize: 2,
+        quorumMet: b.attendeeIds.filter((x) => x === 'u1' || x === 'st5').length * 2 > 2,
+        decisions: b.decisions.map((text, i) => {
+          const n = publishes ? ++next : null
+          return { id: `${id}-d${i}`, order: i + 1, text, number: n, label: n ? `${label(y)}/${n}` : null }
+        }),
+        preparedBy: 'u1',
+        createdAt: now(),
+        approvedAt: publishes ? now() : null,
+        status: publishes ? 'APPROVED' : 'PENDING_PRESIDENT',
+      }
+      ;(meetings[clubId] ??= []).unshift(saved)
+      return submit(clubId, {
+        type: 'CLUB_MEETING_MINUTES',
+        status: saved.status!,
+        note: b.note,
+        meeting: saved,
+        decidedByName: publishes ? 'Elif Demir' : null,
+        decidedAt: publishes ? now() : null,
+      })
+    },
+  ],
+  [
+    'post',
+    /^\/clubs\/([^/]+)\/finance\/budgets$/,
+    (m, config) => {
+      const clubId = m[1]!
+      if ((budgets[clubId] ?? []).some((x) => x.status === 'PENDING_PRESIDENT' || x.status === 'PENDING_ADVISOR'))
+        fail(config, 409, 'BUDGET_PENDING', 'Kulübün onay bekleyen bir bütçesi var.')
+      const b = body<{
+        academicYear: number
+        plannedIncome: number
+        plannedExpense: number
+        description: string | null
+        note: string | null
+      }>(config)
+      const saved: Budget = {
+        id: nextId('bd'),
+        academicYear: b.academicYear,
+        academicYearLabel: label(b.academicYear),
+        plannedIncome: b.plannedIncome,
+        plannedExpense: b.plannedExpense,
+        description: b.description,
+        preparedBy: 'u1',
+        createdAt: now(),
+        approvedAt: null,
+        status: presides(clubId) ? 'PENDING_ADVISOR' : 'PENDING_PRESIDENT',
+      }
+      ;(budgets[clubId] ??= []).unshift(saved)
+      return submit(clubId, { type: 'CLUB_BUDGET', status: saved.status!, note: b.note, budget: saved })
+    },
+  ],
+  [
+    'post',
+    /^\/clubs\/([^/]+)\/finance\/entries$/,
+    (m, config) => {
+      const clubId = m[1]!
+      const form = config.data as FormData
+      const amount = Number(form.get('amount'))
+      const occurredOn = String(form.get('occurredOn'))
+      const file = form.get('document') as File | null
+      const y = yearOf(occurredOn)
+      const type = form.get('type') as FinanceEntry['type']
+      const budget = (budgets[clubId] ?? []).find((b) => b.academicYear === y && b.status === 'APPROVED')
+      const spent = (entries[clubId] ?? [])
+        .filter((e) => e.academicYear === y && e.type === 'EXPENSE' && e.status === 'APPROVED')
+        .reduce((a, e) => a + e.amount, 0)
+      const status = !presides(clubId) ? 'PENDING_PRESIDENT' : amount >= 1000 ? 'PENDING_ADVISOR' : 'APPROVED'
+      const saved = entry(nextId('fe'), type, amount, String(form.get('description')), 0, {
+        occurredOn,
+        academicYear: y,
+        createdAt: now(),
+        approvedAt: status === 'APPROVED' ? now() : null,
+        status,
+        hasDocument: !!file,
+        documentName: file?.name ?? null,
+        budgetExceeded: type === 'EXPENSE' && !!budget && spent + amount > budget.plannedExpense,
+      })
+      ;(entries[clubId] ??= []).unshift(saved)
+      return submit(clubId, {
+        type: 'CLUB_FINANCE_ENTRY',
+        status,
+        note: (form.get('note') as string | null) ?? null,
+        financeEntry: saved,
+        decidedByName: status === 'APPROVED' ? 'Elif Demir' : null,
+        decidedAt: status === 'APPROVED' ? now() : null,
+      })
+    },
+  ],
+  [
+    'post',
+    /^\/clubs\/([^/]+)\/finance\/sponsorships$/,
+    (m, config) => {
+      const clubId = m[1]!
+      const form = config.data as FormData
+      const text = (k: string) => (form.get(k) as string | null) ?? null
+      const file = form.get('document') as File | null
+      const saved: Sponsorship = {
+        id: nextId('sp'),
+        sponsorName: text('sponsorName')!,
+        description: text('description')!,
+        cashAmount: text('cashAmount') ? Number(text('cashAmount')) : null,
+        inKind: text('inKind'),
+        startsOn: text('startsOn')!,
+        endsOn: text('endsOn'),
+        hasDocument: !!file,
+        documentName: file?.name ?? null,
+        preparedBy: 'u1',
+        createdAt: now(),
+        approvedAt: null,
+        status: presides(clubId) ? 'PENDING_ADVISOR' : 'PENDING_PRESIDENT',
+      }
+      ;(sponsorships[clubId] ??= []).unshift(saved)
+      return submit(clubId, { type: 'CLUB_SPONSORSHIP', status: saved.status!, note: text('note'), sponsorship: saved })
+    },
+  ],
+  [
+    'put',
+    /^\/clubs\/([^/]+)\/reports\/activity\/(\d+)$/,
+    (m, config) => {
+      const r = draftOf(m[1]!, 'ACTIVITY', Number(m[2]), config)
+      r.body = body<{ summary: string | null }>(config).summary
+      return { ...r }
+    },
+  ],
+  [
+    'put',
+    /^\/clubs\/([^/]+)\/reports\/activity\/(\d+)\/finance-note$/,
+    (m, config) => {
+      const r = draftOf(m[1]!, 'ACTIVITY', Number(m[2]), config)
+      r.financeNote = body<{ financeNote: string | null }>(config).financeNote
+      return { ...r }
+    },
+  ],
+  [
+    'put',
+    /^\/clubs\/([^/]+)\/reports\/audit\/(\d+)$/,
+    (m, config) => {
+      const r = draftOf(m[1]!, 'AUDIT', Number(m[2]), config)
+      const b = body<{ findings: string | null; recommendations: string | null }>(config)
+      Object.assign(r, { body: b.findings, recommendations: b.recommendations })
+      return { ...r }
+    },
+  ],
+  [
+    'post',
+    /^\/clubs\/([^/]+)\/reports\/(activity|audit)\/(\d+)\/submit$/,
+    (m, config) => {
+      const clubId = m[1]!
+      const type = m[2] === 'activity' ? 'ACTIVITY' : 'AUDIT'
+      const y = Number(m[3])
+      const r = (reports[clubId] ?? []).find((x) => x.type === type && x.academicYear === y)
+      if (!r) fail(config, 404, 'REPORT_NOT_FOUND', 'Rapor taslağı bulunamadı.')
+      if (r.status !== 'DRAFT') fail(config, 409, 'REPORT_LOCKED', 'Rapor zaten gönderilmiş.')
+      if (!r.body) fail(config, 400, 'REPORT_INCOMPLETE', 'Rapor metni boş olamaz.')
+      Object.assign(r, { status: 'SUBMITTED', submittedAt: now(), snapshot: snapshotOf(y) })
+      const request = submit(clubId, {
+        type: type === 'ACTIVITY' ? 'CLUB_ACTIVITY_REPORT' : 'CLUB_AUDIT_REPORT',
+        status: type === 'ACTIVITY' && !presides(clubId) ? 'PENDING_PRESIDENT' : 'PENDING_ADVISOR',
+        note: body<{ note: string | null }>(config).note,
+        report: { ...r },
+      })
+      r.requestId = request.id
+      return request
     },
   ],
 ]

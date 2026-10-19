@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/Textarea'
 import { CATEGORY_LABEL, roleLabel } from './api'
 import { ClubLogo } from './ClubMark'
 import { ElectionResult } from './ClubElections'
+import { RecordPreview } from './RecordPreview'
 import { APPROVAL_STATUS, APPROVAL_TYPE_LABEL, useDecideApproval, type ApprovalRequest } from './manage'
 
 const REASON_MAX = 1000
@@ -64,7 +65,8 @@ export function ApprovalItem({
           </Badge>
         </div>
 
-        <div className="min-w-0">
+        {/* İki sütunda içerik türün altına iner (sağ sütun eyleme ayrılır); üç sütunda ortadadır. */}
+        <div className="min-w-0 @lg:col-start-1 @4xl:col-start-auto">
           {showClub && r.clubName && (
             <Link
               to={`/clubs/${r.clubId}`}
@@ -239,7 +241,15 @@ function Preview({ request: r }: { request: ApprovalRequest }) {
         </div>
       )
     case 'CLUB_ELECTION':
-      return <ElectionResult clubId={r.clubId} requestId={r.id} note={r.note} />
+      return <ElectionResult clubId={r.clubId} requestId={r.id} note={r.note} election={r.election ?? undefined} />
+    case 'CLUB_MEETING_MINUTES':
+    case 'CLUB_BUDGET':
+    case 'CLUB_FINANCE_ENTRY':
+    case 'CLUB_SPONSORSHIP':
+    case 'CLUB_ACTIVITY_REPORT':
+    case 'CLUB_AUDIT_REPORT':
+      // Kayıt yanıtta yoksa (eski sürüm) yalnız not.
+      return r.meeting || r.budget || r.financeEntry || r.sponsorship || r.report ? <RecordPreview request={r} /> : <Note text={r.note} />
     case 'MEMBER_EXPULSION':
       return (
         <div>

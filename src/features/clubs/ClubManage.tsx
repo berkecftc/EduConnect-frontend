@@ -44,6 +44,7 @@ export function ClubManage({ clubId, access }: { clubId: string; access: ClubAcc
   const announces = can(access, 'PREPARE_ANNOUNCEMENT')
   const creates = can(access, 'CREATE_EVENT', 'PREPARE_EVENT')
   const operatesEvents = creates || can(access, 'MANAGE_EVENT_OPERATIONS', 'APPROVE_AS_PRESIDENT', 'ADVISE')
+  const records = can(access, 'VIEW_DECISIONS', 'VIEW_FINANCE', 'PREPARE_SPONSORSHIP', 'PREPARE_AUDIT_REPORT')
 
   return (
     <div className="flex flex-col gap-16">
@@ -54,9 +55,10 @@ export function ClubManage({ clubId, access }: { clubId: string; access: ClubAcc
           {showDecisions && <Decisions clubId={clubId} access={access} />}
           {operatesEvents && <Events clubId={clubId} creates={creates} />}
         </div>
-        {announces && (
-          <aside className="lg:col-span-4">
-            <AnnouncementForm clubId={clubId} publishesDirectly={access.actingPresident} />
+        {(announces || records) && (
+          <aside className="flex flex-col gap-20 lg:col-span-4">
+            {announces && <AnnouncementForm clubId={clubId} publishesDirectly={access.actingPresident} />}
+            {records && <RecordLinks clubId={clubId} access={access} />}
           </aside>
         )}
       </div>
@@ -403,6 +405,31 @@ function Events({ clubId, creates }: { clubId: string; creates: boolean }) {
           )
         }}
       </QueryBoundary>
+    </Panel>
+  )
+}
+
+/** Kulüp kayıtlarına giriş: yetkinin açtığı bölümler, her biri kısa açıklamayla. */
+function RecordLinks({ clubId, access }: { clubId: string; access: ClubAccess }) {
+  const items = [
+    can(access, 'VIEW_DECISIONS') && { tab: 'toplantilar', title: 'Toplantılar', note: 'Tutanaklar ve karar defteri' },
+    can(access, 'VIEW_FINANCE', 'PREPARE_SPONSORSHIP') && { tab: 'mali', title: 'Mali işler', note: 'Bütçe, gelir ve gider, sponsorluklar' },
+    can(access, 'VIEW_DECISIONS', 'PREPARE_AUDIT_REPORT') && { tab: 'raporlar', title: 'Raporlar', note: 'Faaliyet ve denetim raporları' },
+    can(access, 'VIEW_DECISIONS') && { tab: 'gunluk', title: 'Karar günlüğü', note: 'Verilen her kararın izi' },
+    { tab: 'gorevler', title: 'Görev geçmişi', note: 'Kim, hangi görevde, ne zamandan beri' },
+  ].filter(Boolean) as { tab: string; title: string; note: string }[]
+  return (
+    <Panel title="Kulüp kayıtları">
+      <ul className="border-t border-rule">
+        {items.map((i) => (
+          <li key={i.tab} className="border-b border-rule">
+            <Link to={`/clubs/${clubId}/kayitlar?sekme=${i.tab}`} className="row-fill block px-1 py-3">
+              <span className="block font-semibold">{i.title}</span>
+              <span className="block text-sm text-ink-3">{i.note}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </Panel>
   )
 }

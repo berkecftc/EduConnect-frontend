@@ -607,9 +607,20 @@ function Past({ list }: { list: Election[] }) {
 }
 
 /** Onay kaydındaki seçim sonucu (CLUB_ELECTION): seçilenler ve katılım. Seçim bulunamazsa kaydın notu. */
-export function ElectionResult({ clubId, requestId, note }: { clubId: string; requestId: string; note: string | null }) {
-  const elections = useClubElections(clubId)
-  const e = elections.data?.find((x) => x.requestId === requestId)
+export function ElectionResult({
+  clubId,
+  requestId,
+  note,
+  election,
+}: {
+  clubId: string
+  requestId: string
+  note: string | null
+  /** Onay kaydıyla gelen seçim; yoksa kulübün seçimlerinden bulunur. */
+  election?: Election
+}) {
+  const elections = useClubElections(clubId, !election)
+  const e = election ?? elections.data?.find((x) => x.requestId === requestId)
   if (!e) return note ? <p className="text-md text-ink-2">{note}</p> : null
   return (
     <div>

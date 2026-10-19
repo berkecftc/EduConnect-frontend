@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { clubKeys, type ClubAnnouncement, type ClubCategory, type ClubRole, type MembershipRequest } from './api'
+import type { Election } from './elections'
+import type { Budget, FinanceEntry, Meeting, Report, Sponsorship } from './records'
 
 /** Kulüp yönetimi (F-85): yetkiler, üyelik başvuruları, onay kayıtları ve duyurular. Yetki kuralları backend'de. */
 
@@ -140,6 +142,13 @@ export type ApprovalRequest = {
   decidedAt: string | null
   profileChange: ProfileChange | null
   announcement: ClubAnnouncement | null
+  /** Türe göre onaylanan kaydın kendisi (bütçe, gelir-gider, sponsorluk, tutanak, rapor, seçim). */
+  budget?: Budget | null
+  financeEntry?: FinanceEntry | null
+  sponsorship?: Sponsorship | null
+  meeting?: Meeting | null
+  report?: Report | null
+  election?: Election | null
 }
 
 export const APPROVAL_TYPE_LABEL: Record<string, string> = {

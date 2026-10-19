@@ -44,6 +44,7 @@ import { ClubElections } from './ClubElections'
 import { ClubSettings } from './ClubSettings'
 import { ballotsToVote, isRunning, useClubElections } from './elections'
 import { useResign } from './governance'
+import { usePastPresidents } from './records'
 import { can, useClubAccess, useRemoveAnnouncement, type ClubAccess } from './manage'
 
 const MESSAGE_MAX = 500
@@ -74,7 +75,21 @@ function ClubBody({ club: c }: { club: ClubDetails }) {
   // Duyurular üyelere ve danışmana açık; 403 gelirse sekme hiç görünmez (F-34).
   const announcements = useClubAnnouncements(c.id, insider)
   const showAnnouncements = insider && !announcements.isError
-  const manages = can(access, 'MANAGE_MEMBERSHIP_REQUESTS', 'REVIEW_MEMBERSHIP_REQUESTS', 'PREPARE_ANNOUNCEMENT', 'VIEW_DECISIONS', 'APPROVE_AS_PRESIDENT', 'ADVISE', 'CREATE_EVENT', 'PREPARE_EVENT', 'MANAGE_EVENT_OPERATIONS')
+  const manages = can(
+    access,
+    'MANAGE_MEMBERSHIP_REQUESTS',
+    'REVIEW_MEMBERSHIP_REQUESTS',
+    'PREPARE_ANNOUNCEMENT',
+    'VIEW_DECISIONS',
+    'VIEW_FINANCE',
+    'APPROVE_AS_PRESIDENT',
+    'ADVISE',
+    'CREATE_EVENT',
+    'PREPARE_EVENT',
+    'MANAGE_EVENT_OPERATIONS',
+    'PREPARE_SPONSORSHIP',
+    'PREPARE_AUDIT_REPORT',
+  )
   // Seçim sekmesi: seçimi açabilen görevliye her zaman, diğer üyelere ve danışmana seçim olduysa.
   const viewsMembers = can(access, 'VIEW_MEMBERS')
   const elections = useClubElections(c.id, viewsMembers)
@@ -162,7 +177,7 @@ function ClubBody({ club: c }: { club: ClubDetails }) {
             {
               value: 'genel',
               label: 'Genel bakış',
-              content: <Overview club={c} />,
+              content: <Overview club={c} member={viewsMembers} />,
             },
             {
               value: 'etkinlikler',
@@ -444,8 +459,9 @@ function MembershipBoard({
 }
 
 /** Genel bakış: solda tanıtım ve iletişim, sağda yönetim. */
-function Overview({ club: c }: { club: ClubDetails }) {
+function Overview({ club: c, member }: { club: ClubDetails; member: boolean }) {
   const board = useClubBoard(c.id)
+  const presidents = usePastPresidents(c.id)
   const list = [...(board.data ?? [])].sort((a, b) => roleRank(a.role) - roleRank(b.role))
   return (
     <div className="grid gap-14 lg:grid-cols-12 lg:gap-10">
@@ -481,6 +497,25 @@ function Overview({ club: c }: { club: ClubDetails }) {
             </ul>
           )}
         </Panel>
+        {!!presidents.data?.length && (
+          <Panel title="Önceki başkanlar" className="mt-16">
+            <ul>
+              {presidents.data.map((p) => (
+                <li key={`${p.studentId}-${p.termStartDate}`} className="border-b border-rule py-3 first:pt-0">
+                  <span className="block font-semibold">{[p.firstName, p.lastName].filter(Boolean).join(' ') || 'Üye'}</span>
+                  <span className="tabular text-sm text-ink-3">
+                    {formatInstant(p.termStartDate, 'date')} – {formatInstant(p.termEndDate, 'date')}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        )}
+        {member && (
+          <Link to={`/clubs/${c.id}/kayitlar?sekme=gorevler`} className="mt-6 inline-block text-md font-semibold underline-offset-4 hover:underline">
+            Görev geçmişi
+          </Link>
+        )}
       </aside>
     </div>
   )
