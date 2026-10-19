@@ -44,7 +44,7 @@ export const me: Me = {
 
 const spring: Term = {
   id: 't2',
-  academicYear: 2026,
+  academicYear: 2027,
   season: 'SPRING',
   label: '2026-2027 Bahar',
   startsOn: '2027-02-15',

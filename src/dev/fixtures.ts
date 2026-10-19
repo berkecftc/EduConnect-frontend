@@ -26,7 +26,7 @@ function ago(hours: number): string {
 
 export const term: Term = {
   id: 't1',
-  academicYear: 2026,
+  academicYear: 2027,
   season: 'FALL',
   label: '2026-2027 Güz',
   startsOn: '2026-09-14',
@@ -105,7 +105,7 @@ export const terms: Term[] = [
   term,
   {
     id: 't0',
-    academicYear: 2025,
+    academicYear: 2026,
     season: 'SPRING',
     label: '2025-2026 Bahar',
     startsOn: '2026-02-16',

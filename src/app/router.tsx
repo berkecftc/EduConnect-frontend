@@ -13,7 +13,7 @@ function page<M extends Record<string, unknown>>(load: () => Promise<M>, name: k
 }
 
 /** Henüz yeni tasarıma taşınmamış rotalar; menüden açılabilsin diye yer tutar. */
-const PENDING = ['clubs/new', 'clubs/:clubId/*', 'events/:eventId/*', 'me/*', 'manage/*']
+const PENDING = ['clubs/new', 'clubs/:clubId/*', 'events/:eventId/*', 'me/*']
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -78,6 +78,9 @@ export const router = createBrowserRouter([
       { path: 'manage/moderation', ...page(() => import('@/features/manage/ModerationPage'), 'ModerationPage') },
       { path: 'manage/campus-events', ...page(() => import('@/features/manage/CampusEventsPage'), 'CampusEventsPage') },
       { path: 'manage/campus-events/new', ...page(() => import('@/features/manage/CampusEventsPage'), 'CampusEventCreatePage') },
+      { path: 'manage/terms', ...page(() => import('@/features/manage/TermsPage'), 'TermsPage') },
+      { path: 'manage/academic-structure', ...page(() => import('@/features/manage/AcademicStructurePage'), 'AcademicStructurePage') },
+      { path: 'manage/courses', ...page(() => import('@/features/manage/CoursesAdminPage'), 'CoursesAdminPage') },
       { path: 'manage/change-requests', ...page(() => import('@/features/manage/ChangeRequestsPage'), 'ChangeRequestsPage') },
       ...PENDING.map((path) => ({ path, element: <NotBuiltPage /> })),
       { path: '*', element: <NotFoundPage /> },

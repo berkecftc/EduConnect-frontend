@@ -8,6 +8,9 @@ import type { AffiliationStatus, ManagedAccount, StaffAccount } from '@/features
 import type { AppealItem, ModerationRecord, QueueItem, ReportItem } from '@/features/manage/moderation'
 import type { AcademicianRequest, ChangeRequest, StudentRequest } from '@/features/manage/verification'
 import { localStamp } from '@/lib/time'
+import type { CatalogFaculty, CatalogProgram } from '@/features/auth/register/api'
+import type { Term } from '@/features/courses/api'
+import type { AcademicianHit } from '@/features/courses/teach'
 import * as fx from './fixtures'
 
 type Handler = (m: RegExpMatchArray, config: InternalAxiosRequestConfig) => unknown
@@ -455,6 +458,132 @@ export function keepDuration(startsAt: string, endsAt: string | null | undefined
 
 const campusList = () => fx.campusEvents.filter((e) => !e.clubId)
 
+// ——— Yönetici: akademik yapı, dönem, koordinatör devri ———
+
+type CatalogTree = CatalogFaculty[]
+
+/** Kapalı birimler dahil ağaç (yönetici görünümü); bir kapalı bölüm ve ikinci fakülte örnek için eklidir. */
+const catalogAll: CatalogTree = [
+  ...(JSON.parse(JSON.stringify(fx.academicCatalog)) as CatalogTree),
+  {
+    id: 'f2',
+    code: 'FEN',
+    name: 'Fen Fakültesi',
+    active: true,
+    departments: [
+      {
+        id: 'd3',
+        code: 'MAT',
+        name: 'Matematik',
+        active: true,
+        programs: [{ id: 'p4', code: 'MAT-L', name: 'Matematik', level: 'BACHELOR', durationYears: 4, active: true }],
+      },
+      {
+        id: 'd4',
+        code: 'IST',
+        name: 'İstatistik',
+        active: false,
+        programs: [{ id: 'p5', code: 'IST-L', name: 'İstatistik', level: 'BACHELOR', durationYears: 4, active: false }],
+      },
+    ],
+  },
+]
+
+const allUnits = () => catalogAll.flatMap((f) => [f, ...f.departments.flatMap((d) => [d, ...d.programs])])
+
+type UnitBody = {
+  parentId: string | null
+  code: string
+  name: string
+  active: boolean
+  level?: CatalogProgram['level']
+  durationYears?: number
+}
+
+function saveUnit(kind: 'faculties' | 'departments' | 'programs', id: string | undefined, b: UnitBody, config: InternalAxiosRequestConfig) {
+  if (allUnits().some((u) => u.code.toUpperCase() === b.code.toUpperCase() && u.id !== id))
+    fail(config, 409, 'CODE_EXISTS', 'Bu kodla bir birim var.')
+  if (id) {
+    const u = allUnits().find((x) => x.id === id)!
+    Object.assign(
+      u,
+      { code: b.code, name: b.name, active: b.active },
+      kind === 'programs' ? { level: b.level, durationYears: b.durationYears } : {},
+    )
+  } else if (kind === 'faculties') {
+    catalogAll.push({ id: 'f-' + Date.now(), code: b.code, name: b.name, active: true, departments: [] })
+  } else if (kind === 'departments') {
+    catalogAll
+      .find((f) => f.id === b.parentId)!
+      .departments.push({ id: 'd-' + Date.now(), code: b.code, name: b.name, active: true, programs: [] })
+  } else {
+    catalogAll
+      .flatMap((f) => f.departments)
+      .find((d) => d.id === b.parentId)!
+      .programs.push({ id: 'p-' + Date.now(), code: b.code, name: b.name, active: true, level: b.level!, durationYears: b.durationYears! })
+  }
+  return JSON.parse(JSON.stringify(catalogAll)) as CatalogTree
+}
+
+const SEASON = { FALL: 'Güz', SPRING: 'Bahar', SUMMER: 'Yaz' } as const
+type TermBody = Omit<Term, 'id' | 'label'>
+
+function saveTerm(id: string | undefined, b: TermBody, config: InternalAxiosRequestConfig) {
+  if (fx.terms.some((t) => t.academicYear === b.academicYear && t.season === b.season && t.id !== id))
+    fail(config, 409, 'TERM_EXISTS', 'Bu akademik yıl ve dönem zaten tanımlı.')
+  if (b.startsOn >= b.endsOn) fail(config, 400, 'INVALID_TERM_DATES', 'Dönem başlangıcı bitişten önce olmalı.')
+  const label = `${b.academicYear - 1}-${b.academicYear} ${SEASON[b.season]}`
+  if (id) {
+    const t = fx.terms.find((x) => x.id === id)!
+    if (t.id === 't1' && (t.academicYear !== b.academicYear || t.season !== b.season))
+      fail(config, 409, 'TERM_IN_USE', 'Ders açılmış dönemin yılı ve türü değiştirilemez.')
+    Object.assign(t, b, { label })
+    return { ...t }
+  }
+  const t: Term = { id: 't-' + Date.now(), label, ...b }
+  fx.terms.push(t)
+  return t
+}
+
+const hits: AcademicianHit[] = [
+  {
+    id: 's1',
+    firstName: 'Mehmet',
+    lastName: 'Kaya',
+    title: 'Dr. Öğr. Üyesi',
+    academicTitle: 'ASSISTANT_PROFESSOR',
+    department: 'Bilgisayar Mühendisliği',
+    departmentId: 'd1',
+  },
+  {
+    id: 's3',
+    firstName: 'Ayşe',
+    lastName: 'Arslan',
+    title: 'Doç. Dr.',
+    academicTitle: 'ASSOCIATE_PROFESSOR',
+    department: 'Bilgisayar Mühendisliği',
+    departmentId: 'd1',
+  },
+  {
+    id: 's5',
+    firstName: 'Selin',
+    lastName: 'Koç',
+    title: 'Dr. Öğr. Üyesi',
+    academicTitle: 'ASSISTANT_PROFESSOR',
+    department: 'Bilgisayar Mühendisliği',
+    departmentId: 'd1',
+  },
+  {
+    id: 's6',
+    firstName: 'Kemal',
+    lastName: 'Aydın',
+    title: 'Prof. Dr.',
+    academicTitle: 'PROFESSOR',
+    department: 'Matematik',
+    departmentId: 'd3',
+  },
+]
+
 // ——— Tablolar ———
 
 export const GET: [RegExp, Handler][] = [
@@ -505,9 +634,75 @@ export const GET: [RegExp, Handler][] = [
   [/^\/posts\/moderation\/appeals$/, (_m, config) => paged(appealQueue, config)],
   [/^\/posts\/moderation\/history$/, (_m, config) => [...(history[(config.params as { targetId: string }).targetId] ?? [])]],
   [/^\/events\/campus$/, () => campusList().map((e) => ({ ...e }))],
+  [/^\/users\/academic\/catalog\/all$/, () => JSON.parse(JSON.stringify(catalogAll))],
+  [
+    /^\/users\/search\/academicians$/,
+    (_m, config) => {
+      const q = String((config.params as { query?: string } | undefined)?.query ?? '').toLocaleLowerCase('tr-TR')
+      return hits.filter((h) => `${h.firstName} ${h.lastName}`.toLocaleLowerCase('tr-TR').includes(q))
+    },
+  ],
 ]
 
 export const WRITE: [string, RegExp, Handler][] = [
+  [
+    'post',
+    /^\/users\/academic\/(faculties|departments|programs)$/,
+    (m, config) => saveUnit(m[1] as 'faculties', undefined, body<UnitBody>(config), config),
+  ],
+  [
+    'put',
+    /^\/users\/academic\/(faculties|departments|programs)\/([^/]+)$/,
+    (m, config) => saveUnit(m[1] as 'faculties', m[2], body<UnitBody>(config), config),
+  ],
+  ['post', /^\/courses\/terms$/, (_m, config) => saveTerm(undefined, body<TermBody>(config), config)],
+  ['put', /^\/courses\/terms\/([^/]+)$/, (m, config) => saveTerm(m[1], body<TermBody>(config), config)],
+  [
+    'delete',
+    /^\/courses\/terms\/([^/]+)$/,
+    (m, config) => {
+      if (m[1] === 't1' || m[1] === 't0') fail(config, 409, 'TERM_IN_USE', 'Ders açılmış dönem silinemez.')
+      fx.terms.splice(
+        fx.terms.findIndex((t) => t.id === m[1]),
+        1,
+      )
+      return null
+    },
+  ],
+  [
+    'put',
+    /^\/courses\/([^/]+)\/coordinator$/,
+    (m, config) => {
+      const b = body<{ userId: string; previousCoordinatorRole: 'INSTRUCTOR' | 'ASSISTANT' | null }>(config)
+      const list = (fx.staff[m[1]!] ??= [])
+      const old = list.find((s) => s.role === 'COORDINATOR')
+      if (old?.userId === b.userId) fail(config, 409, 'ALREADY_COORDINATOR', 'Bu kullanıcı zaten dersin koordinatörü.')
+      const h = hits.find((x) => x.id === b.userId)!
+      if (old) {
+        if (b.previousCoordinatorRole) old.role = b.previousCoordinatorRole
+        else list.splice(list.indexOf(old), 1)
+      }
+      const existing = list.find((s) => s.userId === b.userId)
+      if (existing) existing.role = 'COORDINATOR'
+      else
+        list.unshift({
+          userId: h.id,
+          role: 'COORDINATOR',
+          name: `${h.firstName} ${h.lastName}`,
+          title: h.title,
+          academicTitle: h.academicTitle,
+          department: h.department,
+          since: new Date().toISOString(),
+        })
+      for (const c of [...fx.courses, ...fx.catalog(undefined)].filter((x) => x.id === m[1]))
+        Object.assign(c, {
+          instructorName: `${h.firstName} ${h.lastName}`,
+          instructorTitle: h.title,
+          instructorAcademicTitle: h.academicTitle,
+        })
+      return [...list]
+    },
+  ],
   [
     'post',
     /^\/posts\/moderation\/(posts|comments)\/([^/]+)\/(decision|remove|restore)$/,
@@ -585,7 +780,11 @@ export const WRITE: [string, RegExp, Handler][] = [
             ? `${e.location ?? '–'} → ${b.location}`
             : null
       if (m[2] === 'postpone')
-        Object.assign(e, { startsAt: b.startsAt, endsAt: b.endsAt ?? keepDuration(e.startsAt, e.endsAt, b.startsAt!), status: e.clubId ? 'PENDING' : 'ACTIVE' })
+        Object.assign(e, {
+          startsAt: b.startsAt,
+          endsAt: b.endsAt ?? keepDuration(e.startsAt, e.endsAt, b.startsAt!),
+          status: e.clubId ? 'PENDING' : 'ACTIVE',
+        })
       if (m[2] === 'relocate') e.location = b.location
       if (m[2] === 'cancel') Object.assign(e, { status: 'CANCELLED', cancellationReason: b.reason })
       ;(fx.eventChanges[e.id] ??= []).unshift({

@@ -76,6 +76,7 @@ export function buildNav(session: Session, clubs: { approver: boolean } = { appr
   if (admin) {
     manage.push(
       { to: '/manage/staff-accounts', label: 'Görevli hesapları' },
+      { to: '/manage/courses', label: 'Dersler' },
       { to: '/manage/academic-structure', label: 'Akademik yapı' },
       { to: '/manage/terms', label: 'Dönemler' },
     )
