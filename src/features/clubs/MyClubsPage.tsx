@@ -26,6 +26,8 @@ import {
   type MyMembership,
 } from './api'
 import { ClubLogo } from './ClubMark'
+import { FoundingInvitations, CreationRequests } from './Founding'
+import { useMyCreationRequests } from './governance'
 
 const ROW = 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-2 sm:grid-cols-[minmax(0,1fr)_14rem]'
 
@@ -36,6 +38,7 @@ export function MyClubsPage() {
   const requests = useMyMembershipRequests()
   const history = useMembershipHistory()
   const positions = useMyPositions()
+  const creations = useMyCreationRequests()
 
   const active = (memberships.data ?? [])
     .filter(isActiveMembership)
@@ -49,11 +52,18 @@ export function MyClubsPage() {
         title="Kulüplerim"
         meta={memberships.data ? (active.length > 0 ? `${active.length} kulübe üyesiniz.` : 'Henüz bir kulübe üye değilsiniz.') : undefined}
         actions={
-          <Button asChild>
-            <Link to="/clubs">Tüm kulüpler</Link>
-          </Button>
+          <>
+            <Button asChild>
+              <Link to="/clubs/new">Kulüp kur</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/clubs">Tüm kulüpler</Link>
+            </Button>
+          </>
         }
       />
+
+      <FoundingInvitations />
 
       <div className="mt-8">
         <QueryBoundary query={memberships} what="Üyelikler" skeletonRows={3}>
@@ -78,6 +88,7 @@ export function MyClubsPage() {
 
       <div className="mt-16 grid gap-14 lg:grid-cols-12 lg:gap-10">
         <div className="flex min-w-0 flex-col gap-20 lg:col-span-7">
+          {!!creations.data?.length && <CreationRequests list={creations.data} />}
           <Panel title="Üyelik başvurularım">{requests.isPending ? <Skeleton rows={2} /> : <Requests list={requests.data ?? []} />}</Panel>
           {ended.length > 0 && (
             <Panel title="Üyelik geçmişim">

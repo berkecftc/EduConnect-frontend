@@ -40,6 +40,8 @@ import {
 } from './api'
 import { ClubLogo } from './ClubMark'
 import { ClubManage } from './ClubManage'
+import { ClubSettings } from './ClubSettings'
+import { useResign } from './governance'
 import { can, useClubAccess, useRemoveAnnouncement, type ClubAccess } from './manage'
 
 const MESSAGE_MAX = 500
@@ -71,6 +73,10 @@ function ClubBody({ club: c }: { club: ClubDetails }) {
   const announcements = useClubAnnouncements(c.id, insider)
   const showAnnouncements = insider && !announcements.isError
   const manages = can(access, 'MANAGE_MEMBERSHIP_REQUESTS', 'REVIEW_MEMBERSHIP_REQUESTS', 'PREPARE_ANNOUNCEMENT', 'VIEW_DECISIONS', 'APPROVE_AS_PRESIDENT', 'ADVISE', 'CREATE_EVENT', 'PREPARE_EVENT', 'MANAGE_EVENT_OPERATIONS')
+  // Kurul, kulüp bilgileri, logo, danışman ve kapatma talepleri; kapatılmış kulüpte hiçbiri açılmaz.
+  const configures =
+    c.status !== 'CLOSED' &&
+    can(access, 'PROPOSE_POSITION_CHANGE', 'PREPARE_PROFILE_CHANGE', 'PREPARE_LOGO_CHANGE', 'PROPOSE_ADVISOR_CHANGE', 'REQUEST_CLUB_CLOSURE')
 
   return (
     <>
@@ -99,6 +105,7 @@ function ClubBody({ club: c }: { club: ClubDetails }) {
           student={student}
           membershipsLoading={memberships.isPending && student}
           acting={!!access?.actingPresident && access.position !== 'PRESIDENT' && access.position !== 'ROLE_CLUB_OFFICIAL'}
+          presides={!!access?.actingPresident}
         />
       </section>
 
@@ -111,6 +118,14 @@ function ClubBody({ club: c }: { club: ClubDetails }) {
       {c.status === 'AWAITING_ADVISOR' && (
         <Notice variant="line" tone="warning" title="Kulüp yeni danışmanını bekliyor" className="mt-10">
           Danışman atanana kadar etkinlik ve bazı yönetim işlemleri bekletilir.
+          {can(access, 'PROPOSE_ADVISOR_CHANGE') && (
+            <>
+              {' '}
+              <Link to={{ search: '?sekme=ayarlar' }} className="font-semibold underline underline-offset-4">
+                Danışman önerin
+              </Link>
+            </>
+          )}
         </Notice>
       )}
 
@@ -139,6 +154,7 @@ function ClubBody({ club: c }: { club: ClubDetails }) {
                 ]
               : []),
             ...(manages && access ? [{ value: 'yonetim', label: 'Yönetim', content: <ClubManage clubId={c.id} access={access} /> }] : []),
+            ...(configures && access ? [{ value: 'ayarlar', label: 'Ayarlar', content: <ClubSettings club={c} access={access} /> }] : []),
           ]}
         />
       </div>
@@ -188,12 +204,15 @@ function MembershipBoard({
   student,
   membershipsLoading,
   acting,
+  presides,
 }: {
   club: ClubDetails
   student: boolean
   membershipsLoading: boolean
   /** Başkanlık boş ve kişi başkan yetkilerini vekâleten kullanıyor (F-85 `actingPresident`). */
   acting: boolean
+  /** Başkan ya da vekili: istifası yalnız danışman onayına gider. */
+  presides: boolean
 }) {
   const { data: me } = useMe()
   const memberships = useMyMemberships(student)
@@ -206,8 +225,10 @@ function MembershipBoard({
   const cancel = useCancelMembershipRequest()
   const leave = useLeaveClub()
   const renew = useRenewMembership()
-  const [dialog, setDialog] = useState<'join' | 'leave' | 'cancel' | null>(null)
+  const resign = useResign(c.id)
+  const [dialog, setDialog] = useState<'join' | 'leave' | 'cancel' | 'resign' | null>(null)
   const [message, setMessage] = useState('')
+  const official = !!membership && roleRank(membership.clubRole) < roleRank('MEMBER')
 
   const fail = (e: unknown) => toast.error(toApiError(e).message)
 
@@ -247,6 +268,15 @@ function MembershipBoard({
                     >
                       Üyeliği yenile
                     </Button>
+                  )}
+                  {official && c.status !== 'CLOSED' && (
+                    <button
+                      type="button"
+                      onClick={() => setDialog('resign')}
+                      className="text-sm font-semibold text-ink-2 underline-offset-4 hover:text-ink hover:underline"
+                    >
+                      Görevden ayrıl
+                    </button>
                   )}
                   <button
                     type="button"
@@ -334,6 +364,29 @@ function MembershipBoard({
           })
         }
       />
+
+      <ConfirmDialog
+        open={dialog === 'resign'}
+        onOpenChange={(o) => !o && setDialog(null)}
+        title={`${membership ? roleLabel(membership.clubRole) : 'Görev'} görevinden ayrıl`}
+        description={`İstifanız ${presides ? 'danışman' : 'başkan ve danışman'} onayından sonra geçerli olur. Kulübe üye olarak devam edersiniz.`}
+        confirmLabel="İstifayı gönder"
+        loading={resign.isPending}
+        onConfirm={() =>
+          resign.mutate(message, {
+            onSuccess: () => {
+              toast.success(`İstifanız ${presides ? 'danışman' : 'başkan'} onayına gönderildi`)
+              setDialog(null)
+              setMessage('')
+            },
+            onError: fail,
+          })
+        }
+      >
+        <Field label="Notunuz" hint="İsteğe bağlı. Onaylayanlar görür.">
+          <Textarea maxLength={MESSAGE_MAX} valueLength={message.length} value={message} onChange={(e) => setMessage(e.target.value)} rows={3} />
+        </Field>
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={dialog === 'leave'}

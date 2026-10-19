@@ -7,6 +7,7 @@ import { setSession } from '@/lib/auth/session'
 import * as fx from './fixtures'
 import * as px from './postFixtures'
 import * as ax from './assessPreview'
+import * as cx from './clubPreview'
 import * as dx from './advisePreview'
 import * as mx from './managePreview'
 import * as tx from './teachPreview'
@@ -607,10 +608,10 @@ const fixtureAdapter: AxiosAdapter = async (config: InternalAxiosRequestConfig) 
   const reply = (status: number, data: unknown): AxiosResponse => ({ status, statusText: '', data, headers: {}, config })
   const method = config.method ?? 'get'
   if (method !== 'get') {
-    const hit = (tx.state.academician ? [...dx.WRITE, ...ax.WRITE, ...tx.WRITE, ...WRITE] : mx.state.role ? [...mx.WRITE, ...WRITE] : WRITE).filter(([verb]) => verb === method).map(([, re, handle]) => [url.match(re), handle] as const).find(([m]) => m)
+    const hit = (tx.state.academician ? [...dx.WRITE, ...ax.WRITE, ...tx.WRITE, ...WRITE] : mx.state.role ? [...mx.WRITE, ...WRITE] : [...cx.WRITE, ...WRITE]).filter(([verb]) => verb === method).map(([, re, handle]) => [url.match(re), handle] as const).find(([m]) => m)
     return reply(200, hit ? await hit[1](hit[0]!, config) : {})
   }
-  for (const [re, handle] of tx.state.academician ? [...dx.GET, ...ax.GET, ...tx.GET, ...GET] : mx.state.role ? [...mx.GET, ...GET] : GET) {
+  for (const [re, handle] of tx.state.academician ? [...dx.GET, ...ax.GET, ...tx.GET, ...GET] : mx.state.role ? [...mx.GET, ...GET] : [...cx.GET, ...GET]) {
     const m = url.match(re)
     if (!m) continue
     try {

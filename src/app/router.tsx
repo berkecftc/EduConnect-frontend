@@ -13,7 +13,7 @@ function page<M extends Record<string, unknown>>(load: () => Promise<M>, name: k
 }
 
 /** Henüz yeni tasarıma taşınmamış rotalar; menüden açılabilsin diye yer tutar. */
-const PENDING = ['clubs/new', 'clubs/:clubId/*', 'events/:eventId/*', 'me/*']
+const PENDING = ['clubs/:clubId/*', 'events/:eventId/*', 'me/*']
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -55,6 +55,7 @@ export const router = createBrowserRouter([
       { path: 'clubs/approvals', ...page(() => import('@/features/clubs/ApprovalsPage'), 'ApprovalsPage') },
       { path: 'clubs/advised', ...page(() => import('@/features/clubs/AdvisedClubsPage'), 'AdvisedClubsPage') },
       { path: 'clubs/mine', ...page(() => import('@/features/clubs/MyClubsPage'), 'MyClubsPage') },
+      { path: 'clubs/new', ...page(() => import('@/features/clubs/ClubCreatePage'), 'ClubCreatePage') },
       { path: 'clubs/:clubId', ...page(() => import('@/features/clubs/ClubPage'), 'ClubPage') },
       { path: 'events', ...page(() => import('@/features/events/EventsPage'), 'EventsPage') },
       { path: 'events/:eventId', ...page(() => import('@/features/events/EventPage'), 'EventPage') },
