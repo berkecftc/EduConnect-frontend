@@ -1,7 +1,8 @@
 /**
  * Öğrenci önizlemesi, kulüp yönetimi: Elif Demir Satranç Kulübü'nün başkanı (görev verme, üyelikten çıkarma,
  * kulüp bilgileri, logo, danışman önerme, kapatma talebi), Robotik'te etkinlik koordinatörü (istifa).
- * Bir kurucu daveti ve reddedilmiş eski bir kuruluş başvurusu var. Üye ve önerilen danışman adları, backend'in
+ * Bir kurucu daveti ve reddedilmiş eski bir kuruluş başvurusu var. Satranç'ta seçim açılabilir (açılınca birkaç üye aday
+ * olmuş sayılır, oylama bitince diğer üyelerin oyları eklenir); Robotik'te oylama sürüyor ve Elif henüz oy vermedi. Üye ve önerilen danışman adları, backend'in
  * bu alanları dolduracağı varsayımıyla gelir. Bellekte tutulur; yalnız `/onizleme` (öğrenci) içindir.
  */
 import type { InternalAxiosRequestConfig } from 'axios'
@@ -9,6 +10,7 @@ import type { AcademicianHit } from '@/features/courses/teach'
 import type { ClubCreationRequest } from '@/features/clubs/advise'
 import type { ClubCategory, ClubMember } from '@/features/clubs/api'
 import type { AdvisorChange, ProfileDraft } from '@/features/clubs/governance'
+import type { Election, ElectionBallot, ElectionCandidate } from '@/features/clubs/elections'
 import type { ApprovalRequest } from '@/features/clubs/manage'
 import * as fx from './fixtures'
 
@@ -160,6 +162,115 @@ export const creations: ClubCreationRequest[] = [
   },
 ]
 
+// ——— Seçimler ———
+
+const cand = (
+  id: string,
+  ballot: ElectionBallot,
+  studentId: string,
+  firstName: string,
+  lastName: string,
+  votes: number | null = null,
+  elected = false,
+): ElectionCandidate => ({ id, ballot, studentId, firstName, lastName, votes, elected })
+
+export const elections: Record<string, Election[]> = {
+  k1: [
+    {
+      id: 'el-k1',
+      clubId: 'k1',
+      status: 'VOTING',
+      boardSeats: 3,
+      auditSeats: 0,
+      note: 'Genel kurul 24 Ekim cuma 18.00, B Blok 204. Oylama genel kurulun sonuna kadar açık.',
+      openedBy: 'st5',
+      openedAt: ago(24 * 9),
+      votingStartedAt: ago(30),
+      closedAt: null,
+      eligibleVoters: null,
+      voters: null,
+      requestId: null,
+      completedAt: null,
+      myBallots: [],
+      candidates: [
+        cand('c-k1-1', 'PRESIDENT', 'st2', 'Can', 'Erdem'),
+        cand('c-k1-2', 'PRESIDENT', 'st4', 'Mert', 'Aksu'),
+        cand('c-k1-3', 'BOARD', 'st3', 'Ece', 'Yalçın'),
+        cand('c-k1-4', 'BOARD', 'st30', 'Bora', 'Tunç'),
+        cand('c-k1-5', 'BOARD', 'st31', 'Gizem', 'Ateş'),
+        cand('c-k1-6', 'BOARD', 'st32', 'Ozan', 'Kaya'),
+      ],
+    },
+  ],
+  k2: [
+    {
+      id: 'el-k2-old',
+      clubId: 'k2',
+      status: 'COMPLETED',
+      boardSeats: 2,
+      auditSeats: 1,
+      note: null,
+      openedBy: 'st40',
+      openedAt: ago(24 * 352),
+      votingStartedAt: ago(24 * 340),
+      closedAt: ago(24 * 336),
+      eligibleVoters: 39,
+      voters: 34,
+      requestId: 'ap-k2-old',
+      completedAt: ago(24 * 330),
+      myBallots: ['PRESIDENT', 'BOARD', 'AUDIT'],
+      candidates: [
+        cand('c-o-1', 'PRESIDENT', 'u1', 'Elif', 'Demir', 23, true),
+        cand('c-o-2', 'PRESIDENT', 'st41', 'Kaan', 'Er', 11),
+        cand('c-o-3', 'BOARD', 'st5', 'Deniz', 'Kara', 19, true),
+        cand('c-o-4', 'BOARD', 'st6', 'Oğuz', 'Tan', 17, true),
+        cand('c-o-5', 'BOARD', 'st9', 'Selin', 'Ak', 9),
+        cand('c-o-6', 'AUDIT', 'st10', 'Arda', 'Kılıç', 20, true),
+      ],
+    },
+    {
+      id: 'el-k2-older',
+      clubId: 'k2',
+      status: 'CANCELLED',
+      boardSeats: 2,
+      auditSeats: 0,
+      note: null,
+      openedBy: 'st40',
+      openedAt: ago(24 * 420),
+      votingStartedAt: null,
+      closedAt: null,
+      eligibleVoters: null,
+      voters: null,
+      requestId: null,
+      completedAt: ago(24 * 405),
+      myBallots: [],
+      candidates: [],
+    },
+  ],
+}
+
+/** Önizlemede diğer üyelerin oyları: aday sırasına göre sabit sayılar; oylama bitince Elif'in oylarına eklenir. */
+const OTHERS_VOTES = [14, 9, 12, 7, 11, 5, 8, 6]
+const OTHER_VOTERS = 26
+const myVotes: Record<string, string[]> = {}
+
+/** Oylama bitmeden oy sayıları gizli: yanıtta null. */
+const electionView = (e: Election): Election => ({
+  ...e,
+  myBallots: [...(e.myBallots ?? [])],
+  candidates: e.candidates.map((c) => ({ ...c, votes: e.closedAt ? c.votes : null, elected: !!e.closedAt && c.elected })),
+})
+
+function findElection(config: InternalAxiosRequestConfig, clubId: string, id: string, phase?: Election['status']): Election {
+  const e = (elections[clubId] ?? []).find((x) => x.id === id)
+  if (!e) fail(config, 404, 'ELECTION_NOT_FOUND', 'Seçim bulunamadı.')
+  if (phase && e.status !== phase) fail(config, 409, 'ELECTION_PHASE', 'Seçim bu işlem için uygun aşamada değil.')
+  return e
+}
+
+const running = (clubId: string) =>
+  (elections[clubId] ?? []).some((e) => e.status === 'CANDIDACY' || e.status === 'VOTING' || e.status === 'AWAITING_APPROVAL')
+
 // ——— Onay kayıtları ———
 
 function submit(clubId: string, r: Partial<ApprovalRequest> & Pick<ApprovalRequest, 'type' | 'status'>): ApprovalRequest {
@@ -206,6 +317,7 @@ export const GET: [RegExp, Handler][] = [
   [/^\/clubs\/founding-invitations$/, () => invitations.map((r) => ({ ...r, founders: r.founders.map((f) => ({ ...f })) }))],
   [/^\/clubs\/my-creation-requests$/, () => creations.map((r) => ({ ...r, founders: r.founders.map((f) => ({ ...f })) }))],
   [/^\/clubs\/([^/]+)\/advisor-change-requests$/, (m) => (advisorChanges[m[1]!] ?? []).map((r) => ({ ...r }))],
+  [/^\/clubs\/([^/]+)\/elections$/, (m) => (elections[m[1]!] ?? []).map(electionView)],
   [/^\/clubs\/(k2)$/, (m) => ({ ...fx.clubDetail(m[1]!)!, members: members[m[1]!]!.map((x) => ({ ...x })) })],
   [
     /^\/users\/search\/academicians$/,
@@ -423,6 +535,123 @@ export const WRITE: [string, RegExp, Handler][] = [
     (m, config) => {
       if (pendingOf(m[1]!, 'CLUB_CLOSURE')) fail(config, 409, 'CLOSURE_PENDING', 'Kulübün bekleyen bir kapatma talebi var.')
       return submit(m[1]!, { type: 'CLUB_CLOSURE', status: 'PENDING_ADVISOR', note: body<{ reason: string }>(config).reason })
+    },
+  ],
+  [
+    'post',
+    /^\/clubs\/([^/]+)\/elections$/,
+    (m, config) => {
+      const clubId = m[1]!
+      if (running(clubId)) fail(config, 409, 'ELECTION_OPEN', 'Kulübün devam eden bir seçimi var.')
+      const b = body<{ boardSeats: number; auditSeats: number; note: string | null }>(config)
+      // Açıldıktan sonra birkaç üye aday olmuş sayılır.
+      const seeded = [
+        cand(nextId('c'), 'PRESIDENT', 'st5', 'Deniz', 'Kara'),
+        cand(nextId('c'), 'BOARD', 'st9', 'Selin', 'Ak'),
+        cand(nextId('c'), 'BOARD', 'st11', 'Zeynep', 'Uçar'),
+        cand(nextId('c'), 'BOARD', 'st13', 'Ceren', 'Aydın'),
+        cand(nextId('c'), 'AUDIT', 'st10', 'Arda', 'Kılıç'),
+        cand(nextId('c'), 'AUDIT', 'st16', 'Tolga', 'Er'),
+      ].filter((c) => (c.ballot === 'BOARD' ? b.boardSeats : c.ballot === 'AUDIT' ? b.auditSeats : 1) > 0)
+      const e: Election = {
+        id: nextId('el'),
+        clubId,
+        status: 'CANDIDACY',
+        boardSeats: b.boardSeats,
+        auditSeats: b.auditSeats,
+        note: b.note,
+        openedBy: 'u1',
+        openedAt: now(),
+        votingStartedAt: null,
+        closedAt: null,
+        eligibleVoters: null,
+        voters: null,
+        requestId: null,
+        completedAt: null,
+        myBallots: [],
+        candidates: seeded,
+      }
+      ;(elections[clubId] ??= []).unshift(e)
+      return electionView(e)
+    },
+  ],
+  [
+    'post',
+    /^\/clubs\/([^/]+)\/elections\/([^/]+)\/candidacy$/,
+    (m, config) => {
+      const e = findElection(config, m[1]!, m[2]!, 'CANDIDACY')
+      if (e.candidates.some((c) => c.studentId === 'u1')) fail(config, 409, 'ALREADY_CANDIDATE', 'Bu seçimde zaten adaysınız.')
+      e.candidates.push(cand(nextId('c'), body<{ ballot: ElectionBallot }>(config).ballot, 'u1', 'Elif', 'Demir'))
+      return electionView(e)
+    },
+  ],
+  [
+    'delete',
+    /^\/clubs\/([^/]+)\/elections\/([^/]+)\/candidacy$/,
+    (m, config) => {
+      const e = findElection(config, m[1]!, m[2]!, 'CANDIDACY')
+      e.candidates = e.candidates.filter((c) => c.studentId !== 'u1')
+      return electionView(e)
+    },
+  ],
+  [
+    'post',
+    /^\/clubs\/([^/]+)\/elections\/([^/]+)\/start-voting$/,
+    (m, config) => {
+      const e = findElection(config, m[1]!, m[2]!, 'CANDIDACY')
+      if (!e.candidates.some((c) => c.ballot === 'PRESIDENT'))
+        fail(config, 400, 'NO_PRESIDENT_CANDIDATE', 'Başkanlık için en az bir aday olmadan oylama başlatılamaz.')
+      Object.assign(e, { status: 'VOTING', votingStartedAt: now() })
+      return electionView(e)
+    },
+  ],
+  [
+    'post',
+    /^\/clubs\/([^/]+)\/elections\/([^/]+)\/votes$/,
+    (m, config) => {
+      const e = findElection(config, m[1]!, m[2]!, 'VOTING')
+      const b = body<{ ballot: ElectionBallot; candidateIds: string[] }>(config)
+      if ((e.myBallots ?? []).includes(b.ballot)) fail(config, 409, 'ALREADY_VOTED', 'Bu oylamada oyunuzu zaten kullandınız.')
+      e.myBallots = [...(e.myBallots ?? []), b.ballot]
+      ;(myVotes[e.id] ??= []).push(...b.candidateIds)
+      return electionView(e)
+    },
+  ],
+  [
+    'post',
+    /^\/clubs\/([^/]+)\/elections\/([^/]+)\/close$/,
+    (m, config) => {
+      const clubId = m[1]!
+      const e = findElection(config, clubId, m[2]!, 'VOTING')
+      const mine = myVotes[e.id] ?? []
+      e.candidates.forEach((c, i) => (c.votes = (OTHERS_VOTES[i % OTHERS_VOTES.length] ?? 0) + mine.filter((x) => x === c.id).length))
+      for (const ballot of ['PRESIDENT', 'BOARD', 'AUDIT'] as ElectionBallot[]) {
+        const seats = ballot === 'PRESIDENT' ? 1 : ballot === 'BOARD' ? e.boardSeats : e.auditSeats
+        e.candidates
+          .filter((c) => c.ballot === ballot)
+          .sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0))
+          .forEach((c, i) => (c.elected = i < seats && (c.votes ?? 0) > 0))
+      }
+      const voters = OTHER_VOTERS + ((e.myBallots ?? []).length ? 1 : 0)
+      Object.assign(e, { status: 'AWAITING_APPROVAL', closedAt: now(), eligibleVoters: 41, voters })
+      const request = submit(clubId, {
+        type: 'CLUB_ELECTION',
+        status: presides(clubId) ? 'PENDING_ADVISOR' : 'PENDING_PRESIDENT',
+        note: `Katılım: ${voters}/41`,
+      })
+      e.requestId = request.id
+      return request
+    },
+  ],
+  [
+    'post',
+    /^\/clubs\/([^/]+)\/elections\/([^/]+)\/cancel$/,
+    (m, config) => {
+      const e = findElection(config, m[1]!, m[2]!)
+      if (e.status !== 'CANDIDACY' && e.status !== 'VOTING')
+        fail(config, 409, 'ELECTION_LOCKED', 'Oylaması kapanmış seçim bu yolla iptal edilemez.')
+      Object.assign(e, { status: 'CANCELLED', completedAt: now() })
+      return electionView(e)
     },
   ],
 ]

@@ -712,6 +712,7 @@ export const clubAccesses: ClubAccess[] = [
       'UPDATE_CLUB_PROFILE',
       'PREPARE_PROFILE_CHANGE',
       'PREPARE_LOGO_CHANGE',
+      'PREPARE_ELECTION',
     ],
     clubName: 'Satranç Kulübü',
   },

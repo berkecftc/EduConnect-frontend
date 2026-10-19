@@ -10,12 +10,13 @@ import { Field } from '@/components/ui/Field'
 import { Textarea } from '@/components/ui/Textarea'
 import { CATEGORY_LABEL, roleLabel } from './api'
 import { ClubLogo } from './ClubMark'
+import { ElectionResult } from './ClubElections'
 import { APPROVAL_STATUS, APPROVAL_TYPE_LABEL, useDecideApproval, type ApprovalRequest } from './manage'
 
 const REASON_MAX = 1000
 
 /** Onaylanması ağır sonuç doğuran türler: onaydan önce bir kez daha sorulur. */
-const CONSEQUENTIAL = new Set(['MEMBER_EXPULSION', 'CLUB_CLOSURE', 'ADVISOR_CHANGE', 'RESIGNATION', 'ROLE_CHANGE'])
+const CONSEQUENTIAL = new Set(['MEMBER_EXPULSION', 'CLUB_CLOSURE', 'ADVISOR_CHANGE', 'RESIGNATION', 'ROLE_CHANGE', 'CLUB_ELECTION'])
 
 /** Kapsayıcıya göre: geniş alanda üç sütun (tür | içerik | durum), dar alanda tür içeriğin üstünde, durum sağda. */
 const GRID = 'grid gap-x-8 gap-y-3 @lg:grid-cols-[minmax(0,1fr)_11rem] @4xl:grid-cols-[10rem_minmax(0,1fr)_13rem]'
@@ -122,9 +123,11 @@ export function ApprovalItem({
         onOpenChange={(o) => !o && setDialog(null)}
         title={`${label} onaylansın mı?`}
         description={
-          r.subjectUserName
-            ? `${r.subjectUserName} hakkındaki bu istek onaylandığında hemen uygulanır.`
-            : 'Bu istek onaylandığında hemen uygulanır.'
+          r.type === 'CLUB_ELECTION'
+            ? 'Onaylanınca mevcut bütün görevler sona erer ve seçilenler göreve başlar.'
+            : r.subjectUserName
+              ? `${r.subjectUserName} hakkındaki bu istek onaylandığında hemen uygulanır.`
+              : 'Bu istek onaylandığında hemen uygulanır.'
         }
         confirmLabel="Onayla"
         loading={decide.isPending}
@@ -154,7 +157,11 @@ export function ApprovalItem({
         open={dialog === 'withdraw'}
         onOpenChange={(o) => !o && setDialog(null)}
         title="İsteği geri çek"
-        description={`${label} isteğiniz geri çekilecek; onay süreci durur.`}
+        description={
+          r.type === 'CLUB_ELECTION'
+            ? 'Seçim sonucu geri çekilirse seçim geçersiz sayılır; görevler olduğu gibi kalır.'
+            : `${label} isteğiniz geri çekilecek; onay süreci durur.`
+        }
         confirmLabel="Geri çek"
         loading={decide.isPending}
         onConfirm={() => run('withdraw', 'İstek geri çekildi')}
@@ -231,6 +238,8 @@ function Preview({ request: r }: { request: ApprovalRequest }) {
           <Note text={r.note} />
         </div>
       )
+    case 'CLUB_ELECTION':
+      return <ElectionResult clubId={r.clubId} requestId={r.id} note={r.note} />
     case 'MEMBER_EXPULSION':
       return (
         <div>

@@ -40,7 +40,9 @@ import {
 } from './api'
 import { ClubLogo } from './ClubMark'
 import { ClubManage } from './ClubManage'
+import { ClubElections } from './ClubElections'
 import { ClubSettings } from './ClubSettings'
+import { ballotsToVote, isRunning, useClubElections } from './elections'
 import { useResign } from './governance'
 import { can, useClubAccess, useRemoveAnnouncement, type ClubAccess } from './manage'
 
@@ -73,6 +75,12 @@ function ClubBody({ club: c }: { club: ClubDetails }) {
   const announcements = useClubAnnouncements(c.id, insider)
   const showAnnouncements = insider && !announcements.isError
   const manages = can(access, 'MANAGE_MEMBERSHIP_REQUESTS', 'REVIEW_MEMBERSHIP_REQUESTS', 'PREPARE_ANNOUNCEMENT', 'VIEW_DECISIONS', 'APPROVE_AS_PRESIDENT', 'ADVISE', 'CREATE_EVENT', 'PREPARE_EVENT', 'MANAGE_EVENT_OPERATIONS')
+  // Seçim sekmesi: seçimi açabilen görevliye her zaman, diğer üyelere ve danışmana seçim olduysa.
+  const viewsMembers = can(access, 'VIEW_MEMBERS')
+  const elections = useClubElections(c.id, viewsMembers)
+  const running = elections.data?.find((e) => isRunning(e.status))
+  const showElections = viewsMembers && ((can(access, 'PREPARE_ELECTION') && c.status !== 'CLOSED') || !!elections.data?.length)
+  const toVote = running && access?.member ? ballotsToVote(running).length : 0
   // Kurul, kulüp bilgileri, logo, danışman ve kapatma talepleri; kapatılmış kulüpte hiçbiri açılmaz.
   const configures =
     c.status !== 'CLOSED' &&
@@ -129,6 +137,24 @@ function ClubBody({ club: c }: { club: ClubDetails }) {
         </Notice>
       )}
 
+      {running && access?.member && (running.status === 'CANDIDACY' || running.status === 'VOTING') && (
+        <Notice
+          variant="line"
+          tone={toVote ? 'warning' : 'info'}
+          title={running.status === 'CANDIDACY' ? 'Genel kurul seçimi: aday başvuruları açık' : 'Genel kurul seçimi: oylama sürüyor'}
+          className="mt-10"
+        >
+          {running.status === 'CANDIDACY'
+            ? 'Başkanlık, yönetim kurulu ya da denetim kurulu için aday olabilirsiniz. '
+            : toVote
+              ? `${toVote} kurulda oyunuzu henüz kullanmadınız. `
+              : 'Oyunuzu kullandınız; sonuç oylama bitince açıklanır. '}
+          <Link to={{ search: '?sekme=secim' }} className="font-semibold underline underline-offset-4">
+            Seçime git
+          </Link>
+        </Notice>
+      )}
+
       <div className="mt-14">
         <Tabs
           label="Kulüp bölümleri"
@@ -152,6 +178,9 @@ function ClubBody({ club: c }: { club: ClubDetails }) {
                     content: <Announcements clubId={c.id} query={announcements} access={access} />,
                   },
                 ]
+              : []),
+            ...(showElections && access
+              ? [{ value: 'secim', label: 'Seçim', count: toVote || undefined, content: <ClubElections club={c} access={access} /> }]
               : []),
             ...(manages && access ? [{ value: 'yonetim', label: 'Yönetim', content: <ClubManage clubId={c.id} access={access} /> }] : []),
             ...(configures && access ? [{ value: 'ayarlar', label: 'Ayarlar', content: <ClubSettings club={c} access={access} /> }] : []),
