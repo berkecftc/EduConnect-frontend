@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/Input'
 import { QueryBoundary } from '@/components/ui/States'
 import { STAFF_ROLE_LABEL, useCourseStaff, type Course, type CourseStaff, type StaffRole } from './api'
 import { abilities, useAcademicianSearch, useAddStaff, useChangeStaffRole, useRemoveStaff } from './teach'
+import { PersonLink } from '@/features/people/PersonLink'
 
 type Assignable = Exclude<StaffRole, 'COORDINATOR'>
 
@@ -81,7 +82,7 @@ function StaffRow({ course: c, member: s, manage, me }: { course: Course; member
       <div className="flex items-start justify-between gap-3">
         <span className="min-w-0">
           <span className="block font-semibold">
-            {name}
+            <PersonLink id={s.userId}>{name}</PersonLink>
             {me && <span className="font-normal text-ink-3"> (siz)</span>}
           </span>
           {s.department && <span className="block text-sm text-ink-3">{s.department}</span>}

@@ -34,6 +34,7 @@ import {
   type Course,
   type Material,
 } from './api'
+import { PersonLink } from '@/features/people/PersonLink'
 
 /** Ders sayfası (öğrenci): genel bakış ve kadro, ödevler, materyaller, notlarım, duyurular. */
 export function CoursePage() {
@@ -205,7 +206,9 @@ function Overview({ course: c }: { course: Course }) {
                   {list.map((s) => (
                     <li key={s.userId} className="flex items-start justify-between gap-3">
                       <span className="min-w-0">
-                        <span className="block font-semibold">{withTitle(s.name, s.title, s.academicTitle)}</span>
+                        <PersonLink id={s.userId} className="block font-semibold">
+                          {withTitle(s.name, s.title, s.academicTitle)}
+                        </PersonLink>
                         {s.department && <span className="block text-sm text-ink-3">{s.department}</span>}
                       </span>
                       <Badge tone={s.role === 'COORDINATOR' ? 'info' : 'neutral'}>{STAFF_ROLE_LABEL[s.role]}</Badge>

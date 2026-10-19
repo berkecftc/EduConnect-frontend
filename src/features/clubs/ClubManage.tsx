@@ -27,6 +27,7 @@ import {
   type MembershipRecommendation,
   type PendingMembershipRequest,
 } from './manage'
+import { PersonLink } from '@/features/people/PersonLink'
 
 const TITLE_MAX = 200
 const BODY_MAX = 5000
@@ -180,7 +181,9 @@ function RequestRow({ clubId, request: r, decides }: { clubId: string; request: 
   return (
     <li className="grid gap-x-8 gap-y-3 border-b border-rule py-5 sm:grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0">
-        <p className="text-lg font-semibold">{name}</p>
+        <p className="text-lg font-semibold">
+          <PersonLink id={r.studentId}>{name}</PersonLink>
+        </p>
         <p className="text-sm text-ink-3">
           {r.studentEmail && <span className="mr-4">{r.studentEmail}</span>}
           {formatInstant(r.requestDate, 'datetime')} tarihinde başvurdu

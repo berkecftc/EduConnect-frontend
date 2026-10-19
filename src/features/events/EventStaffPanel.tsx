@@ -12,6 +12,7 @@ import { Panel } from '@/components/ui/Panel'
 import { QueryBoundary } from '@/components/ui/States'
 import type { CampusEvent } from './api'
 import { staffName, staffable, useEventStaff, useStaffAction, type EventStaff } from './staff'
+import { PersonLink } from '@/features/people/PersonLink'
 
 const SHOWN = 8
 const memberName = (m: Pick<ClubMember, 'firstName' | 'lastName'>) => [m.firstName, m.lastName].filter(Boolean).join(' ')
@@ -55,7 +56,9 @@ export function EventStaffPanel({ event: e, access }: { event: CampusEvent; acce
                       >
                         <span className="min-w-0">
                           <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                            <span className="font-semibold">{staffName(s)}</span>
+                            <PersonLink id={s.userId} className="font-semibold">
+                              {staffName(s)}
+                            </PersonLink>
                             {s.status === 'PENDING' && <Badge tone="warning">Başkan onayında</Badge>}
                           </span>
                           <span className="block text-sm text-ink-3">

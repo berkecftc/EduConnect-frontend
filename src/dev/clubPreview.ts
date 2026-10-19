@@ -5,7 +5,9 @@
  * olmuş sayılır, oylama bitince diğer üyelerin oyları eklenir); Robotik'te oylama sürüyor ve Elif henüz oy vermedi.
  * Satranç'ın kayıtları: üç tutanak, bütçeler, gelir-gider (biri danışman onayında), bir sponsorluk, geçen yılın
  * raporları, karar günlüğü ve görev geçmişi. Robotik'in Arduino atölyesinde bir görevli ve bir öneri var; Elif de görevli.
- * Kapıda denenecek bilet kodları: EC-E1-BURCU (geçerli, bir kez), EC-E1-KAAN (iptal edilmiş kayıt). Üye ve önerilen danışman adları, backend'in
+ * Kapıda denenecek bilet kodları: EC-E1-BURCU (geçerli, bir kez), EC-E1-KAAN (iptal edilmiş kayıt).
+ * Kişi profilleri: akademisyenlerin e-postası herkese açık; öğrencilerinki ve numarası yalnız Elif'in yönettiği
+ * Satranç Kulübü üyelerinde görünür (sunucudaki ilişki kuralı gibi). Üye ve önerilen danışman adları, backend'in
  * bu alanları dolduracağı varsayımıyla gelir. Bellekte tutulur; yalnız `/onizleme` (öğrenci) içindir.
  */
 import type { InternalAxiosRequestConfig } from 'axios'
@@ -26,7 +28,9 @@ import type {
   ReportSnapshot,
   Sponsorship,
 } from '@/features/clubs/records'
+import type { PersonProfile } from '@/features/people/api'
 import * as fx from './fixtures'
+import * as px from './postFixtures'
 
 type Handler = (m: RegExpMatchArray, config: InternalAxiosRequestConfig) => unknown
 
@@ -683,6 +687,147 @@ const GATE_CODES: Record<string, { eventId: string; studentId: string }> = {
 
 const eventClub = (eventId: string) => fx.findEvent(eventId)?.clubId ?? ''
 
+// ——— Kişi profilleri ———
+
+const blank: PersonProfile = {
+  id: '',
+  firstName: null,
+  lastName: null,
+  email: null,
+  profileImageUrl: null,
+  bio: null,
+  role: null,
+  studentNumber: null,
+  title: null,
+  academicTitle: null,
+  department: null,
+  programId: null,
+  programName: null,
+  programLevel: null,
+  facultyName: null,
+  facultyId: null,
+  departmentId: null,
+  entryYear: null,
+  classYear: null,
+  staffCategory: null,
+  affiliations: null,
+  officeNumber: null,
+  officeHours: null,
+  studentStatus: null,
+  staffStatus: null,
+}
+
+const academicianProfile = (
+  id: string,
+  first: string,
+  last: string,
+  title: string,
+  code: string,
+  department: string,
+  extra: Partial<PersonProfile> = {},
+): PersonProfile => ({
+  ...blank,
+  id,
+  firstName: first,
+  lastName: last,
+  role: 'Academician',
+  title,
+  academicTitle: code,
+  department,
+  facultyName: department === 'Matematik' ? 'Fen Fakültesi' : 'Mühendislik Fakültesi',
+  staffCategory: code.startsWith('RESEARCH') ? 'RESEARCH_ASSISTANT' : 'FACULTY_MEMBER',
+  affiliations: ['ACADEMICIAN'],
+  email: `${first.toLocaleLowerCase('tr-TR')}.${last.toLocaleLowerCase('tr-TR')}@educonnect.local`
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i'),
+  ...extra,
+})
+
+/** Öğrenci: e-posta ve numara yalnız Satranç Kulübü üyelerinde (Elif başkan) dolu gelir. */
+const studentProfile = (
+  id: string,
+  first: string,
+  last: string,
+  number: string,
+  program: string,
+  classYear: number,
+  bio: string | null = null,
+): PersonProfile => {
+  const related = (members.k2 ?? []).some((m) => m.studentId === id)
+  return {
+    ...blank,
+    id,
+    firstName: first,
+    lastName: last,
+    role: 'Student',
+    programName: program,
+    programLevel: 'BACHELOR',
+    facultyName: program.includes('Matematik') ? 'Fen Fakültesi' : 'Mühendislik Fakültesi',
+    classYear,
+    affiliations: ['STUDENT'],
+    bio,
+    studentNumber: related ? number : null,
+    email: related
+      ? `${first.toLocaleLowerCase('tr-TR')}.${last.toLocaleLowerCase('tr-TR')}@ogr.educonnect.local`
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/ı/g, 'i')
+      : null,
+  }
+}
+
+const hakan = academicianProfile('s4', 'Hakan', 'Öztürk', 'Prof. Dr.', 'PROFESSOR', 'Matematik', {
+  bio: 'Sayılar kuramı ve kriptografi üzerine çalışıyorum. Satranç Kulübü ve Matematik Topluluğu danışmanıyım.',
+  officeNumber: 'Fen Fakültesi A-312',
+  officeHours: 'Salı 14.00–16.00\nPerşembe 10.00–11.00 (randevuyla)',
+})
+const mehmet = academicianProfile('s1', 'Mehmet', 'Kaya', 'Dr. Öğr. Üyesi', 'ASSISTANT_PROFESSOR', 'Bilgisayar Mühendisliği', {
+  officeNumber: 'B Blok 210',
+  officeHours: 'Çarşamba 13.00–15.00',
+})
+
+export const people: Record<string, PersonProfile> = {
+  s1: mehmet,
+  'u-c1': { ...mehmet, id: 'u-c1' },
+  s2: academicianProfile('s2', 'Deniz', 'Yılmaz', '', 'RESEARCH_ASSISTANT', 'Bilgisayar Mühendisliği'),
+  s3: academicianProfile('s3', 'Ayşe', 'Arslan', 'Doç. Dr.', 'ASSOCIATE_PROFESSOR', 'Bilgisayar Mühendisliği', {
+    officeNumber: 'B Blok 305',
+  }),
+  s4: hakan,
+  'u-c3': { ...hakan, id: 'u-c3' },
+  st2: studentProfile(
+    'st2',
+    'Can',
+    'Erdem',
+    '2022104077',
+    'Bilgisayar Mühendisliği',
+    4,
+    'Robotik Kulübü başkanı. Yarışma robotlarının gömülü yazılımıyla uğraşıyorum.',
+  ),
+  st3: studentProfile('st3', 'Ece', 'Yalçın', '2023104050', 'Elektrik-Elektronik Mühendisliği', 3),
+  st4: studentProfile('st4', 'Mert', 'Aksu', '2023104022', 'Bilgisayar Mühendisliği', 3),
+  st5: studentProfile(
+    'st5',
+    'Deniz',
+    'Kara',
+    '2022105011',
+    'Matematik',
+    4,
+    'Satranç Kulübü başkan yardımcısı. Lig takımının A kadrosundayım.',
+  ),
+  st6: studentProfile('st6', 'Oğuz', 'Tan', '2024105007', 'Matematik', 2),
+  st7: studentProfile('st7', 'Burcu', 'Öz', '2024104031', 'Bilgisayar Mühendisliği', 2),
+  st9: studentProfile('st9', 'Selin', 'Ak', '2024105019', 'Matematik', 2),
+}
+
+const BADGES: Record<string, { badgeType: string; name: string; description: string; imageUrl: null; earnedAt: string }[]> = {
+  st2: [
+    { badgeType: 'HELPFUL', name: 'Yardımsever', description: '10 cevabı kabul edildi.', imageUrl: null, earnedAt: ago(24 * 60) },
+    { badgeType: 'FIRST_POST', name: 'İlk gönderi', description: 'Akışta ilk kez paylaştı.', imageUrl: null, earnedAt: ago(24 * 300) },
+  ],
+}
+
 // ——— Onay kayıtları ———
 
 function submit(clubId: string, r: Partial<ApprovalRequest> & Pick<ApprovalRequest, 'type' | 'status'>): ApprovalRequest {
@@ -730,6 +875,24 @@ export const GET: [RegExp, Handler][] = [
   [/^\/clubs\/my-creation-requests$/, () => creations.map((r) => ({ ...r, founders: r.founders.map((f) => ({ ...f })) }))],
   [/^\/clubs\/([^/]+)\/advisor-change-requests$/, (m) => (advisorChanges[m[1]!] ?? []).map((r) => ({ ...r }))],
   [/^\/clubs\/([^/]+)\/elections$/, (m) => (elections[m[1]!] ?? []).map(electionView)],
+  [
+    /^\/users\/profile\/([^/]+)\/aggregated$/,
+    (m, config) => {
+      if (!people[m[1]!]) fail(config, 404, 'NOT_FOUND', 'Profile not found')
+      return {
+        ...people[m[1]!],
+        gamification: { badges: BADGES[m[1]!] ?? [] },
+        recentPosts: px.posts
+          .filter((x) => x.authorId === m[1] && x.publisherType !== 'COURSE')
+          .slice(0, 5)
+          .map((x) => ({ id: x.id, title: x.title, content: x.content, createdAt: x.createdAt })),
+      }
+    },
+  ],
+  [
+    /^\/users\/profile\/([^/]+)$/,
+    (m, config) => (people[m[1]!] ? { ...people[m[1]!] } : fail(config, 404, 'NOT_FOUND', 'Profile not found')),
+  ],
   [
     /^\/events\/manage\/staff\/me$/,
     () =>

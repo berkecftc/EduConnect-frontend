@@ -67,6 +67,7 @@ export const router = createBrowserRouter([
       { path: 'posts/:postId/edit', ...page(() => import('@/features/posts/PostComposerPage'), 'PostComposerPage') },
       { path: 'leaderboard', ...page(() => import('@/features/gamification/LeaderboardPage'), 'LeaderboardPage') },
       { path: 'profile', ...page(() => import('@/features/profile/ProfilePage'), 'ProfilePage') },
+      { path: 'people/:userId', ...page(() => import('@/features/people/PersonPage'), 'PersonPage') },
       { path: 'notifications', ...page(() => import('@/features/notifications/NotificationsPage'), 'NotificationsPage') },
       { path: 'settings', ...page(() => import('@/features/settings/SettingsPage'), 'SettingsPage') },
       { path: 'settings/:section', ...page(() => import('@/features/settings/SettingsPage'), 'SettingsPage') },

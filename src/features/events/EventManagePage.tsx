@@ -38,6 +38,7 @@ import {
   type AttendanceRow,
   type ManagedRequest,
 } from './manage'
+import { PersonLink } from '@/features/people/PersonLink'
 
 const REASON_MAX = 1000
 
@@ -250,7 +251,9 @@ function Row({ row, busy, onToggle }: { row: AttendanceRow; busy: boolean; onTog
   return (
     <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-1 border-b border-rule py-4">
       <span className="min-w-0">
-        <span className="block font-semibold">{name}</span>
+        <PersonLink id={row.studentId} className="block font-semibold">
+          {name}
+        </PersonLink>
         <span className="text-sm text-ink-3">
           {row.studentNumber && <span className="tabular mr-4">{row.studentNumber}</span>}
           {row.attended && row.checkedInAt ? `Giriş ${formatInstant(row.checkedInAt, 'time')}` : ROW_STATUS[row.status]}
@@ -330,7 +333,9 @@ function RequestRow({ eventId, request: r }: { eventId: string; request: Managed
   return (
     <li className="grid gap-x-8 gap-y-3 border-b border-rule py-5 sm:grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0">
-        <p className="text-lg font-semibold">{name}</p>
+        <p className="text-lg font-semibold">
+          <PersonLink id={r.studentId}>{name}</PersonLink>
+        </p>
         <p className="text-sm text-ink-3">
           {r.studentEmail && <span className="mr-4">{r.studentEmail}</span>}
           {formatInstant(r.requestDate, 'datetime')}

@@ -34,6 +34,7 @@ import {
   type ElectionBallot,
 } from './elections'
 import { can, type ClubAccess } from './manage'
+import { PersonLink } from '@/features/people/PersonLink'
 
 type BallotMeta = (typeof BALLOTS)[number]
 
@@ -308,7 +309,9 @@ function Ballot({
             <li key={c.id} className="border-b border-rule py-3">
               <div className="flex items-baseline justify-between gap-6">
                 <span className="min-w-0">
-                  <span className="font-semibold">{candidateName(c)}</span>
+                  <PersonLink id={c.studentId} className="font-semibold">
+                    {candidateName(c)}
+                  </PersonLink>
                   {c.studentId === me && <span className="ml-2 text-sm text-ink-3">siz</span>}
                   {counted && c.elected && <span className="ml-3 text-sm font-semibold text-kulup">Seçildi</span>}
                 </span>

@@ -5,6 +5,7 @@ import { EmptyState, QueryBoundary } from '@/components/ui/States'
 import { POSITION_END_LABEL, roleLabel, roleRank } from './api'
 import { APPROVAL_TYPE_LABEL } from './manage'
 import { DECISION_ACTION_LABEL, useDecisionLog, usePositionHistory, type DecisionLogEntry, type PositionTerm } from './records'
+import { PersonLink } from '@/features/people/PersonLink'
 
 const PAGE = 40
 
@@ -84,7 +85,9 @@ export function PositionHistory({ clubId }: { clubId: string }) {
                   <ul>
                     {current.map((t) => (
                       <li key={`${t.studentId}-${t.startedAt}`} className="border-b border-rule py-3 first:pt-0">
-                        <span className="block font-semibold">{name(t)}</span>
+                        <PersonLink id={t.studentId} className="block font-semibold">
+                          {name(t)}
+                        </PersonLink>
                         <span className="block text-sm text-ink-3">
                           {t.positionName || roleLabel(t.position)}, {formatInstant(t.startedAt, 'date')} tarihinden beri
                         </span>
@@ -106,7 +109,9 @@ export function PositionHistory({ clubId }: { clubId: string }) {
                         className="grid gap-x-6 gap-y-0.5 border-b border-rule py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-baseline"
                       >
                         <span className="min-w-0">
-                          <span className="font-semibold">{name(t)}</span>
+                          <PersonLink id={t.studentId} className="font-semibold">
+                            {name(t)}
+                          </PersonLink>
                           <span className="ml-3 text-sm text-ink-3">{t.positionName || roleLabel(t.position)}</span>
                         </span>
                         <span className="tabular text-sm text-ink-2 sm:text-right">

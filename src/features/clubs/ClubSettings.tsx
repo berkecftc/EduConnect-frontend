@@ -43,6 +43,7 @@ import {
   type ProfileDraftErrors,
 } from './governance'
 import { APPROVAL_STATUS, can, isPendingApproval, useClubApprovals, type ApprovalRequest, type ClubAccess } from './manage'
+import { PersonLink } from '@/features/people/PersonLink'
 
 const NOTE_MAX = 1000
 const memberName = (m: { firstName: string | null; lastName: string | null }) => [m.firstName, m.lastName].filter(Boolean).join(' ')
@@ -136,7 +137,7 @@ function Board({ clubId, pending }: { clubId: string; pending: ApprovalRequest[]
                       className="grid gap-x-6 gap-y-1 border-b border-rule py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_13rem] sm:items-baseline"
                     >
                       <span className="min-w-0 font-semibold">
-                        {name}
+                        <PersonLink id={m.studentId}>{name}</PersonLink>
                         {me && <span className="ml-2 text-sm font-normal text-ink-3">siz</span>}
                       </span>
                       <span className="text-md text-ink-2">{roleLabel(m.role)}</span>
@@ -353,7 +354,9 @@ function Members({ club, pending }: { club: ClubDetails; pending: ApprovalReques
           return (
             <li key={m.studentId} className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-rule py-3">
               <span className="min-w-0">
-                <span className="font-semibold">{name}</span>
+                <PersonLink id={m.studentId} className="font-semibold">
+                  {name}
+                </PersonLink>
                 {canonicalRole(m.role) !== 'MEMBER' && <span className="ml-3 text-sm text-ink-3">{roleLabel(m.role)}</span>}
               </span>
               {expelling.has(m.studentId) ? (

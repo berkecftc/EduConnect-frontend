@@ -21,6 +21,7 @@ import { Meter } from '@/components/ui/Meter'
 import { EmptyState, QueryBoundary } from '@/components/ui/States'
 import type { Course, StaffRole } from './api'
 import { abilities, assessmentsEditable } from './teach'
+import { PersonLink } from '@/features/people/PersonLink'
 
 const DAY = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', timeZone: 'UTC' })
 const MONTH = new Intl.DateTimeFormat('tr-TR', { month: 'short', timeZone: 'UTC' })
@@ -236,7 +237,9 @@ function GradebookTable({ book: b, course: c, onCsv, busy }: { book: Gradebook; 
             {b.students.map((r) => (
               <tr key={r.studentId}>
                 <th scope="row" className="sticky left-0 z-10 bg-canvas py-3 pr-4 font-normal">
-                  <span className="block font-semibold whitespace-nowrap">{r.studentName ?? 'Öğrenci'}</span>
+                  <PersonLink id={r.studentId} className="block font-semibold whitespace-nowrap">
+                    {r.studentName ?? 'Öğrenci'}
+                  </PersonLink>
                   <span className="tabular block text-sm text-ink-3">{r.studentNumber}</span>
                 </th>
                 {columns.map((a) => (

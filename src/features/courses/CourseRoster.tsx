@@ -24,6 +24,7 @@ import {
   type EnrolledStudent,
   type StaffApplication,
 } from './teach'
+import { PersonLink } from '@/features/people/PersonLink'
 
 const LINK = 'text-md font-semibold text-ink-2 underline-offset-4 hover:text-ink hover:underline'
 
@@ -81,7 +82,9 @@ export function CourseApplications({ course: c }: { course: Course }) {
                   <li key={a.id} className="grid gap-x-6 gap-y-1 py-4 sm:grid-cols-[minmax(0,1fr)_auto]">
                     <div className="min-w-0">
                       <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                        <span className="font-semibold">{a.studentName ?? 'Öğrenci'}</span>
+                        <PersonLink id={a.studentId} className="font-semibold">
+                          {a.studentName ?? 'Öğrenci'}
+                        </PersonLink>
                         <Badge tone={APPLICATION_TONE[a.status]}>{DECIDED_LABEL[a.status] ?? APPLICATION_STATUS_LABEL[a.status]}</Badge>
                       </p>
                       <p className="tabular mt-0.5 text-sm text-ink-3">{a.studentNumber}</p>
@@ -111,7 +114,9 @@ function PendingRow({ application: a, course: c, full }: { application: StaffApp
   return (
     <li className="grid gap-x-6 gap-y-3 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
       <div className="min-w-0">
-        <p className="text-lg font-semibold">{name}</p>
+        <p className="text-lg font-semibold">
+          <PersonLink id={a.studentId}>{name}</PersonLink>
+        </p>
         <p className="mt-0.5 flex flex-wrap gap-x-4 text-sm text-ink-3">
           {a.studentNumber && <span className="tabular">{a.studentNumber}</span>}
           {a.studentEmail && <span>{a.studentEmail}</span>}
@@ -236,7 +241,9 @@ export function CourseStudents({ course: c, role }: { course: Course; role: Staf
                     {filtered.map((s) => (
                       <tr key={s.studentId}>
                         <th scope="row" className="py-3 pr-4 font-normal">
-                          <span className="block font-semibold">{name(s)}</span>
+                          <PersonLink id={s.studentId} className="block font-semibold">
+                            {name(s)}
+                          </PersonLink>
                           {s.email && <span className="block text-sm text-ink-3">{s.email}</span>}
                         </th>
                         <td className="tabular py-3 pr-4">{s.studentNumber ?? '–'}</td>
@@ -270,7 +277,9 @@ export function CourseStudents({ course: c, role }: { course: Course; role: Staf
                       <span className="tabular text-sm text-ink-3">{formatInstant(e.occurredAt, 'date')}</span>
                       <div className="min-w-0">
                         <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                          <span className="font-semibold">{e.studentName ?? 'Öğrenci'}</span>
+                          <PersonLink id={e.studentId} className="font-semibold">
+                            {e.studentName ?? 'Öğrenci'}
+                          </PersonLink>
                           <span className={e.type === 'ENROLLED' ? 'text-ink-2' : 'font-semibold text-ink'}>
                             {ENROLLMENT_EVENT_LABEL[e.type]}
                           </span>

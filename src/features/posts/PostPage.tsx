@@ -34,6 +34,7 @@ import {
   type PostComment,
 } from './api'
 import { AppealButton, HideButton, ReportButton } from './ContentActions'
+import { PersonLink } from '@/features/people/PersonLink'
 
 const COMMENT_MAX = 2000
 const LINK = 'text-sm font-semibold text-ink-2 underline-offset-4 hover:text-ink hover:underline'
@@ -76,7 +77,13 @@ function PostBody({ post: p }: { post: Post }) {
       </p>
       <RevealTitle text={p.title} className="mt-1 text-4xl sm:text-5xl" />
       <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-md text-ink-2">
-        <span className="font-semibold text-ink">{p.official ? (p.publisherName ?? p.authorName) : p.authorName}</span>
+        {p.official ? (
+          <span className="font-semibold text-ink">{p.publisherName ?? p.authorName}</span>
+        ) : (
+          <PersonLink id={p.authorId} className="font-semibold text-ink">
+            {p.authorName}
+          </PersonLink>
+        )}
         {!p.official && p.authorDepartment && <span>{p.authorDepartment}</span>}
         <span>{formatInstant(p.createdAt, 'datetime')}</span>
         {p.updatedAt && p.updatedAt !== p.createdAt && <span>düzenlendi</span>}
@@ -287,7 +294,9 @@ function CommentItem({ comment: c, post: p, postOwner, reply = false }: { commen
     <li className={cn(reply ? 'border-t border-rule py-4 pl-5' : 'border-b border-rule py-5', accepted && !reply && 'relative pl-5')}>
       {accepted && !reply && <span aria-hidden className="absolute inset-y-4 left-0 w-[4px] bg-success" />}
       <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="font-semibold">{c.authorName ?? 'Kullanıcı'}</span>
+        <PersonLink id={c.authorId} className="font-semibold">
+          {c.authorName ?? 'Kullanıcı'}
+        </PersonLink>
         <span className="text-sm text-ink-3">{formatRelative(c.createdAt)}</span>
         {accepted && <Badge tone="success">Kabul edilen cevap</Badge>}
         {mine && status && <Badge tone={status.tone}>{status.label}</Badge>}

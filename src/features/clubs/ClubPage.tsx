@@ -46,6 +46,7 @@ import { ballotsToVote, isRunning, useClubElections } from './elections'
 import { useResign } from './governance'
 import { usePastPresidents } from './records'
 import { can, useClubAccess, useRemoveAnnouncement, type ClubAccess } from './manage'
+import { PersonLink } from '@/features/people/PersonLink'
 
 const MESSAGE_MAX = 500
 
@@ -117,7 +118,11 @@ function ClubBody({ club: c }: { club: ClubDetails }) {
           </p>
           <RevealTitle text={c.name} className="mt-1 text-5xl sm:text-6xl" />
           <p className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-1 text-lg text-ink-2">
-            {c.advisorName && <span>Danışman {withTitle(c.advisorName, c.advisorTitle)}</span>}
+            {c.advisorName && (
+              <span>
+                Danışman <PersonLink id={c.academicAdvisorId}>{withTitle(c.advisorName, c.advisorTitle)}</PersonLink>
+              </span>
+            )}
             {c.status === 'CLOSED' && <Badge tone="neutral">Kapatıldı</Badge>}
             {c.status === 'AWAITING_ADVISOR' && <Badge tone="warning">Danışman bekleniyor</Badge>}
           </p>
@@ -484,13 +489,17 @@ function Overview({ club: c, member }: { club: ClubDetails; member: boolean }) {
             <ul>
               {list.map((m) => (
                 <li key={m.studentId} className="border-b border-rule py-3 first:pt-0">
-                  <span className="block font-semibold">{[m.firstName, m.lastName].filter(Boolean).join(' ')}</span>
+                  <PersonLink id={m.studentId} className="block font-semibold">
+                    {[m.firstName, m.lastName].filter(Boolean).join(' ')}
+                  </PersonLink>
                   <span className="text-sm text-ink-3">{roleLabel(m.role)}</span>
                 </li>
               ))}
               {c.advisorName && (
                 <li className="py-3">
-                  <span className="block font-semibold">{withTitle(c.advisorName, c.advisorTitle)}</span>
+                  <PersonLink id={c.academicAdvisorId} className="block font-semibold">
+                    {withTitle(c.advisorName, c.advisorTitle)}
+                  </PersonLink>
                   <span className="text-sm text-ink-3">Danışman</span>
                 </li>
               )}
