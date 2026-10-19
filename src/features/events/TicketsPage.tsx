@@ -13,6 +13,7 @@ import { Panel } from '@/components/ui/Panel'
 import { QrCode } from '@/components/ui/QrCode'
 import { EmptyState, PageHeader, QueryBoundary, Skeleton } from '@/components/ui/States'
 import { useMyParticipationRequests, useMyRegistrations, useWithdrawParticipation, type MyRegistration, type ParticipationRequest } from './api'
+import { StaffDuties } from './StaffDuties'
 
 const DAY = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', timeZone: 'UTC' })
 const MONTH = new Intl.DateTimeFormat('tr-TR', { month: 'short', weekday: 'short', timeZone: 'UTC' })
@@ -34,6 +35,7 @@ export function TicketsPage() {
           </Button>
         }
       />
+      <StaffDuties />
       <QueryBoundary query={registrations} what="Biletler" skeletonRows={3}>
         {(list) => {
           const live = list.filter((r) => r.registrationStatus === 'REGISTERED' && r.eventStatus !== 'CANCELLED' && r.eventStatus !== 'COMPLETED')

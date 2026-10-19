@@ -23,6 +23,7 @@ import { Tabs } from '@/components/ui/Tabs'
 import { Textarea } from '@/components/ui/Textarea'
 import { useEvent, type CampusEvent } from './api'
 import { EventForm } from './EventForm'
+import { EventStaffPanel } from './EventStaffPanel'
 import {
   CHANGE_LABEL,
   EVENT_STATUS,
@@ -102,6 +103,11 @@ function ManageBody({ event: e }: { event: CampusEvent }) {
         <Link to={`/events/${e.id}`} className="text-md font-semibold text-ink underline-offset-4 hover:underline">
           Etkinlik sayfası
         </Link>
+        {e.status === 'ACTIVE' && (publisher || can(a, 'MANAGE_EVENT_OPERATIONS')) && (
+          <Link to={`/events/${e.id}/kapi`} className="text-md font-semibold text-ink underline-offset-4 hover:underline">
+            Kapı ekranı
+          </Link>
+        )}
       </p>
 
       {e.status === 'REJECTED' && (
@@ -122,6 +128,7 @@ function ManageBody({ event: e }: { event: CampusEvent }) {
           tabs={[
             ...(live ? [{ value: 'katilimcilar', label: 'Katılımcılar', content: <Attendance event={e} /> }] : []),
             ...(live && e.admission === 'APPROVAL_REQUIRED' ? [{ value: 'istekler', label: 'Katılım istekleri', count: pendingRequests || undefined, content: <Requests eventId={e.id} /> }] : []),
+            ...(e.clubId ? [{ value: 'gorevliler', label: 'Görevliler', content: <EventStaffPanel event={e} access={a} /> }] : []),
             { value: 'degisiklikler', label: 'Değişiklikler', content: <Changes event={e} access={a} publisher={publisher} /> },
             ...(editable ? [{ value: 'duzenle', label: 'Düzenle', content: <Edit event={e} /> }] : []),
           ]}

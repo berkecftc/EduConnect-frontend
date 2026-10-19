@@ -33,6 +33,7 @@ import {
   type CampusEvent,
   type EventAvailability,
 } from './api'
+import { useMyStaffEvents } from './staff'
 
 const DAY = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', timeZone: 'UTC' })
 const MESSAGE_MAX = 500
@@ -55,6 +56,9 @@ function EventBody({ event: e }: { event: CampusEvent }) {
   const availability = useAvailability(e.id, e.status === 'ACTIVE')
   const access = useClubAccess(e.clubId ?? '', !!e.clubId)
   const manages = can(access.data, 'MANAGE_EVENT_OPERATIONS', 'CREATE_EVENT', 'PREPARE_EVENT', 'APPROVE_AS_PRESIDENT', 'ADVISE')
+  // Onaylı görevli (yönetici değilse) kapı ekranına buradan gider.
+  const duties = useMyStaffEvents(!!e.clubId && !!access.data?.member && !manages)
+  const onDuty = !manages && !!duties.data?.some((x) => x.id === e.id)
   const a = availability.data
   const poster = e.imageUrl && /^https?:\/\//.test(e.imageUrl) ? e.imageUrl : null
 
@@ -92,6 +96,14 @@ function EventBody({ event: e }: { event: CampusEvent }) {
         <Board event={e} availability={a} loading={availability.isPending && e.status === 'ACTIVE'} />
       </section>
 
+      {onDuty && (
+        <Notice variant="line" tone="info" title="Bu etkinlikte görevlisiniz" className="mt-10">
+          Girişte biletleri kapı ekranından okutun.{' '}
+          <Link to={`/events/${e.id}/kapi`} className="font-semibold underline underline-offset-4">
+            Kapı ekranı
+          </Link>
+        </Notice>
+      )}
       {e.status === 'CANCELLED' && (
         <Notice variant="line" tone="danger" title="Bu etkinlik iptal edildi" className="mt-10">
           {e.cancellationReason ?? 'Kayıtlı katılımcılara e-posta ile bilgi verildi.'}

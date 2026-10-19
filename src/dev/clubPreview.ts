@@ -4,7 +4,8 @@
  * Bir kurucu daveti ve reddedilmiş eski bir kuruluş başvurusu var. Satranç'ta seçim açılabilir (açılınca birkaç üye aday
  * olmuş sayılır, oylama bitince diğer üyelerin oyları eklenir); Robotik'te oylama sürüyor ve Elif henüz oy vermedi.
  * Satranç'ın kayıtları: üç tutanak, bütçeler, gelir-gider (biri danışman onayında), bir sponsorluk, geçen yılın
- * raporları, karar günlüğü ve görev geçmişi. Üye ve önerilen danışman adları, backend'in
+ * raporları, karar günlüğü ve görev geçmişi. Robotik'in Arduino atölyesinde bir görevli ve bir öneri var; Elif de görevli.
+ * Kapıda denenecek bilet kodları: EC-E1-BURCU (geçerli, bir kez), EC-E1-KAAN (iptal edilmiş kayıt). Üye ve önerilen danışman adları, backend'in
  * bu alanları dolduracağı varsayımıyla gelir. Bellekte tutulur; yalnız `/onizleme` (öğrenci) içindir.
  */
 import type { InternalAxiosRequestConfig } from 'axios'
@@ -14,6 +15,7 @@ import type { ClubCategory, ClubMember } from '@/features/clubs/api'
 import type { AdvisorChange, ProfileDraft } from '@/features/clubs/governance'
 import type { Election, ElectionBallot, ElectionCandidate } from '@/features/clubs/elections'
 import type { ApprovalRequest } from '@/features/clubs/manage'
+import type { EventStaff } from '@/features/events/staff'
 import type {
   Budget,
   DecisionLogEntry,
@@ -644,6 +646,43 @@ const yearParam = (config: InternalAxiosRequestConfig) =>
 /** Danışman onayındaki gelir-gider kaydı (saat alımı) kulüp kararlarında görünür. */
 submit('k2', { type: 'CLUB_FINANCE_ENTRY', status: 'PENDING_ADVISOR', createdAt: ago(30), financeEntry: entries.k2![2]! })
 
+// ——— Etkinlik görevlileri ve kapı ———
+
+const staffOf = (
+  eventId: string,
+  userId: string,
+  firstName: string,
+  lastName: string,
+  status: EventStaff['status'],
+  hoursAgo: number,
+): EventStaff => ({
+  eventId,
+  userId,
+  firstName,
+  lastName,
+  status,
+  proposedBy: 'u1',
+  approvedBy: status === 'APPROVED' ? 'st2' : null,
+  createdAt: ago(hoursAgo),
+  decidedAt: status === 'APPROVED' ? ago(hoursAgo - 3) : null,
+})
+
+export const eventStaff: Record<string, EventStaff[]> = {
+  e1: [
+    staffOf('e1', 'u1', 'Elif', 'Demir', 'APPROVED', 48),
+    staffOf('e1', 'st3', 'Ece', 'Yalçın', 'APPROVED', 40),
+    staffOf('e1', 'st4', 'Mert', 'Aksu', 'PENDING', 6),
+  ],
+}
+
+/** Kapıda denenecek kodlar → yoklama satırı. */
+const GATE_CODES: Record<string, { eventId: string; studentId: string }> = {
+  'EC-E1-BURCU': { eventId: 'e1', studentId: 'st7' },
+  'EC-E1-KAAN': { eventId: 'e1', studentId: 'st8' },
+}
+
+const eventClub = (eventId: string) => fx.findEvent(eventId)?.clubId ?? ''
+
 // ——— Onay kayıtları ———
 
 function submit(clubId: string, r: Partial<ApprovalRequest> & Pick<ApprovalRequest, 'type' | 'status'>): ApprovalRequest {
@@ -691,6 +730,14 @@ export const GET: [RegExp, Handler][] = [
   [/^\/clubs\/my-creation-requests$/, () => creations.map((r) => ({ ...r, founders: r.founders.map((f) => ({ ...f })) }))],
   [/^\/clubs\/([^/]+)\/advisor-change-requests$/, (m) => (advisorChanges[m[1]!] ?? []).map((r) => ({ ...r }))],
   [/^\/clubs\/([^/]+)\/elections$/, (m) => (elections[m[1]!] ?? []).map(electionView)],
+  [
+    /^\/events\/manage\/staff\/me$/,
+    () =>
+      Object.entries(eventStaff)
+        .filter(([, list]) => list.some((x) => x.userId === 'u1' && x.status === 'APPROVED'))
+        .map(([id]) => ({ ...fx.findEvent(id)! })),
+  ],
+  [/^\/events\/manage\/([^/]+)\/staff$/, (m) => (eventStaff[m[1]!] ?? []).map((x) => ({ ...x }))],
   [
     /^\/clubs\/([^/]+)\/meetings$/,
     (m, config) => (meetings[m[1]!] ?? []).filter((x) => x.academicYear === yearParam(config)).map((x) => ({ ...x })),
@@ -1279,6 +1326,66 @@ export const WRITE: [string, RegExp, Handler][] = [
       })
       r.requestId = request.id
       return request
+    },
+  ],
+  [
+    'post',
+    /^\/events\/manage\/([^/]+)\/staff$/,
+    (m, config) => {
+      const eventId = m[1]!
+      const userId = body<{ userId: string }>(config).userId
+      const list = (eventStaff[eventId] ??= [])
+      if (list.some((x) => x.userId === userId)) fail(config, 409, 'STAFF_EXISTS', 'Bu üye bu etkinlik için zaten önerildi veya atandı.')
+      const clubId = eventClub(eventId)
+      const person = [...(fx.clubBoard[clubId] ?? []), ...(members[clubId] ?? [])].find((x) => x.studentId === userId)
+      const saved = staffOf(
+        eventId,
+        userId,
+        person?.firstName ?? 'Üye',
+        person?.lastName ?? '',
+        presides(clubId) ? 'APPROVED' : 'PENDING',
+        0,
+      )
+      list.push(saved)
+      return { ...saved }
+    },
+  ],
+  [
+    'post',
+    /^\/events\/manage\/([^/]+)\/staff\/([^/]+)\/(approve|reject)$/,
+    (m) => {
+      const list = eventStaff[m[1]!] ?? []
+      const i = list.findIndex((x) => x.userId === m[2])
+      if (m[3] === 'reject') list.splice(i, 1)
+      else Object.assign(list[i]!, { status: 'APPROVED', approvedBy: 'u1', decidedAt: now() })
+      return null
+    },
+  ],
+  [
+    'delete',
+    /^\/events\/manage\/([^/]+)\/staff\/([^/]+)$/,
+    (m) => {
+      const list = eventStaff[m[1]!] ?? []
+      list.splice(
+        list.findIndex((x) => x.userId === m[2]),
+        1,
+      )
+      return null
+    },
+  ],
+  [
+    'post',
+    /^\/events\/manage\/verify-qr$/,
+    (_m, config) => {
+      const code = String(body<{ qrCode?: string }>(config).qrCode ?? '').trim()
+      const own = fx.registrations.find((r) => r.qrCode === code)
+      const target = GATE_CODES[code] ?? (own ? { eventId: own.eventId, studentId: 'u1' } : null)
+      const row = target && (fx.attendance[target.eventId] ?? []).find((r) => r.studentId === target.studentId)
+      if (!row) fail(config, 400, 'INVALID_TICKET', 'Invalid ticket (QR Code not found)')
+      if (row.status === 'CANCELLED') fail(config, 400, 'TICKET_CANCELLED', 'Bu kayıt iptal edilmiş.')
+      if (row.attended) fail(config, 400, 'TICKET_ALREADY_USED', 'Ticket already used/scanned.')
+      Object.assign(row, { attended: true, checkedInAt: now(), method: 'QR' })
+      return 'ACCESS GRANTED: Ticket verified successfully.'
     },
   ],
 ]

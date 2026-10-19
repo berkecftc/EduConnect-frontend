@@ -2,7 +2,7 @@ import { createBrowserRouter, type RouteObject } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { RequireAuth } from '@/components/layout/RequireAuth'
 import { LoginPage } from '@/features/auth/LoginPage'
-import { NotBuiltPage, NotFoundPage } from '@/pages/StatusPages'
+import { NotFoundPage } from '@/pages/StatusPages'
 
 /**
  * Sayfalar rota bazlı bölünür: yalnız açıldığında indirilir. Giriş sayfası ilk açılış olduğu için pakette kalır.
@@ -11,9 +11,6 @@ import { NotBuiltPage, NotFoundPage } from '@/pages/StatusPages'
 function page<M extends Record<string, unknown>>(load: () => Promise<M>, name: keyof M): Pick<RouteObject, 'lazy'> {
   return { lazy: async () => ({ Component: (await load())[name] as React.ComponentType }) }
 }
-
-/** Henüz yeni tasarıma taşınmamış rotalar; menüden açılabilsin diye yer tutar. */
-const PENDING = ['clubs/:clubId/*', 'events/:eventId/*', 'me/*']
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -60,6 +57,7 @@ export const router = createBrowserRouter([
       { path: 'events', ...page(() => import('@/features/events/EventsPage'), 'EventsPage') },
       { path: 'events/:eventId', ...page(() => import('@/features/events/EventPage'), 'EventPage') },
       { path: 'events/:eventId/yonetim', ...page(() => import('@/features/events/EventManagePage'), 'EventManagePage') },
+      { path: 'events/:eventId/kapi', ...page(() => import('@/features/events/EventGatePage'), 'EventGatePage') },
       { path: 'clubs/:clubId/kayitlar', ...page(() => import('@/features/clubs/ClubRecordsPage'), 'ClubRecordsPage') },
       { path: 'clubs/:clubId/events/new', ...page(() => import('@/features/events/EventCreatePage'), 'EventCreatePage') },
       { path: 'me/tickets', ...page(() => import('@/features/events/TicketsPage'), 'TicketsPage') },
@@ -84,7 +82,6 @@ export const router = createBrowserRouter([
       { path: 'manage/academic-structure', ...page(() => import('@/features/manage/AcademicStructurePage'), 'AcademicStructurePage') },
       { path: 'manage/courses', ...page(() => import('@/features/manage/CoursesAdminPage'), 'CoursesAdminPage') },
       { path: 'manage/change-requests', ...page(() => import('@/features/manage/ChangeRequestsPage'), 'ChangeRequestsPage') },
-      ...PENDING.map((path) => ({ path, element: <NotBuiltPage /> })),
       { path: '*', element: <NotFoundPage /> },
     ],
   },
