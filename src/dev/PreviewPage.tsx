@@ -8,6 +8,7 @@ import * as fx from './fixtures'
 import * as px from './postFixtures'
 import * as ax from './assessPreview'
 import * as dx from './advisePreview'
+import * as mx from './managePreview'
 import * as tx from './teachPreview'
 
 type Handler = (m: RegExpMatchArray, config: InternalAxiosRequestConfig) => unknown
@@ -606,10 +607,10 @@ const fixtureAdapter: AxiosAdapter = async (config: InternalAxiosRequestConfig) 
   const reply = (status: number, data: unknown): AxiosResponse => ({ status, statusText: '', data, headers: {}, config })
   const method = config.method ?? 'get'
   if (method !== 'get') {
-    const hit = (tx.state.academician ? [...dx.WRITE, ...ax.WRITE, ...tx.WRITE, ...WRITE] : WRITE).filter(([verb]) => verb === method).map(([, re, handle]) => [url.match(re), handle] as const).find(([m]) => m)
+    const hit = (tx.state.academician ? [...dx.WRITE, ...ax.WRITE, ...tx.WRITE, ...WRITE] : mx.state.role ? [...mx.WRITE, ...WRITE] : WRITE).filter(([verb]) => verb === method).map(([, re, handle]) => [url.match(re), handle] as const).find(([m]) => m)
     return reply(200, hit ? await hit[1](hit[0]!, config) : {})
   }
-  for (const [re, handle] of tx.state.academician ? [...dx.GET, ...ax.GET, ...tx.GET, ...GET] : GET) {
+  for (const [re, handle] of tx.state.academician ? [...dx.GET, ...ax.GET, ...tx.GET, ...GET] : mx.state.role ? [...mx.GET, ...GET] : GET) {
     const m = url.match(re)
     if (!m) continue
     try {
@@ -635,21 +636,26 @@ export function PreviewPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   useEffect(() => {
-    // ?rol=akademisyen: Dr. Öğr. Üyesi Mehmet Kaya olarak; yoksa öğrenci Elif Demir olarak.
-    const academician = new URLSearchParams(window.location.search).get('rol') === 'akademisyen'
+    // ?rol=akademisyen: Dr. Öğr. Üyesi Mehmet Kaya; ?rol=gorevli: öğrenci ve personel doğrulayıcısı;
+    // ?rol=yonetici: sistem yöneticisi; yoksa öğrenci Elif Demir.
+    const rol = new URLSearchParams(window.location.search).get('rol')
+    const academician = rol === 'akademisyen'
+    const manager = rol === 'gorevli' ? 'staff' : rol === 'yonetici' ? 'admin' : null
     tx.state.academician = academician
+    mx.state.role = manager
     api.defaults.adapter = fixtureAdapter
     qc.clear()
+    const role = academician ? 'ROLE_ACADEMICIAN' : manager === 'staff' ? 'ROLE_STAFF' : manager === 'admin' ? 'ROLE_ADMIN' : 'ROLE_STUDENT'
     setSession(
       {
         token: 'onizleme',
         refreshToken: 'onizleme',
-        userId: academician ? tx.me.id : 'u1',
-        email: academician ? tx.me.email! : fx.me.email!,
-        roles: [academician ? 'ROLE_ACADEMICIAN' : 'ROLE_STUDENT'],
-        primaryRole: academician ? 'ROLE_ACADEMICIAN' : 'ROLE_STUDENT',
+        userId: academician ? tx.me.id : manager ? mx.STAFF.id : 'u1',
+        email: academician ? tx.me.email! : manager ? mx.STAFF.email : fx.me.email!,
+        roles: [role],
+        primaryRole: role,
         pendingRequests: [],
-        permissions: [],
+        permissions: manager === 'staff' ? ['PERM_STUDENT_VERIFIER', 'PERM_STAFF_VERIFIER', 'PERM_ACCOUNT_MANAGER'] : [],
         expiresAt: Date.now() + 24 * 3_600_000,
       },
       { persist: false },

@@ -17,6 +17,7 @@ import { RevealTitle } from '@/components/ui/RevealTitle'
 import { Notice } from '@/components/ui/Notice'
 import { Skeleton } from '@/components/ui/States'
 import { AcademicianToday } from '@/features/today/AcademicianToday'
+import { StaffToday } from '@/features/today/StaffToday'
 
 /** Bugün: kişinin günü tek bakışta. Öğrencide çizelge, hafta şeridi, ders karnesi; akademisyende bekleyen işler ve dersler. */
 export function HomePage() {
@@ -25,6 +26,7 @@ export function HomePage() {
   const student = hasRole(session, 'ROLE_STUDENT', 'ROLE_CLUB_OFFICIAL')
   // Menü gibi: akademisyen kaydı varsa akademisyen görünümü (çift bağlılıkta da).
   const academician = hasRole(session, 'ROLE_ACADEMICIAN')
+  const staffOrAdmin = hasRole(session, 'ROLE_STAFF', 'ROLE_ADMIN')
 
   return (
     <div className="mx-auto max-w-[80rem]">
@@ -33,7 +35,7 @@ export function HomePage() {
           {session.pendingRequests.includes('ACADEMICIAN') ? 'Personel' : 'Öğrenci'} kaydınız doğrulayıcı onayından sonra etkinleşecek.
         </Notice>
       )}
-      {academician ? <AcademicianToday /> : student ? <StudentToday /> : <OtherRoleToday />}
+      {academician ? <AcademicianToday /> : student ? <StudentToday /> : staffOrAdmin ? <StaffToday /> : <OtherRoleToday />}
     </div>
   )
 }
